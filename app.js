@@ -236,7 +236,7 @@ function categorizeTransactions() {
         else if (['FORNECEDOR', 'NF', 'NFE', 'FRETE', 'DISTRIBUIDORA', 'ATACADO'].some(k => desc.includes(k))) {
             cat = 'dre.custos.mercadorias';
         }
-        else if (['FRETE', 'TRANSPORTADORA', 'CORREIOS', 'LOG ', 'PEDAGIO'].some(k => desc.includes(k))) {
+        else if (['FRETE', 'TRANSPORTADORA', 'CORREIOS', 'LOG ', 'PEDAGIO', 'POSTO'].some(k => desc.includes(k))) {
             cat = 'dre.despesas_comercial.transporte_logistica';
         }
         else if (['COMISSAO', 'PREMIACAO', 'BONUS VENDAS', 'ARTHUR GERMANO KRIEGER'].some(k => desc.includes(k))) {
