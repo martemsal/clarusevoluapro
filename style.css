@@ -249,6 +249,15 @@ button {
     border-bottom: 1px solid var(--glass-border);
 }
 
+.clickable-row {
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.clickable-row:hover {
+    background: rgba(99, 102, 241, 0.2) !important;
+}
+
 .report-table th {
     color: var(--text-secondary);
     font-weight: 600;

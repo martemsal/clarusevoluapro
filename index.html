@@ -223,6 +223,29 @@
         </div>
     </div>
 
+    <!-- Drill-down Modal -->
+    <div id="drillDownModal" class="modal">
+        <div class="modal-content glass-panel" style="width: 800px; max-width: 95%;">
+            <span class="close-modal close-drilldown">&times;</span>
+            <h2 id="drillDownTitle">Detalhamento</h2>
+            <div class="table-container mt-4">
+                <table class="report-table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Descrição</th>
+                            <th>Valor</th>
+                            <th>Nova Categoria</th>
+                        </tr>
+                    </thead>
+                    <tbody id="drillDownTbody">
+                        <!-- Injected by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 </html>

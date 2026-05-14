@@ -30,10 +30,12 @@ const DEFAULT_LANCAMENTOS = {
 let EFO_Parametros = JSON.parse(localStorage.getItem('EFO_Parametros')) || DEFAULT_PARAMETROS;
 let Config_Empresa = JSON.parse(localStorage.getItem('Config_Empresa')) || DEFAULT_EMPRESA;
 let EFO_Lancamentos = JSON.parse(localStorage.getItem('EFO_Lancamentos_V3')) || JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS));
-let OFX_Raw_Import = JSON.parse(localStorage.getItem('OFX_Raw_Import')) || [];
+let OFX_Raw_Import = JSON.parse(localStorage.getItem('OFX_Raw_Import_V2')) || [];
 
 let gaugeChartInst = null;
 let pieChartInst = null;
+let currentDrillDownPath = null;
+let currentDrillDownTitle = null;
 
 // --- INIT ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -53,6 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnConfigEmpresa').addEventListener('click', openEmpresaModal);
     document.querySelector('.close-empresa').addEventListener('click', () => document.getElementById('empresaModal').style.display = 'none');
     document.getElementById('formEmpresa').addEventListener('submit', saveEmpresa);
+
+    // DrillDown Modal
+    document.querySelector('.close-drilldown').addEventListener('click', () => document.getElementById('drillDownModal').style.display = 'none');
     
     // CNAE Auto-detect
     document.getElementById('config_cnae').addEventListener('input', (e) => {
@@ -66,9 +71,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnExportPDF').addEventListener('click', exportPDF);
     
     document.getElementById('btnResetData').addEventListener('click', () => {
-        if(confirm("Tem certeza que deseja zerar todos os dados do EFO?")) {
+        if(confirm("Tem certeza que deseja zerar todos os dados do EFO? (Recomendado para limpar cache e testar novas estruturas rastreáveis)")) {
             localStorage.removeItem('EFO_Lancamentos_V3');
-            localStorage.removeItem('OFX_Raw_Import');
+            localStorage.removeItem('OFX_Raw_Import_V2');
+            localStorage.removeItem('OFX_Raw_Import'); // clean old ones
             location.reload();
         }
     });
@@ -118,7 +124,7 @@ function handleOFXUpload(e) {
 
             if (processedCount === files.length) {
                 if (totalNewTransactions > 0) {
-                    localStorage.setItem('OFX_Raw_Import', JSON.stringify(OFX_Raw_Import));
+                    localStorage.setItem('OFX_Raw_Import_V2', JSON.stringify(OFX_Raw_Import));
                     categorizeTransactions();
                     showToast('Importação Lote', `${totalNewTransactions} transações lidas de ${files.length} arquivo(s).`, 'success');
                 } else {
@@ -152,7 +158,15 @@ function parseOFXContent(content) {
         const memo = memoMatch ? memoMatch[1].trim() : 'Transação';
 
         if (!OFX_Raw_Import.find(t => t.transaction_id === fitid)) {
-            OFX_Raw_Import.push({ transaction_id: fitid, date: formattedDate, amount: amount, description: memo.toUpperCase(), status: 'Pendente', flag_reason: '' });
+            OFX_Raw_Import.push({ 
+                transaction_id: fitid, 
+                date: formattedDate, 
+                amount: amount, 
+                description: memo.toUpperCase(), 
+                status: 'Pendente', 
+                flag_reason: '',
+                assigned_account: null
+            });
             newTransactions++;
         }
     }
@@ -177,9 +191,13 @@ function categorizeTransactions() {
             return;
         }
 
+        // Nova Regra de Receitas Financeiras
+        if (amt > 0 && ['RENDIMENTO', 'APLICACAO', 'JUROS RECEBIDOS', 'RESGATE'].some(k => desc.includes(k))) {
+            cat = 'dre.receitas_financeiras.rendimentos';
+        }
         // Categorização Balanço
-        if (desc.includes("APLICACAO") || desc.includes("RESGATE") || desc.includes("TRANSF")) {
-            cat = 'balanco.ativo_circulante.aplicacoes';
+        else if (amt < 0 && (desc.includes("APLICACAO") || desc.includes("RESGATE") || desc.includes("TRANSF"))) {
+            cat = 'balanco.ativo_circulante.aplicacoes'; // Saída de caixa para aplicação
         }
         else if (['AMORTIZACAO', 'PARCELA EMPRESTIMO', 'IOF', 'PARC', 'EMPRESTIMO', 'FINANC', 'BNDES'].some(k => desc.includes(k))) {
             cat = 'balanco.passivo_circulante.emprestimos_cp';
@@ -217,12 +235,13 @@ function categorizeTransactions() {
             const path = cat.split('.');
             EFO_Lancamentos[path[0]][path[1]][path[2]] += absAmt;
             txn.status = 'Categorizado';
+            txn.assigned_account = cat;
             changed = true;
         }
     });
 
     if (changed) {
-        localStorage.setItem('OFX_Raw_Import', JSON.stringify(OFX_Raw_Import));
+        localStorage.setItem('OFX_Raw_Import_V2', JSON.stringify(OFX_Raw_Import));
         localStorage.setItem('EFO_Lancamentos_V3', JSON.stringify(EFO_Lancamentos));
         updateAllViews();
     }
@@ -242,6 +261,7 @@ function manualCategorize(fitid, categoryPath) {
                 const path = categoryPath.split('.');
                 EFO_Lancamentos[path[0]][path[1]][path[2]] += Math.abs(t.amount);
                 t.status = 'Categorizado';
+                t.assigned_account = categoryPath;
                 t.flag_reason = '';
                 matchedCount++;
             }
@@ -250,11 +270,12 @@ function manualCategorize(fitid, categoryPath) {
         showToast('Auto-Match', `${matchedCount} transações processadas automaticamente.`, 'success');
     } else {
         txn.status = 'Ignorado';
+        txn.assigned_account = null;
         txn.flag_reason = '';
         showToast('Sucesso', `Transação ignorada.`, 'success');
     }
     
-    localStorage.setItem('OFX_Raw_Import', JSON.stringify(OFX_Raw_Import));
+    localStorage.setItem('OFX_Raw_Import_V2', JSON.stringify(OFX_Raw_Import));
     localStorage.setItem('EFO_Lancamentos_V3', JSON.stringify(EFO_Lancamentos));
     
     updateAllViews();
@@ -265,6 +286,112 @@ window.applyManualCategorization = (fitid) => {
     if (!sel.value) return showToast('Aviso', 'Selecione uma categoria.', 'warning');
     manualCategorize(fitid, sel.value);
 };
+
+// --- DRILL-DOWN & RECLASSIFICATION ---
+window.openDrillDown = (categoryPath, title) => {
+    currentDrillDownPath = categoryPath;
+    currentDrillDownTitle = title;
+    
+    document.getElementById('drillDownTitle').textContent = `Detalhamento: ${title}`;
+    renderDrillDownTable();
+    
+    document.getElementById('drillDownModal').style.display = 'block';
+};
+
+function renderDrillDownTable() {
+    const tbody = document.getElementById('drillDownTbody');
+    tbody.innerHTML = '';
+    
+    const relatedTxns = OFX_Raw_Import.filter(t => t.status === 'Categorizado' && t.assigned_account === currentDrillDownPath);
+    
+    if(relatedTxns.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center">Nenhum lançamento vinculado via OFX para esta conta.</td></tr>`;
+        return;
+    }
+
+    const optgroups = getOptGroupsHTML();
+
+    relatedTxns.forEach(txn => {
+        const tr = document.createElement('tr');
+        const dateObj = new Date(txn.date);
+        const dateStr = dateObj.toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'});
+        
+        tr.innerHTML = `
+            <td>${dateStr}</td>
+            <td><strong>${txn.description}</strong></td>
+            <td style="color: ${txn.amount > 0 ? 'var(--success)' : 'var(--danger)'}">${formatCurrency(txn.amount)}</td>
+            <td>
+                <select class="efo-select w-100" id="reclass_${txn.transaction_id}" onchange="reclassifyTransaction('${txn.transaction_id}')">
+                    ${optgroups.replace(`value="${txn.assigned_account}"`, `value="${txn.assigned_account}" selected`)}
+                </select>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+window.reclassifyTransaction = (fitid) => {
+    const txn = OFX_Raw_Import.find(t => t.transaction_id === fitid);
+    const newCategoryPath = document.getElementById(`reclass_${fitid}`).value;
+    
+    if(!txn || !newCategoryPath || txn.assigned_account === newCategoryPath) return;
+
+    if(newCategoryPath === 'ignore') {
+        const oldPath = txn.assigned_account.split('.');
+        EFO_Lancamentos[oldPath[0]][oldPath[1]][oldPath[2]] -= Math.abs(txn.amount);
+        txn.status = 'Ignorado';
+        txn.assigned_account = null;
+    } else {
+        // Reverter da antiga
+        const oldPath = txn.assigned_account.split('.');
+        EFO_Lancamentos[oldPath[0]][oldPath[1]][oldPath[2]] -= Math.abs(txn.amount);
+        
+        // Adicionar na nova
+        const newPath = newCategoryPath.split('.');
+        EFO_Lancamentos[newPath[0]][newPath[1]][newPath[2]] += Math.abs(txn.amount);
+        
+        txn.assigned_account = newCategoryPath;
+    }
+
+    localStorage.setItem('OFX_Raw_Import_V2', JSON.stringify(OFX_Raw_Import));
+    localStorage.setItem('EFO_Lancamentos_V3', JSON.stringify(EFO_Lancamentos));
+    
+    showToast('Reclassificação', `O lançamento foi transferido e o DRE foi recalculado.`, 'success');
+    
+    // Atualiza a tabela modal atual para sumir a linha e atualiza os dashboards
+    updateAllViews();
+    renderDrillDownTable();
+};
+
+function getOptGroupsHTML() {
+    return `
+        <option value="">Selecione a Conta...</option>
+        <optgroup label="Receitas DRE">
+            <option value="dre.receita_bruta.produtos">Venda de Produtos</option>
+            <option value="dre.receita_bruta.servicos">Prestação de Serviços</option>
+            <option value="dre.receitas_financeiras.rendimentos">Receitas Financeiras / Rendimentos</option>
+        </optgroup>
+        <optgroup label="Deduções e Custos DRE">
+            <option value="dre.deducoes.impostos">Impostos S/ Faturamento</option>
+            <option value="dre.custos.mercadorias">CMV (Compra de Mercadorias)</option>
+        </optgroup>
+        <optgroup label="Despesas Operacionais DRE">
+            <option value="dre.despesas_comercial.trafego">Marketing/Tráfego</option>
+            <option value="dre.despesas_administrativas.aluguel">Aluguel ADM</option>
+            <option value="dre.despesas_administrativas.outras">Outras ADM</option>
+            <option value="dre.despesas_pessoal.salarios">Salários/Pró-Labore</option>
+            <option value="dre.despesas_estrutura.manutencao">Manutenção/Limpeza</option>
+            <option value="dre.despesas_veiculos.combustivel">Combustível/Veículos</option>
+            <option value="dre.despesas_financeiras.tarifas">Tarifas/Juros Bancários</option>
+        </optgroup>
+        <optgroup label="Contas de Balanço">
+            <option value="balanco.ativo_circulante.caixa_bancos">Caixa/Banco (Aporte)</option>
+            <option value="balanco.ativo_nao_circulante.imobilizado">Imobilizado (Máquinas/Veículos)</option>
+            <option value="balanco.passivo_circulante.emprestimos_cp">Pagamento Empréstimo</option>
+        </optgroup>
+        <option value="ignore">Ignorar/Não Contabilizar</option>
+    `;
+}
 
 // --- VIEWS RENDERERS ---
 function updateAllViews() {
@@ -348,27 +475,32 @@ function renderDRE() {
 
     tbody.innerHTML = `
         <tr class="row-group"><td>1. RECEITA OPERACIONAL BRUTA</td><td class="text-right">${formatCurrency(rBruta)}</td><td class="text-right">${av(rBruta)}</td></tr>
-        <tr class="row-sub"><td>Receita de Produtos</td><td class="text-right">${formatCurrency(dre.receita_bruta.produtos)}</td><td class="text-right">${av(dre.receita_bruta.produtos)}</td></tr>
-        <tr class="row-sub"><td>Receita de Serviços</td><td class="text-right">${formatCurrency(dre.receita_bruta.servicos)}</td><td class="text-right">${av(dre.receita_bruta.servicos)}</td></tr>
-        <tr class="row-sub"><td>Outras Receitas</td><td class="text-right">${formatCurrency(dre.receita_bruta.outras)}</td><td class="text-right">${av(dre.receita_bruta.outras)}</td></tr>
+        <tr class="row-sub clickable-row" onclick="openDrillDown('dre.receita_bruta.produtos', 'Receita de Produtos')"><td>Receita de Produtos</td><td class="text-right">${formatCurrency(dre.receita_bruta.produtos)}</td><td class="text-right">${av(dre.receita_bruta.produtos)}</td></tr>
+        <tr class="row-sub clickable-row" onclick="openDrillDown('dre.receita_bruta.servicos', 'Receita de Serviços')"><td>Receita de Serviços</td><td class="text-right">${formatCurrency(dre.receita_bruta.servicos)}</td><td class="text-right">${av(dre.receita_bruta.servicos)}</td></tr>
+        <tr class="row-sub clickable-row" onclick="openDrillDown('dre.receita_bruta.outras', 'Outras Receitas')"><td>Outras Receitas</td><td class="text-right">${formatCurrency(dre.receita_bruta.outras)}</td><td class="text-right">${av(dre.receita_bruta.outras)}</td></tr>
         
         <tr class="row-group text-danger"><td>(-) DEDUÇÕES DA RECEITA</td><td class="text-right">${formatCurrency(deducoes)}</td><td class="text-right">${av(deducoes)}</td></tr>
+        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.deducoes.impostos', 'Impostos S/ Faturamento')"><td>Impostos S/ Faturamento</td><td class="text-right">${formatCurrency(dre.deducoes.impostos)}</td><td class="text-right">${av(dre.deducoes.impostos)}</td></tr>
         <tr class="row-total"><td>(=) RECEITA OPERACIONAL LÍQUIDA</td><td class="text-right">${formatCurrency(rLiquida)}</td><td class="text-right">${av(rLiquida)}</td></tr>
         
         <tr class="row-group text-danger"><td>(-) CUSTOS DOS PRODUTOS/SERVIÇOS</td><td class="text-right">${formatCurrency(custos)}</td><td class="text-right">${av(custos)}</td></tr>
-        <tr class="row-sub"><td>CMV</td><td class="text-right">${formatCurrency(dre.custos.mercadorias)}</td><td class="text-right">${av(dre.custos.mercadorias)}</td></tr>
-        <tr class="row-sub"><td>Serviços Terceiros</td><td class="text-right">${formatCurrency(dre.custos.servicos)}</td><td class="text-right">${av(dre.custos.servicos)}</td></tr>
+        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.custos.mercadorias', 'CMV')"><td>CMV</td><td class="text-right">${formatCurrency(dre.custos.mercadorias)}</td><td class="text-right">${av(dre.custos.mercadorias)}</td></tr>
+        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.custos.servicos', 'Serviços Terceiros')"><td>Serviços Terceiros</td><td class="text-right">${formatCurrency(dre.custos.servicos)}</td><td class="text-right">${av(dre.custos.servicos)}</td></tr>
         
         <tr class="row-total"><td>(=) LUCRO BRUTO</td><td class="text-right">${formatCurrency(lBruto)}</td><td class="text-right">${av(lBruto)}</td></tr>
         
         <tr class="row-group text-danger"><td>(-) DESPESAS OPERACIONAIS</td><td class="text-right">${formatCurrency(dOperacionais)}</td><td class="text-right">${av(dOperacionais)}</td></tr>
-        <tr class="row-sub"><td>Despesas Comerciais/Mkt</td><td class="text-right">${formatCurrency(dCom)}</td><td class="text-right">${av(dCom)}</td></tr>
-        <tr class="row-sub"><td>Despesas Administrativas</td><td class="text-right">${formatCurrency(dAdm)}</td><td class="text-right">${av(dAdm)}</td></tr>
-        <tr class="row-sub"><td>Despesas de Pessoal</td><td class="text-right">${formatCurrency(dPes)}</td><td class="text-right">${av(dPes)}</td></tr>
-        <tr class="row-sub"><td>Despesas Estrutura/Veículos</td><td class="text-right">${formatCurrency(dEst + dVei)}</td><td class="text-right">${av(dEst + dVei)}</td></tr>
+        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_comercial.trafego', 'Despesas Comerciais/Mkt')"><td>Despesas Comerciais/Mkt</td><td class="text-right">${formatCurrency(dCom)}</td><td class="text-right">${av(dCom)}</td></tr>
+        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_administrativas.outras', 'Despesas Administrativas (Outras)')"><td>Despesas Administrativas (Outras)</td><td class="text-right">${formatCurrency(dre.despesas_administrativas.outras)}</td><td class="text-right">${av(dre.despesas_administrativas.outras)}</td></tr>
+        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_administrativas.aluguel', 'Despesas Administrativas (Aluguel)')"><td>Despesas Administrativas (Aluguel)</td><td class="text-right">${formatCurrency(dre.despesas_administrativas.aluguel)}</td><td class="text-right">${av(dre.despesas_administrativas.aluguel)}</td></tr>
+        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_pessoal.salarios', 'Despesas de Pessoal')"><td>Despesas de Pessoal</td><td class="text-right">${formatCurrency(dPes)}</td><td class="text-right">${av(dPes)}</td></tr>
+        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_estrutura.manutencao', 'Despesas Estrutura/Veículos')"><td>Despesas Estrutura/Veículos</td><td class="text-right">${formatCurrency(dEst + dVei)}</td><td class="text-right">${av(dEst + dVei)}</td></tr>
 
-        <tr class="row-group"><td>(+) RECEITAS FINANCEIRAS</td><td class="text-right">${formatCurrency(rFin)}</td><td class="text-right">${av(rFin)}</td></tr>
+        <tr class="row-group text-success"><td>(+) RECEITAS FINANCEIRAS</td><td class="text-right">${formatCurrency(rFin)}</td><td class="text-right">${av(rFin)}</td></tr>
+        <tr class="row-sub clickable-row text-success" onclick="openDrillDown('dre.receitas_financeiras.rendimentos', 'Rendimentos/Juros')"><td>Rendimentos/Juros</td><td class="text-right">${formatCurrency(dre.receitas_financeiras.rendimentos)}</td><td class="text-right">${av(dre.receitas_financeiras.rendimentos)}</td></tr>
+        
         <tr class="row-group text-danger"><td>(-) DESPESAS FINANCEIRAS</td><td class="text-right">${formatCurrency(dFin)}</td><td class="text-right">${av(dFin)}</td></tr>
+        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_financeiras.tarifas', 'Tarifas e Juros')"><td>Tarifas e Juros</td><td class="text-right">${formatCurrency(dre.despesas_financeiras.tarifas)}</td><td class="text-right">${av(dre.despesas_financeiras.tarifas)}</td></tr>
         
         <tr class="row-total"><td>(=) EBITDA GERENCIAL</td><td class="text-right">${formatCurrency(ebitda)}</td><td class="text-right">${av(ebitda)}</td></tr>
         <tr class="row-total ${lLiq < 0 ? 'danger-txt' : ''}"><td>(=) LUCRO LÍQUIDO</td><td class="text-right">${formatCurrency(lLiq)}</td><td class="text-right">${av(lLiq)}</td></tr>
@@ -387,11 +519,11 @@ function renderBalanco() {
     ativoTbody.innerHTML = `
         <tr class="row-group"><td>ATIVO CIRCULANTE</td><td class="text-right">${formatCurrency(totAc)}</td></tr>
         <tr class="row-sub"><td>Caixa e Bancos</td><td class="text-right">${formatCurrency(b.ativo_circulante.caixa_bancos)}</td></tr>
-        <tr class="row-sub"><td>Aplicações Financeiras</td><td class="text-right">${formatCurrency(b.ativo_circulante.aplicacoes)}</td></tr>
+        <tr class="row-sub clickable-row" onclick="openDrillDown('balanco.ativo_circulante.aplicacoes', 'Aplicações Financeiras')"><td>Aplicações Financeiras</td><td class="text-right">${formatCurrency(b.ativo_circulante.aplicacoes)}</td></tr>
         <tr class="row-sub"><td>Clientes a Receber</td><td class="text-right">${formatCurrency(b.ativo_circulante.clientes_receber)}</td></tr>
         <tr class="row-sub"><td>Estoques</td><td class="text-right">${formatCurrency(b.ativo_circulante.estoques)}</td></tr>
         <tr class="row-group"><td>ATIVO NÃO CIRCULANTE</td><td class="text-right">${formatCurrency(totAnc)}</td></tr>
-        <tr class="row-sub"><td>Imobilizado</td><td class="text-right">${formatCurrency(b.ativo_nao_circulante.imobilizado)}</td></tr>
+        <tr class="row-sub clickable-row" onclick="openDrillDown('balanco.ativo_nao_circulante.imobilizado', 'Imobilizado')"><td>Imobilizado</td><td class="text-right">${formatCurrency(b.ativo_nao_circulante.imobilizado)}</td></tr>
         <tr class="row-total"><td>TOTAL DO ATIVO</td><td class="text-right">${formatCurrency(totalAtivo)}</td></tr>
     `;
 
@@ -403,7 +535,7 @@ function renderBalanco() {
     passivoTbody.innerHTML = `
         <tr class="row-group"><td>PASSIVO CIRCULANTE</td><td class="text-right">${formatCurrency(totPc)}</td></tr>
         <tr class="row-sub"><td>Fornecedores</td><td class="text-right">${formatCurrency(b.passivo_circulante.fornecedores)}</td></tr>
-        <tr class="row-sub"><td>Empréstimos Curto Prazo</td><td class="text-right">${formatCurrency(b.passivo_circulante.emprestimos_cp)}</td></tr>
+        <tr class="row-sub clickable-row" onclick="openDrillDown('balanco.passivo_circulante.emprestimos_cp', 'Empréstimos Curto Prazo')"><td>Empréstimos Curto Prazo</td><td class="text-right">${formatCurrency(b.passivo_circulante.emprestimos_cp)}</td></tr>
         <tr class="row-sub"><td>Obrigações Trabalhistas</td><td class="text-right">${formatCurrency(b.passivo_circulante.obrigacoes_trab)}</td></tr>
         <tr class="row-group"><td>PASSIVO NÃO CIRCULANTE</td><td class="text-right">${formatCurrency(totPnc)}</td></tr>
         <tr class="row-sub"><td>Empréstimos Longo Prazo</td><td class="text-right">${formatCurrency(b.passivo_nao_circulante.emprestimos_lp)}</td></tr>
@@ -430,32 +562,7 @@ function renderConciliationTable() {
         return;
     }
 
-    const optgroups = `
-        <option value="">Selecione a Conta...</option>
-        <optgroup label="Receitas DRE">
-            <option value="dre.receita_bruta.produtos">Venda de Produtos</option>
-            <option value="dre.receita_bruta.servicos">Prestação de Serviços</option>
-        </optgroup>
-        <optgroup label="Deduções e Custos DRE">
-            <option value="dre.deducoes.impostos">Impostos S/ Faturamento</option>
-            <option value="dre.custos.mercadorias">CMV (Compra de Mercadorias)</option>
-        </optgroup>
-        <optgroup label="Despesas Operacionais DRE">
-            <option value="dre.despesas_comercial.trafego">Marketing/Tráfego</option>
-            <option value="dre.despesas_administrativas.aluguel">Aluguel ADM</option>
-            <option value="dre.despesas_administrativas.outras">Outras ADM</option>
-            <option value="dre.despesas_pessoal.salarios">Salários/Pró-Labore</option>
-            <option value="dre.despesas_estrutura.manutencao">Manutenção/Limpeza</option>
-            <option value="dre.despesas_veiculos.combustivel">Combustível/Veículos</option>
-            <option value="dre.despesas_financeiras.tarifas">Tarifas/Juros Bancários</option>
-        </optgroup>
-        <optgroup label="Contas de Balanço">
-            <option value="balanco.ativo_circulante.caixa_bancos">Caixa/Banco (Aporte)</option>
-            <option value="balanco.ativo_nao_circulante.imobilizado">Imobilizado (Máquinas/Veículos)</option>
-            <option value="balanco.passivo_circulante.emprestimos_cp">Pagamento Empréstimo</option>
-        </optgroup>
-        <option value="ignore">Ignorar/Não Contabilizar</option>
-    `;
+    const optgroups = getOptGroupsHTML();
 
     pendentes.forEach(txn => {
         const tr = document.createElement('tr');
