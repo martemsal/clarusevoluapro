@@ -169,8 +169,11 @@ function parseOFXContent(content) {
         
         let rawDesc = descParts.length > 0 ? descParts.join(' | ') : 'Transação';
         
-        // Deep Parsing: Clean double spaces but preserve original casing
-        rawDesc = rawDesc.replace(/\s+/g, ' ');
+        // Sanitize rules (remove hashes, IDs, generic prefixes)
+        rawDesc = rawDesc.replace(/[0-9]{10,}/g, ''); // Remove long number sequences
+        rawDesc = rawDesc.replace(/[a-zA-Z0-9]{20,}/g, ''); // Remove hashes
+        rawDesc = rawDesc.replace(/E00|DEB PIX|CHAVE/gi, ''); // Remove generic prefixes
+        rawDesc = rawDesc.replace(/\|/g, ' ').replace(/\s+/g, ' ').trim(); // Clean pipes left behind and double spaces
 
         if (!OFX_Raw_Import.find(t => t.transaction_id === fitid)) {
             OFX_Raw_Import.push({ 
