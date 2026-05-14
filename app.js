@@ -172,26 +172,35 @@ function categorizeTransactions() {
         if (desc.includes("APLICACAO") || desc.includes("RESGATE") || desc.includes("TRANSF")) {
             cat = 'balanco.ativo_circulante.aplicacoes';
         }
-        else if (desc.includes("AMORTIZACAO") || desc.includes("PARCELA EMPRESTIMO") || desc.includes("IOF")) {
+        else if (['AMORTIZACAO', 'PARCELA EMPRESTIMO', 'IOF', 'PARC', 'EMPRESTIMO', 'FINANC', 'BNDES'].some(k => desc.includes(k))) {
             cat = 'balanco.passivo_circulante.emprestimos_cp';
         }
-        else if (amt < -2000 && (desc.includes("MAQUINA") || desc.includes("VEICULO") || desc.includes("MOVEIS"))) {
+        else if (amt < -2000 && ['MAQUINA', 'VEICULO', 'MOVEIS', 'APPLE', 'DELL', 'SAMSUNG', 'FERRAMENTA'].some(k => desc.includes(k))) {
             cat = 'balanco.ativo_nao_circulante.imobilizado';
         }
         // Categorização DRE
-        else if (amt > 0 && desc.includes("CREDITO")) {
+        else if (amt > 0 && ['CREDITO', 'PIX', 'TED', 'DOC', 'VENDA'].some(k => desc.includes(k))) {
             cat = Config_Empresa.tipo_atividade === 'Serviço' ? 'dre.receita_bruta.servicos' : 'dre.receita_bruta.produtos';
         }
-        else if (desc.includes("DAS") || desc.includes("PIS") || desc.includes("COFINS") || desc.includes("ISS")) {
+        else if (['DAS', 'SIMPLES', 'PIS', 'COFINS', 'ISS'].some(k => desc.includes(k))) {
             cat = 'dre.deducoes.impostos';
+        }
+        else if (['TARIFA', 'TAXA'].some(k => desc.includes(k))) {
+            cat = 'dre.despesas_financeiras.tarifas';
         }
         else if (Config_Empresa.tipo_atividade === "Serviço" && (desc.includes("MAO DE OBRA"))) {
             cat = 'dre.custos.servicos';
         }
-        else if (Config_Empresa.tipo_atividade === "Comércio" && (desc.includes("FORNECEDOR") || desc.includes("NF") || desc.includes("FRETE"))) {
+        else if (['FORNECEDOR', 'NF', 'NFE', 'FRETE', 'DISTRIBUIDORA', 'ATACADO'].some(k => desc.includes(k))) {
             cat = 'dre.custos.mercadorias';
         }
-        else if (desc.includes("ALUGUEL") || desc.includes("ENERGIA") || desc.includes("SANEAMENTO") || desc.includes("FOLHA") || desc.includes("SALARIO")) {
+        else if (['GOOGLE', 'FACEBOOK', 'META', 'ADS', 'INSTAGRAM'].some(k => desc.includes(k))) {
+            cat = 'dre.despesas_comercial.trafego';
+        }
+        else if (['ALUGUEL', 'CELESC', 'CONDOMINIO', 'INTERNET', 'CLARO', 'VIVO'].some(k => desc.includes(k))) {
+            cat = 'dre.despesas_administrativas.aluguel';
+        }
+        else if (desc.includes("ENERGIA") || desc.includes("SANEAMENTO") || desc.includes("FOLHA") || desc.includes("SALARIO")) {
             cat = desc.includes("FOLHA") || desc.includes("SALARIO") ? 'dre.despesas_pessoal.salarios' : 'dre.despesas_administrativas.outras';
         }
 
