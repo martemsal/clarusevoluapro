@@ -104,18 +104,34 @@ const sumObj = (obj) => Object.values(obj).reduce((a, b) => a + b, 0);
 
 // --- OFX ENGINE & COMPLIANCE ---
 function handleOFXUpload(e) {
-    const file = e.target.files[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files.length) return;
 
-    const reader = new FileReader();
-    reader.onload = function(event) {
-        parseOFX(event.target.result);
-        e.target.value = '';
-    };
-    reader.readAsText(file);
+    let processedCount = 0;
+    let totalNewTransactions = 0;
+
+    Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            totalNewTransactions += parseOFXContent(event.target.result);
+            processedCount++;
+
+            if (processedCount === files.length) {
+                if (totalNewTransactions > 0) {
+                    localStorage.setItem('OFX_Raw_Import', JSON.stringify(OFX_Raw_Import));
+                    categorizeTransactions();
+                    showToast('Importação Lote', `${totalNewTransactions} transações lidas de ${files.length} arquivo(s).`, 'success');
+                } else {
+                    showToast('Aviso', 'Nenhuma transação nova nos arquivos selecionados.', 'warning');
+                }
+                e.target.value = '';
+            }
+        };
+        reader.readAsText(file);
+    });
 }
 
-function parseOFX(content) {
+function parseOFXContent(content) {
     const trnRegex = /<STMTTRN>([\s\S]*?)<\/STMTTRN>/g;
     let match;
     let newTransactions = 0;
@@ -140,14 +156,7 @@ function parseOFX(content) {
             newTransactions++;
         }
     }
-
-    if (newTransactions > 0) {
-        localStorage.setItem('OFX_Raw_Import', JSON.stringify(OFX_Raw_Import));
-        categorizeTransactions();
-        showToast('Importação', `${newTransactions} transações lidas.`, 'success');
-    } else {
-        showToast('Aviso', 'Nenhuma transação nova.', 'warning');
-    }
+    return newTransactions;
 }
 
 function categorizeTransactions() {
@@ -225,19 +234,30 @@ function manualCategorize(fitid, categoryPath) {
     if (!txn || (txn.status !== 'Pendente' && txn.status !== 'Flagged')) return;
 
     if (categoryPath && categoryPath !== 'ignore') {
-        const path = categoryPath.split('.');
-        EFO_Lancamentos[path[0]][path[1]][path[2]] += Math.abs(txn.amount);
-        txn.status = 'Categorizado';
+        const targetDesc = txn.description;
+        let matchedCount = 0;
+
+        OFX_Raw_Import.forEach(t => {
+            if ((t.status === 'Pendente' || t.status === 'Flagged') && t.description === targetDesc) {
+                const path = categoryPath.split('.');
+                EFO_Lancamentos[path[0]][path[1]][path[2]] += Math.abs(t.amount);
+                t.status = 'Categorizado';
+                t.flag_reason = '';
+                matchedCount++;
+            }
+        });
+        
+        showToast('Auto-Match', `${matchedCount} transações processadas automaticamente.`, 'success');
     } else {
         txn.status = 'Ignorado';
+        txn.flag_reason = '';
+        showToast('Sucesso', `Transação ignorada.`, 'success');
     }
     
-    txn.flag_reason = '';
     localStorage.setItem('OFX_Raw_Import', JSON.stringify(OFX_Raw_Import));
     localStorage.setItem('EFO_Lancamentos_V3', JSON.stringify(EFO_Lancamentos));
     
     updateAllViews();
-    showToast('Sucesso', `Transação processada.`, 'success');
 }
 
 window.applyManualCategorization = (fitid) => {
