@@ -7,7 +7,7 @@ const DEFAULT_LANCAMENTOS = {
         receita_bruta: { produtos: 0, servicos: 0, outras: 0 },
         deducoes: { impostos: 0, devolucoes: 0, descontos: 0 },
         custos: { mercadorias: 0, producao: 0, servicos: 0, operacionais: 0 },
-        despesas_comercial: { marketing: 0, trafego: 0, comissao: 0, viagens: 0, outras: 0 },
+        despesas_comercial: { marketing: 0, trafego: 0, comissao: 0, viagens: 0, transporte_logistica: 0, outras: 0 },
         despesas_administrativas: { pro_labore: 0, salarios: 0, encargos: 0, aluguel: 0, honorarios: 0, outras: 0 },
         despesas_pessoal: { salarios: 0, inss: 0, fgts: 0, beneficios: 0, rescisoes: 0 },
         despesas_estrutura: { manutencao: 0, reparos: 0, limpeza: 0 },
@@ -144,6 +144,7 @@ function parseOFXContent(content) {
 
     while ((match = trnRegex.exec(content)) !== null) {
         const trnData = match[1];
+        const nameMatch = trnData.match(/<NAME>([^<]+)/);
         const dateMatch = trnData.match(/<DTPOSTED>([^<]+)/);
         const amountMatch = trnData.match(/<TRNAMT>([^<]+)/);
         const fitidMatch = trnData.match(/<FITID>([^<]+)/);
@@ -155,14 +156,24 @@ function parseOFXContent(content) {
         const amount = parseFloat(amountMatch[1]);
         let dateStr = dateMatch ? dateMatch[1].trim().substring(0, 8) : '';
         let formattedDate = dateStr ? `${dateStr.substring(0,4)}-${dateStr.substring(4,6)}-${dateStr.substring(6,8)}` : new Date().toISOString().split('T')[0];
-        const memo = memoMatch ? memoMatch[1].trim() : 'Transação';
+        
+        const name = nameMatch ? nameMatch[1].trim() : '';
+        const memo = memoMatch ? memoMatch[1].trim() : '';
+        let desc = '';
+        if(name && memo) desc = `${name} - ${memo}`;
+        else if(name) desc = name;
+        else if(memo) desc = memo;
+        else desc = 'Transação';
+        
+        // Deep Parsing: Clean double spaces and uppercase
+        desc = desc.replace(/\s+/g, ' ').toUpperCase();
 
         if (!OFX_Raw_Import.find(t => t.transaction_id === fitid)) {
             OFX_Raw_Import.push({ 
                 transaction_id: fitid, 
                 date: formattedDate, 
                 amount: amount, 
-                description: memo.toUpperCase(), 
+                description: desc, 
                 status: 'Pendente', 
                 flag_reason: '',
                 assigned_account: null
@@ -220,6 +231,12 @@ function categorizeTransactions() {
         }
         else if (['FORNECEDOR', 'NF', 'NFE', 'FRETE', 'DISTRIBUIDORA', 'ATACADO'].some(k => desc.includes(k))) {
             cat = 'dre.custos.mercadorias';
+        }
+        else if (['FRETE', 'TRANSPORTADORA', 'CORREIOS', 'LOG ', 'PEDAGIO'].some(k => desc.includes(k))) {
+            cat = 'dre.despesas_comercial.transporte_logistica';
+        }
+        else if (['COMISSAO', 'PREMIACAO', 'BONUS VENDAS', 'ARTHUR GERMANO KRIEGER'].some(k => desc.includes(k))) {
+            cat = 'dre.despesas_comercial.comissao';
         }
         else if (['GOOGLE', 'FACEBOOK', 'META', 'ADS', 'INSTAGRAM'].some(k => desc.includes(k))) {
             cat = 'dre.despesas_comercial.trafego';
@@ -377,6 +394,8 @@ function getOptGroupsHTML() {
         </optgroup>
         <optgroup label="Despesas Operacionais DRE">
             <option value="dre.despesas_comercial.trafego">Marketing/Tráfego</option>
+            <option value="dre.despesas_comercial.transporte_logistica">Transporte/Logística</option>
+            <option value="dre.despesas_comercial.comissao">Comissão s/ Vendas</option>
             <option value="dre.despesas_administrativas.aluguel">Aluguel ADM</option>
             <option value="dre.despesas_administrativas.outras">Outras ADM</option>
             <option value="dre.despesas_pessoal.salarios">Salários/Pró-Labore</option>
@@ -490,7 +509,9 @@ function renderDRE() {
         <tr class="row-total"><td>(=) LUCRO BRUTO</td><td class="text-right">${formatCurrency(lBruto)}</td><td class="text-right">${av(lBruto)}</td></tr>
         
         <tr class="row-group text-danger"><td>(-) DESPESAS OPERACIONAIS</td><td class="text-right">${formatCurrency(dOperacionais)}</td><td class="text-right">${av(dOperacionais)}</td></tr>
-        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_comercial.trafego', 'Despesas Comerciais/Mkt')"><td>Despesas Comerciais/Mkt</td><td class="text-right">${formatCurrency(dCom)}</td><td class="text-right">${av(dCom)}</td></tr>
+        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_comercial.transporte_logistica', 'Transporte e Logística')"><td>Transporte e Logística</td><td class="text-right">${formatCurrency(dre.despesas_comercial.transporte_logistica)}</td><td class="text-right">${av(dre.despesas_comercial.transporte_logistica)}</td></tr>
+        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_comercial.comissao', 'Comissões s/ Vendas')"><td>Comissões s/ Vendas</td><td class="text-right">${formatCurrency(dre.despesas_comercial.comissao)}</td><td class="text-right">${av(dre.despesas_comercial.comissao)}</td></tr>
+        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_comercial.trafego', 'Despesas Comerciais/Mkt')"><td>Marketing/Tráfego</td><td class="text-right">${formatCurrency(dre.despesas_comercial.trafego)}</td><td class="text-right">${av(dre.despesas_comercial.trafego)}</td></tr>
         <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_administrativas.outras', 'Despesas Administrativas (Outras)')"><td>Despesas Administrativas (Outras)</td><td class="text-right">${formatCurrency(dre.despesas_administrativas.outras)}</td><td class="text-right">${av(dre.despesas_administrativas.outras)}</td></tr>
         <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_administrativas.aluguel', 'Despesas Administrativas (Aluguel)')"><td>Despesas Administrativas (Aluguel)</td><td class="text-right">${formatCurrency(dre.despesas_administrativas.aluguel)}</td><td class="text-right">${av(dre.despesas_administrativas.aluguel)}</td></tr>
         <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_pessoal.salarios', 'Despesas de Pessoal')"><td>Despesas de Pessoal</td><td class="text-right">${formatCurrency(dPes)}</td><td class="text-right">${av(dPes)}</td></tr>
