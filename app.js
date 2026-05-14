@@ -149,6 +149,7 @@ function parseOFXContent(content) {
         const amountMatch = trnData.match(/<TRNAMT>([^<]+)/);
         const fitidMatch = trnData.match(/<FITID>([^<]+)/);
         const memoMatch = trnData.match(/<MEMO>([^<]+)/);
+        const checknumMatch = trnData.match(/<CHECKNUM>([^<]+)/);
 
         if (!fitidMatch || !amountMatch) continue;
 
@@ -159,11 +160,14 @@ function parseOFXContent(content) {
         
         const name = nameMatch ? nameMatch[1].trim() : '';
         const memo = memoMatch ? memoMatch[1].trim() : '';
-        let desc = '';
-        if(name && memo) desc = `${name} - ${memo}`;
-        else if(name) desc = name;
-        else if(memo) desc = memo;
-        else desc = 'Transação';
+        const checknum = checknumMatch ? checknumMatch[1].trim() : '';
+        
+        let descParts = [];
+        if (name) descParts.push(name);
+        if (memo) descParts.push(memo);
+        if (checknum) descParts.push(checknum);
+        
+        let desc = descParts.length > 0 ? descParts.join(' | ') : 'Transação';
         
         // Deep Parsing: Clean double spaces and uppercase
         desc = desc.replace(/\s+/g, ' ').toUpperCase();
