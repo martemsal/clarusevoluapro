@@ -167,17 +167,17 @@ function parseOFXContent(content) {
         if (memo) descParts.push(memo);
         if (checknum) descParts.push(checknum);
         
-        let desc = descParts.length > 0 ? descParts.join(' | ') : 'Transação';
+        let rawDesc = descParts.length > 0 ? descParts.join(' | ') : 'Transação';
         
-        // Deep Parsing: Clean double spaces and uppercase
-        desc = desc.replace(/\s+/g, ' ').toUpperCase();
+        // Deep Parsing: Clean double spaces but preserve original casing
+        rawDesc = rawDesc.replace(/\s+/g, ' ');
 
         if (!OFX_Raw_Import.find(t => t.transaction_id === fitid)) {
             OFX_Raw_Import.push({ 
                 transaction_id: fitid, 
                 date: formattedDate, 
                 amount: amount, 
-                description: desc, 
+                description: rawDesc, 
                 status: 'Pendente', 
                 flag_reason: '',
                 assigned_account: null
@@ -193,7 +193,8 @@ function categorizeTransactions() {
     OFX_Raw_Import.forEach(txn => {
         if (txn.status !== 'Pendente') return;
 
-        const desc = txn.description;
+        const rawDesc = txn.description || '';
+        const desc = rawDesc.toUpperCase();
         const amt = txn.amount;
         const absAmt = Math.abs(amt);
         let cat = null;
@@ -339,7 +340,7 @@ function renderDrillDownTable() {
         
         tr.innerHTML = `
             <td>${dateStr}</td>
-            <td><strong>${txn.description}</strong></td>
+            <td class="desc-cell"><strong>${txn.description}</strong></td>
             <td style="color: ${txn.amount > 0 ? 'var(--success)' : 'var(--danger)'}">${formatCurrency(txn.amount)}</td>
             <td>
                 <select class="efo-select w-100" id="reclass_${txn.transaction_id}" onchange="reclassifyTransaction('${txn.transaction_id}')">
@@ -600,7 +601,7 @@ function renderConciliationTable() {
 
         tr.innerHTML = `
             <td>${dateStr}</td>
-            <td><strong>${txn.description}</strong>${reasonHtml}</td>
+            <td class="desc-cell"><strong>${txn.description}</strong>${reasonHtml}</td>
             <td style="color: ${txn.amount > 0 ? 'var(--success)' : 'var(--danger)'}">${formatCurrency(txn.amount)}</td>
             <td>${statusHtml}</td>
             <td style="display: flex; gap: 8px;">

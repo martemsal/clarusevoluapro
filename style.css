@@ -251,6 +251,17 @@ button {
     white-space: normal;
 }
 
+.desc-cell {
+    width: 500px;
+    max-width: 500px;
+    font-family: monospace;
+    font-size: 11px;
+}
+
+.desc-cell strong {
+    font-weight: 600;
+}
+
 .clickable-row {
     cursor: pointer;
     transition: background 0.2s ease;
