@@ -167,10 +167,9 @@ function parseOFXContent(content) {
         
         let rawDesc = descParts.length > 0 ? descParts.join(' | ') : 'Transação';
         
-        // Sanitize rules (remove hashes, IDs, generic prefixes)
+        // Sanitize rules: keep text intact, only remove hashes and long IDs
         rawDesc = rawDesc.replace(/[0-9]{10,}/g, ''); // Remove long number sequences
         rawDesc = rawDesc.replace(/[a-zA-Z0-9]{20,}/g, ''); // Remove hashes
-        rawDesc = rawDesc.replace(/E00|DEB PIX CHAVE|DEB PIX|ENVIO PIX|COMPROVANTE|CHAVE/gi, ''); // Remove generic prefixes
         rawDesc = rawDesc.replace(/\|/g, ' ').replace(/\s+/g, ' ').trim(); // Clean pipes left behind and double spaces
 
         if (!OFX_Raw_Import.find(t => t.transaction_id === fitid)) {

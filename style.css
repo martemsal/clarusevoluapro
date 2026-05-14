@@ -341,14 +341,26 @@ select.efo-select:focus { outline: none; border-color: var(--accent-primary); }
 
 #paramsModal .modal-content, #empresaModal .modal-content { padding: 30px; width: 400px; }
 
+#drillDownModal .modal-content {
+    background: #ffffff;
+    width: 900px;
+    max-height: 80vh;
+    border: 1px solid #ced4da;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
 #drillDownTitle {
-    background: #F4F7F9;
+    background: #ffffff;
     color: #1a1d2d;
     padding: 20px 30px;
     margin: 0;
     border-radius: 8px 8px 0 0;
-    border-bottom: 1px solid #E0E4E8;
+    border-bottom: 1px solid #ced4da;
     font-size: 18px;
+}
+
+#drillDownModal .close-drilldown {
+    color: #1a1d2d;
 }
 
 #drillDownModal .table-container {
@@ -359,12 +371,13 @@ select.efo-select:focus { outline: none; border-color: var(--accent-primary); }
 #drillDownModal .report-table th, #drillDownModal .report-table td {
     padding: 14px 16px;
     height: 48px;
+    color: #1a1d2d;
 }
 
 #drillDownModal .report-table th {
     position: sticky;
     top: 0;
-    background: var(--bg-secondary);
+    background: #ffffff;
     z-index: 10;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
