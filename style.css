@@ -336,12 +336,34 @@ select.efo-select:focus { outline: none; border-color: var(--accent-primary); }
 
 /* Modals & Toasts */
 .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(4px); }
-.modal-content { background: var(--bg-secondary); margin: 5vh auto; padding: 30px; width: 800px; max-width: 90%; max-height: 90vh; overflow-y: auto; position: relative; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+.modal-content { background: var(--bg-secondary); margin: 5vh auto; padding: 0; width: 850px; max-width: 90%; max-height: 75vh; overflow-y: auto; position: relative; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); border: 1px solid #E0E4E8; }
 .close-modal { color: var(--text-secondary); position: absolute; right: 20px; top: 20px; font-size: 24px; cursor: pointer; z-index: 20; }
+
+#paramsModal .modal-content, #empresaModal .modal-content { padding: 30px; width: 400px; }
+
+#drillDownTitle {
+    background: #F4F7F9;
+    color: #1a1d2d;
+    padding: 20px 30px;
+    margin: 0;
+    border-radius: 8px 8px 0 0;
+    border-bottom: 1px solid #E0E4E8;
+    font-size: 18px;
+}
+
+#drillDownModal .table-container {
+    padding: 20px 30px;
+    overflow: visible;
+}
+
+#drillDownModal .report-table th, #drillDownModal .report-table td {
+    padding: 14px 16px;
+    height: 48px;
+}
 
 #drillDownModal .report-table th {
     position: sticky;
-    top: -30px; /* Offset to cover the modal padding */
+    top: 0;
     background: var(--bg-secondary);
     z-index: 10;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);

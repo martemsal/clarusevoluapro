@@ -160,19 +160,17 @@ function parseOFXContent(content) {
         
         const name = nameMatch ? nameMatch[1].trim() : '';
         const memo = memoMatch ? memoMatch[1].trim() : '';
-        const checknum = checknumMatch ? checknumMatch[1].trim() : '';
         
         let descParts = [];
-        if (name) descParts.push(name);
         if (memo) descParts.push(memo);
-        if (checknum) descParts.push(checknum);
+        if (name && name !== memo) descParts.push(name);
         
         let rawDesc = descParts.length > 0 ? descParts.join(' | ') : 'Transação';
         
         // Sanitize rules (remove hashes, IDs, generic prefixes)
         rawDesc = rawDesc.replace(/[0-9]{10,}/g, ''); // Remove long number sequences
         rawDesc = rawDesc.replace(/[a-zA-Z0-9]{20,}/g, ''); // Remove hashes
-        rawDesc = rawDesc.replace(/E00|DEB PIX|CHAVE/gi, ''); // Remove generic prefixes
+        rawDesc = rawDesc.replace(/E00|DEB PIX CHAVE|DEB PIX|ENVIO PIX|COMPROVANTE|CHAVE/gi, ''); // Remove generic prefixes
         rawDesc = rawDesc.replace(/\|/g, ' ').replace(/\s+/g, ' ').trim(); // Clean pipes left behind and double spaces
 
         if (!OFX_Raw_Import.find(t => t.transaction_id === fitid)) {
@@ -240,7 +238,7 @@ function categorizeTransactions() {
         else if (['FORNECEDOR', 'NF', 'NFE', 'FRETE', 'DISTRIBUIDORA', 'ATACADO'].some(k => desc.includes(k))) {
             cat = 'dre.custos.mercadorias';
         }
-        else if (['FRETE', 'TRANSPORTADORA', 'CORREIOS', 'LOG ', 'PEDAGIO', 'POSTO'].some(k => desc.includes(k))) {
+        else if (['FRETE', 'TRANSPORTADORA', 'CORREIOS', 'LOGISTICA', 'LOG ', 'PEDAGIO', 'POSTO'].some(k => desc.includes(k))) {
             cat = 'dre.despesas_comercial.transporte_logistica';
         }
         else if (['COMISSAO', 'PREMIACAO', 'BONUS VENDAS', 'ARTHUR GERMANO KRIEGER'].some(k => desc.includes(k))) {
