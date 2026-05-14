@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DASH_EFO | Estruturação Financeira e Operacional</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar glass-panel">
+            <div class="brand">
+                <div class="logo">EFO</div>
+                <span>Antigravity Dashboard</span>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <button class="nav-btn active" data-target="tab-dashboard">Painel de Saúde</button>
+                <button class="nav-btn" data-target="tab-dre">DRE Gerencial</button>
+                <button class="nav-btn" data-target="tab-balanco">Balanço Gerencial</button>
+                <button class="nav-btn" data-target="tab-conciliation">
+                    Conciliação Bancária
+                    <span class="badge nav-badge" id="navPendingCount">0</span>
+                </button>
+            </nav>
+
+            <div class="parameters-section mt-auto">
+                <h3>Importação Bancária</h3>
+                <div class="form-group">
+                    <label for="ofxUpload" class="btn-secondary" style="display:block; text-align:center; padding:10px;">Upload de .OFX</label>
+                    <input type="file" id="ofxUpload" accept=".ofx" style="display:none;">
+                </div>
+            </div>
+
+            <div class="parameters-section">
+                <h3>Empresa & Parâmetros</h3>
+                <ul id="paramList"></ul>
+                <div style="display:flex; gap:8px; margin-top:12px;">
+                    <button id="btnEditParams" class="btn-secondary" style="flex:1;">Parâmetros</button>
+                    <button id="btnConfigEmpresa" class="btn-secondary" style="flex:1;">Empresa</button>
+                </div>
+                <button id="btnResetData" class="btn-secondary text-danger mt-2 w-100" style="border-color: var(--danger)">Zerar Dados</button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="content-area" id="exportableArea">
+            <header class="dash-header">
+                <h1 id="pageTitle">Painel de Saúde Operacional</h1>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <button id="btnExportPDF" class="btn-secondary" style="padding: 6px 12px; font-size: 13px;">📥 Exportar PDF</button>
+                    <div class="date-badge" id="currentDateBadge">Mês Atual</div>
+                </div>
+            </header>
+
+            <!-- TAB: DASHBOARD -->
+            <div id="tab-dashboard" class="tab-content active">
+                <div class="metrics-grid">
+                    <div class="widget glass-panel status-widget">
+                        <h3>Saúde Operacional</h3>
+                        <div class="status-display" id="statusIndicator">
+                            <div class="status-dot"></div>
+                            <span class="status-text">Aguardando dados</span>
+                        </div>
+                        <div class="metric-details">
+                            <p>Faturamento Bruto: <strong id="valFaturamento">R$ 0,00</strong></p>
+                            <p>Ponto de Equilíbrio: <strong id="valBreakEven">R$ 0,00</strong></p>
+                            <p>Margem de Contribuição: <strong id="valMargemPerc">0%</strong></p>
+                        </div>
+                    </div>
+
+                    <div class="widget glass-panel gauge-widget">
+                        <h3>Lucratividade Real (EBITDA)</h3>
+                        <div class="chart-container gauge-container">
+                            <canvas id="gaugeChart"></canvas>
+                            <div class="gauge-center">
+                                <span id="valLucratividade">0%</span>
+                                <small>Meta: <span id="valMetaLucratividade">0%</span></small>
+                            </div>
+                        </div>
+                        <div class="metric-details text-center mt-2">
+                            <p>EBITDA Gerencial: <strong id="valEbitda">R$ 0,00</strong></p>
+                        </div>
+                    </div>
+
+                    <div class="widget glass-panel pie-widget">
+                        <h3>Composição de Custos</h3>
+                        <div class="chart-container">
+                            <canvas id="pieChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: DRE GERENCIAL -->
+            <div id="tab-dre" class="tab-content">
+                <div class="glass-panel p-24">
+                    <table class="report-table dre-table">
+                        <thead>
+                            <tr>
+                                <th>Estrutura DRE</th>
+                                <th class="text-right">Valor Mensal (R$)</th>
+                                <th class="text-right">AV (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dreTbody">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB: BALANÇO GERENCIAL -->
+            <div id="tab-balanco" class="tab-content">
+                <div class="balanco-grid">
+                    <div class="glass-panel p-24">
+                        <h2 class="balanco-title">ATIVO</h2>
+                        <table class="report-table">
+                            <tbody id="ativoTbody">
+                                <!-- Injected by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="glass-panel p-24">
+                        <h2 class="balanco-title">PASSIVO E PATRIMÔNIO LÍQUIDO</h2>
+                        <table class="report-table">
+                            <tbody id="passivoTbody">
+                                <!-- Injected by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: CONCILIAÇÃO -->
+            <div id="tab-conciliation" class="tab-content">
+                <div class="glass-panel p-24">
+                    <div class="conciliation-header">
+                        <h2>Transações Pendentes</h2>
+                        <span class="badge" id="pendingCount">0 Pendentes</span>
+                    </div>
+                    <div class="table-container">
+                        <table id="conciliationTable" class="report-table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Descrição (Memo)</th>
+                                    <th>Valor</th>
+                                    <th>Status</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="conciliationTbody">
+                                <tr><td colspan="5" class="text-center">Nenhuma transação pendente.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Params Modal -->
+    <div id="paramsModal" class="modal">
+        <div class="modal-content glass-panel">
+            <span class="close-modal">&times;</span>
+            <h2>Editar Parâmetros</h2>
+            <form id="formParams">
+                <div class="form-group mb-3">
+                    <label>Impostos Médios (%) - (Para previsão se necessário)</label>
+                    <input type="number" id="param_impostos" step="0.1" value="10">
+                </div>
+                <div class="form-group mb-3">
+                    <label>Comissões (%)</label>
+                    <input type="number" id="param_comissoes" step="0.1" value="5">
+                </div>
+                <div class="form-group mb-3">
+                    <label>Meta de Lucro Desejada (%)</label>
+                    <input type="number" id="param_meta_lucro" step="0.1" value="15">
+                </div>
+                <button type="submit" class="btn-primary w-100">Salvar Parâmetros</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Company Config Modal -->
+    <div id="empresaModal" class="modal">
+        <div class="modal-content glass-panel">
+            <span class="close-modal close-empresa">&times;</span>
+            <h2>Inteligência Fiscal (CNAE)</h2>
+            <form id="formEmpresa">
+                <div class="form-group mb-3">
+                    <label>CNPJ</label>
+                    <input type="text" id="config_cnpj" placeholder="00.000.000/0001-00">
+                </div>
+                <div class="form-group mb-3">
+                    <label>CNAE Principal (Somente Números)</label>
+                    <input type="text" id="config_cnae" placeholder="Ex: 6204000">
+                </div>
+                <div class="form-group mb-3">
+                    <label>Regime Tributário</label>
+                    <select id="config_regime" class="efo-select w-100" style="max-width:none; padding:10px;">
+                        <option value="Simples Nacional">Simples Nacional</option>
+                        <option value="Lucro Presumido">Lucro Presumido</option>
+                        <option value="Lucro Real">Lucro Real</option>
+                    </select>
+                </div>
+                <div class="form-group mb-3">
+                    <label>Atividade Inferida (Automático via CNAE)</label>
+                    <input type="text" id="config_atividade" readonly style="background: rgba(0,0,0,0.4); cursor: not-allowed;" placeholder="Ex: Serviço">
+                </div>
+                <button type="submit" class="btn-primary w-100">Salvar Empresa</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
