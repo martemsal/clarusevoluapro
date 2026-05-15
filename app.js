@@ -277,18 +277,29 @@ function manualCategorize(fitid, categoryPath) {
         const targetDesc = txn.description;
         let matchedCount = 0;
 
+        // Anti-Disaster Rule: Do not bulk match generic banking terms (common in Caixa OFX)
+        const genericTerms = ['DEB PIX CHAVE', 'ENVIO PIX', 'PIX', 'TED', 'DOC', 'DEBITO', 'TRANSF', 'PAGTO', 'FOL PAGTO', 'PIX ENVIADO', 'COMPROVANTE'];
+        const isGeneric = genericTerms.some(g => targetDesc.toUpperCase().trim() === g);
+
         OFX_Raw_Import.forEach(t => {
-            if ((t.status === 'Pendente' || t.status === 'Flagged') && t.description === targetDesc) {
-                const path = categoryPath.split('.');
-                EFO_Lancamentos[path[0]][path[1]][path[2]] += Math.abs(t.amount);
-                t.status = 'Categorizado';
-                t.assigned_account = categoryPath;
-                t.flag_reason = '';
-                matchedCount++;
+            // Apply to the specific transaction OR apply bulk match if not generic
+            if (t.transaction_id === fitid || (!isGeneric && (t.status === 'Pendente' || t.status === 'Flagged') && t.description === targetDesc)) {
+                if (t.status === 'Pendente' || t.status === 'Flagged') {
+                    const path = categoryPath.split('.');
+                    EFO_Lancamentos[path[0]][path[1]][path[2]] += Math.abs(t.amount);
+                    t.status = 'Categorizado';
+                    t.assigned_account = categoryPath;
+                    t.flag_reason = '';
+                    matchedCount++;
+                }
             }
         });
         
-        showToast('Auto-Match', `${matchedCount} transações processadas automaticamente.`, 'success');
+        if (matchedCount > 1) {
+            showToast('Auto-Match', `${matchedCount} transações processadas automaticamente.`, 'success');
+        } else {
+            showToast('Sucesso', 'Transação categorizada.', 'success');
+        }
     } else {
         txn.status = 'Ignorado';
         txn.assigned_account = null;
