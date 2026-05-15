@@ -160,12 +160,10 @@ function parseOFXContent(content) {
         
         const name = nameMatch ? nameMatch[1].trim() : '';
         const memo = memoMatch ? memoMatch[1].trim() : '';
-        const checknum = checknumMatch ? checknumMatch[1].trim() : '';
         
         let descParts = [];
         if (name) descParts.push(name);
         if (memo && memo !== name) descParts.push(memo);
-        if (checknum && checknum !== name && checknum !== memo) descParts.push(checknum);
         
         let rawDesc = descParts.length > 0 ? descParts.join(' ') : 'Transação';
         
