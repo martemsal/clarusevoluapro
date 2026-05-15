@@ -150,7 +150,7 @@ function parseOFXContent(content) {
         const fitidMatch = trnData.match(/<FITID>([^<]+)/);
         const memoMatch = trnData.match(/<MEMO>([^<]+)/);
         const checknumMatch = trnData.match(/<CHECKNUM>([^<]+)/);
-
+        
         if (!fitidMatch || !amountMatch) continue;
 
         const fitid = fitidMatch[1].trim();
@@ -160,17 +160,18 @@ function parseOFXContent(content) {
         
         const name = nameMatch ? nameMatch[1].trim() : '';
         const memo = memoMatch ? memoMatch[1].trim() : '';
+        const checknum = checknumMatch ? checknumMatch[1].trim() : '';
         
         let descParts = [];
-        if (memo) descParts.push(memo);
-        if (name && name !== memo) descParts.push(name);
+        if (name) descParts.push(name);
+        if (memo && memo !== name) descParts.push(memo);
+        if (checknum && checknum !== name && checknum !== memo) descParts.push(checknum);
         
-        let rawDesc = descParts.length > 0 ? descParts.join(' | ') : 'Transação';
+        let rawDesc = descParts.length > 0 ? descParts.join(' ') : 'Transação';
         
-        // Sanitize rules: keep text intact, only remove hashes and long IDs
-        rawDesc = rawDesc.replace(/[0-9]{10,}/g, ''); // Remove long number sequences
-        rawDesc = rawDesc.replace(/[a-zA-Z0-9]{20,}/g, ''); // Remove hashes
-        rawDesc = rawDesc.replace(/\|/g, ' ').replace(/\s+/g, ' ').trim(); // Clean pipes left behind and double spaces
+        // Sanitize rules: keep text intact, only remove hashes
+        rawDesc = rawDesc.replace(/[a-zA-Z0-9]{25,}/g, ''); // Remove PIX hashes (>25 chars)
+        rawDesc = rawDesc.replace(/\s+/g, ' ').trim(); // Clean double spaces
 
         if (!OFX_Raw_Import.find(t => t.transaction_id === fitid)) {
             OFX_Raw_Import.push({ 
