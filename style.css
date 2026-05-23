@@ -616,3 +616,54 @@ select.efo-select:focus { outline: none; border-color: var(--accent-primary); }
 .ind-val { text-align: right; min-width: 90px; }
 .ind-val.negative { color: var(--danger); }
 .ind-val.positive { color: var(--success); }
+
+/* ============ STICKY FIRST COLUMN (Excel freeze pane) ============ */
+/* Applied to all scrollable report tables */
+.dre-table th:first-child,
+.dre-table td:first-child,
+.balanco-table th:first-child,
+.balanco-table td:first-child,
+#indicadoresTable th:first-child,
+#indicadoresTable td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    /* Solid background so it covers scrolling cells behind it */
+    background: var(--bg-secondary);
+    min-width: 180px;
+    max-width: 240px;
+    white-space: normal !important; /* allow label to wrap, don't force nowrap */
+    border-right: 2px solid var(--glass-border);
+}
+
+/* Header first cell sits on top of body stickies */
+.dre-table thead th:first-child,
+.balanco-table thead th:first-child,
+#indicadoresTable thead th:first-child {
+    z-index: 4;
+    background: #12152a; /* slightly darker than body rows */
+}
+
+/* Row-group / row-total first cells keep their own colour */
+.dre-table .row-group td:first-child,
+.balanco-table .row-group td:first-child,
+#indicadoresTable .row-group td:first-child,
+#indicadoresTable .indicadores-section-header td:first-child {
+    background: inherit; /* inherit the row background */
+}
+
+/* Light mode overrides for sticky cells */
+body.light-mode .dre-table th:first-child,
+body.light-mode .dre-table td:first-child,
+body.light-mode .balanco-table th:first-child,
+body.light-mode .balanco-table td:first-child,
+body.light-mode #indicadoresTable th:first-child,
+body.light-mode #indicadoresTable td:first-child {
+    background: #f5f7ff;
+}
+body.light-mode .dre-table thead th:first-child,
+body.light-mode .balanco-table thead th:first-child,
+body.light-mode #indicadoresTable thead th:first-child {
+    background: #eaedf8;
+}
+

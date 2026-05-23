@@ -768,7 +768,17 @@ function renderIndicadores() {
     const roe = PL.map((v, i) => v > 0 ? (L_LIQ[i] / v) * 100 : 0);
 
     let html = '';
-    // ---- OPERACIONAL ----
+    // ---- ECONÔMICO E FINANCEIRO (first) ----
+    html += sectionHeader('ECONÔMICO E FINANCEIRO');
+    html += indRow('Liquidez Geral', liqGeral, false, 2);
+    html += indRow('Liquidez Corrente', liqCorrente, false, 2);
+    html += indRow('Capital de Terceiros (x PL)', capTerceiros, false, 2);
+    html += indRow('Margem Operacional', margemOp, true, 2, true);
+    html += indRow('Margem Líquida', margemLiq, true, 2, true);
+    html += indRow('ROI – Retorno sobre Ativo', roi, true, 2, true);
+    html += indRow('ROE – Retorno sobre Capital', roe, true, 2, true);
+
+    // ---- OPERACIONAL (below) ----
     html += sectionHeader('OPERACIONAL');
     html += indRow('Markup (x)', markup, false, 2);
     html += indRow('Margem de Contribuição', margemContrib, true);
@@ -779,16 +789,6 @@ function renderIndicadores() {
     html += indRow('EBITDA Gerencial', EBITDA, false, 2, true);
     html += indRow('Margem EBITDA', margemOp, true, 2, true);
     html += indRow('Lucro Líquido', L_LIQ, false, 2, true);
-
-    // ---- ECONÔMICO E FINANCEIRO ----
-    html += sectionHeader('ECONÔMICO E FINANCEIRO');
-    html += indRow('Liquidez Geral', liqGeral, false, 2);
-    html += indRow('Liquidez Corrente', liqCorrente, false, 2);
-    html += indRow('Capital de Terceiros (x PL)', capTerceiros, false, 2);
-    html += indRow('Margem Operacional', margemOp, true, 2, true);
-    html += indRow('Margem Líquida', margemLiq, true, 2, true);
-    html += indRow('ROI – Retorno sobre Ativo', roi, true, 2, true);
-    html += indRow('ROE – Retorno sobre Capital', roe, true, 2, true);
 
     tbody.innerHTML = html;
 }
