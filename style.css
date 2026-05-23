@@ -492,7 +492,24 @@ select.efo-select:focus { outline: none; border-color: var(--accent-primary); }
     color: white;
 }
 
-.dre-table th, .dre-table td {
+.dre-table th, .dre-table td, .balanco-table th, .balanco-table td {
     white-space: nowrap !important;
     padding: 10px 12px !important;
+}
+
+/* Custom horizontal scrollbar for tables */
+.table-container::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+}
+.table-container::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
+}
+.table-container::-webkit-scrollbar-thumb {
+    background: var(--glass-border);
+    border-radius: 4px;
+}
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: var(--accent-primary);
 }

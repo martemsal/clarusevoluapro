@@ -952,42 +952,165 @@ function renderDRE() {
     tbody.innerHTML = bodyHtml;
 }
 
+function calculateBalancoData(year) {
+    const balancoKeys = {
+        'balanco.ativo_circulante.caixa_bancos': new Array(12).fill(0),
+        'balanco.ativo_circulante.aplicacoes': new Array(12).fill(0),
+        'balanco.ativo_circulante.clientes_receber': new Array(12).fill(0),
+        'balanco.ativo_circulante.estoques': new Array(12).fill(0),
+        'balanco.ativo_circulante.adiantamentos': new Array(12).fill(0),
+        'balanco.ativo_circulante.tributos_recuperar': new Array(12).fill(0),
+        'balanco.ativo_nao_circulante.imobilizado': new Array(12).fill(0),
+        'balanco.ativo_nao_circulante.intangivel': new Array(12).fill(0),
+        'balanco.passivo_circulante.fornecedores': new Array(12).fill(0),
+        'balanco.passivo_circulante.emprestimos_cp': new Array(12).fill(0),
+        'balanco.passivo_circulante.obrigacoes_trab': new Array(12).fill(0),
+        'balanco.passivo_circulante.obrigacoes_trib': new Array(12).fill(0),
+        'balanco.passivo_circulante.outras': new Array(12).fill(0),
+        'balanco.passivo_nao_circulante.emprestimos_lp': new Array(12).fill(0),
+        'balanco.passivo_nao_circulante.parcelamentos': new Array(12).fill(0),
+        'balanco.patrimonio_liquido.capital_social': new Array(12).fill(0),
+        'balanco.patrimonio_liquido.reservas': new Array(12).fill(0),
+        'balanco.patrimonio_liquido.lucros_acumulados': new Array(12).fill(0)
+    };
+
+    if (Array.isArray(OFX_Raw_Import)) {
+        OFX_Raw_Import.forEach(txn => {
+            if (txn.status === 'Categorizado' && txn.assigned_account) {
+                const dateObj = new Date(txn.date);
+                const txnYear = dateObj.getFullYear();
+                if (txnYear === year) {
+                    const txnMonth = dateObj.getMonth(); // 0-11
+                    
+                    let acc = txn.assigned_account;
+                    
+                    // Remap legacy general classifications if any
+                    if (acc === 'balanco.ativo_circulante') acc = 'balanco.ativo_circulante.caixa_bancos';
+                    if (acc === 'balanco.ativo_nao_circulante') acc = 'balanco.ativo_nao_circulante.imobilizado';
+                    if (acc === 'balanco.passivo_circulante') acc = 'balanco.passivo_circulante.emprestimos_cp';
+                    
+                    if (balancoKeys[acc]) {
+                        balancoKeys[acc][txnMonth] += Math.abs(txn.amount);
+                    } else {
+                        const matchedKey = Object.keys(balancoKeys).find(k => k.startsWith(acc + '.'));
+                        if (matchedKey) {
+                            balancoKeys[matchedKey][txnMonth] += Math.abs(txn.amount);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    return balancoKeys;
+}
+
 function renderBalanco() {
+    const yearSelect = document.getElementById('balancoYearSelect');
+    if (yearSelect) {
+        const years = getDREYears();
+        let optionsHtml = '';
+        years.forEach(y => {
+            optionsHtml += `<option value="${y}" ${y === EFO_Active_DRE_Year ? 'selected' : ''}>${y}</option>`;
+        });
+        yearSelect.innerHTML = optionsHtml;
+        
+        yearSelect.onchange = (e) => {
+            EFO_Active_DRE_Year = parseInt(e.target.value);
+            updateAllViews();
+        };
+    }
+
+    const ativoTheadRow = document.getElementById('ativoTheadRow');
+    const passivoTheadRow = document.getElementById('passivoTheadRow');
     const ativoTbody = document.getElementById('ativoTbody');
     const passivoTbody = document.getElementById('passivoTbody');
-    const b = EFO_Lancamentos.balanco;
+    
+    if (!ativoTbody || !passivoTbody) return;
 
-    const totAc = sumObj(b.ativo_circulante);
-    const totAnc = sumObj(b.ativo_nao_circulante);
-    const totalAtivo = totAc + totAnc;
+    // Headers
+    let headerHtml = `<th style="text-align: left;">Estrutura Balanço</th>`;
+    const monthsShort = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    for (let m = 0; m < 12; m++) {
+        headerHtml += `<th class="text-right">${monthsShort[m]}/${EFO_Active_DRE_Year}</th>`;
+    }
+    headerHtml += `<th class="text-right" style="background: rgba(241, 196, 15, 0.12); color: #f1c40f;">MÉDIA</th>`;
+    headerHtml += `<th class="text-right" style="background: rgba(99, 102, 241, 0.12); color: var(--accent-primary);">TOTAL</th>`;
+    
+    if (ativoTheadRow) ativoTheadRow.innerHTML = headerHtml;
+    if (passivoTheadRow) passivoTheadRow.innerHTML = headerHtml;
 
-    ativoTbody.innerHTML = `
-        <tr class="row-group"><td>ATIVO CIRCULANTE</td><td class="text-right">${formatCurrency(totAc)}</td></tr>
-        <tr class="row-sub"><td>Caixa e Bancos</td><td class="text-right">${formatCurrency(b.ativo_circulante.caixa_bancos)}</td></tr>
-        <tr class="row-sub clickable-row" onclick="openDrillDown('balanco.ativo_circulante.aplicacoes', 'Aplicações Financeiras')"><td>Aplicações Financeiras</td><td class="text-right">${formatCurrency(b.ativo_circulante.aplicacoes)}</td></tr>
-        <tr class="row-sub"><td>Clientes a Receber</td><td class="text-right">${formatCurrency(b.ativo_circulante.clientes_receber)}</td></tr>
-        <tr class="row-sub"><td>Estoques</td><td class="text-right">${formatCurrency(b.ativo_circulante.estoques)}</td></tr>
-        <tr class="row-group"><td>ATIVO NÃO CIRCULANTE</td><td class="text-right">${formatCurrency(totAnc)}</td></tr>
-        <tr class="row-sub clickable-row" onclick="openDrillDown('balanco.ativo_nao_circulante.imobilizado', 'Imobilizado')"><td>Imobilizado</td><td class="text-right">${formatCurrency(b.ativo_nao_circulante.imobilizado)}</td></tr>
-        <tr class="row-total"><td>TOTAL DO ATIVO</td><td class="text-right">${formatCurrency(totalAtivo)}</td></tr>
-    `;
+    const b = calculateBalancoData(EFO_Active_DRE_Year);
 
-    const totPc = sumObj(b.passivo_circulante);
-    const totPnc = sumObj(b.passivo_nao_circulante);
-    const totPl = sumObj(b.patrimonio_liquido);
-    const totalPassivo = totPc + totPnc + totPl;
+    // ATIVO
+    const caixaBancos = b['balanco.ativo_circulante.caixa_bancos'];
+    const aplicacoes = b['balanco.ativo_circulante.aplicacoes'];
+    const clientesReceber = b['balanco.ativo_circulante.clientes_receber'];
+    const estoques = b['balanco.ativo_circulante.estoques'];
+    const adiantamentos = b['balanco.ativo_circulante.adiantamentos'];
+    const tributosRecuperar = b['balanco.ativo_circulante.tributos_recuperar'];
+    const ATIVO_CIRCULANTE = sumArrays(caixaBancos, aplicacoes, clientesReceber, estoques, adiantamentos, tributosRecuperar);
 
-    passivoTbody.innerHTML = `
-        <tr class="row-group"><td>PASSIVO CIRCULANTE</td><td class="text-right">${formatCurrency(totPc)}</td></tr>
-        <tr class="row-sub"><td>Fornecedores</td><td class="text-right">${formatCurrency(b.passivo_circulante.fornecedores)}</td></tr>
-        <tr class="row-sub clickable-row" onclick="openDrillDown('balanco.passivo_circulante.emprestimos_cp', 'Empréstimos Curto Prazo')"><td>Empréstimos Curto Prazo</td><td class="text-right">${formatCurrency(b.passivo_circulante.emprestimos_cp)}</td></tr>
-        <tr class="row-sub"><td>Obrigações Trabalhistas</td><td class="text-right">${formatCurrency(b.passivo_circulante.obrigacoes_trab)}</td></tr>
-        <tr class="row-group"><td>PASSIVO NÃO CIRCULANTE</td><td class="text-right">${formatCurrency(totPnc)}</td></tr>
-        <tr class="row-sub"><td>Empréstimos Longo Prazo</td><td class="text-right">${formatCurrency(b.passivo_nao_circulante.emprestimos_lp)}</td></tr>
-        <tr class="row-group"><td>PATRIMÔNIO LÍQUIDO</td><td class="text-right">${formatCurrency(totPl)}</td></tr>
-        <tr class="row-sub"><td>Capital Social</td><td class="text-right">${formatCurrency(b.patrimonio_liquido.capital_social)}</td></tr>
-        <tr class="row-total"><td>TOTAL PASSIVO E PL</td><td class="text-right">${formatCurrency(totalPassivo)}</td></tr>
-    `;
+    const imobilizado = b['balanco.ativo_nao_circulante.imobilizado'];
+    const intangivel = b['balanco.ativo_nao_circulante.intangivel'];
+    const ATIVO_NAO_CIRCULANTE = sumArrays(imobilizado, intangivel);
+
+    const TOTAL_ATIVO = sumArrays(ATIVO_CIRCULANTE, ATIVO_NAO_CIRCULANTE);
+
+    let ativoHtml = '';
+    ativoHtml += makeDreRowHTML('ATIVO CIRCULANTE', 'group', ATIVO_CIRCULANTE, false, '', null);
+    ativoHtml += makeDreRowHTML('Caixa e Bancos', 'sub', caixaBancos, false, `onclick="openDrillDown('balanco.ativo_circulante.caixa_bancos', 'Caixa e Bancos')"`, null);
+    ativoHtml += makeDreRowHTML('Aplicações Financeiras', 'sub', aplicacoes, false, `onclick="openDrillDown('balanco.ativo_circulante.aplicacoes', 'Aplicações Financeiras')"`, null);
+    ativoHtml += makeDreRowHTML('Clientes a Receber', 'sub', clientesReceber, false, `onclick="openDrillDown('balanco.ativo_circulante.clientes_receber', 'Clientes a Receber')"`, null);
+    ativoHtml += makeDreRowHTML('Estoques', 'sub', estoques, false, `onclick="openDrillDown('balanco.ativo_circulante.estoques', 'Estoques')"`, null);
+    ativoHtml += makeDreRowHTML('Adiantamentos', 'sub', adiantamentos, false, `onclick="openDrillDown('balanco.ativo_circulante.adiantamentos', 'Adiantamentos')"`, null);
+    ativoHtml += makeDreRowHTML('Tributos a Recuperar', 'sub', tributosRecuperar, false, `onclick="openDrillDown('balanco.ativo_circulante.tributos_recuperar', 'Tributos a Recuperar')"`, null);
+
+    ativoHtml += makeDreRowHTML('ATIVO NÃO CIRCULANTE', 'group', ATIVO_NAO_CIRCULANTE, false, '', null);
+    ativoHtml += makeDreRowHTML('Imobilizado', 'sub', imobilizado, false, `onclick="openDrillDown('balanco.ativo_nao_circulante.imobilizado', 'Imobilizado')"`, null);
+    ativoHtml += makeDreRowHTML('Intangível', 'sub', intangivel, false, `onclick="openDrillDown('balanco.ativo_nao_circulante.intangivel', 'Intangível')"`, null);
+
+    ativoHtml += makeDreRowHTML('TOTAL DO ATIVO', 'total', TOTAL_ATIVO, false, '', null);
+    ativoTbody.innerHTML = ativoHtml;
+
+    // PASSIVO & PL
+    const fornecedores = b['balanco.passivo_circulante.fornecedores'];
+    const emprestimosCp = b['balanco.passivo_circulante.emprestimos_cp'];
+    const obrigacoesTrab = b['balanco.passivo_circulante.obrigacoes_trab'];
+    const obrigacoesTrib = b['balanco.passivo_circulante.obrigacoes_trib'];
+    const passivoCircOutras = b['balanco.passivo_circulante.outras'];
+    const PASSIVO_CIRCULANTE = sumArrays(fornecedores, emprestimosCp, obrigacoesTrab, obrigacoesTrib, passivoCircOutras);
+
+    const emprestimosLp = b['balanco.passivo_nao_circulante.emprestimos_lp'];
+    const parcelamentos = b['balanco.passivo_nao_circulante.parcelamentos'];
+    const PASSIVO_NAO_CIRCULANTE = sumArrays(emprestimosLp, parcelamentos);
+
+    const capitalSocial = b['balanco.patrimonio_liquido.capital_social'];
+    const reservas = b['balanco.patrimonio_liquido.reservas'];
+    const lucrosAcumulados = b['balanco.patrimonio_liquido.lucros_acumulados'];
+    const PATRIMONIO_LIQUIDO = sumArrays(capitalSocial, reservas, lucrosAcumulados);
+
+    const TOTAL_PASSIVO_PL = sumArrays(PASSIVO_CIRCULANTE, PASSIVO_NAO_CIRCULANTE, PATRIMONIO_LIQUIDO);
+
+    let passivoHtml = '';
+    passivoHtml += makeDreRowHTML('PASSIVO CIRCULANTE', 'group', PASSIVO_CIRCULANTE, false, '', null);
+    passivoHtml += makeDreRowHTML('Fornecedores', 'sub', fornecedores, false, `onclick="openDrillDown('balanco.passivo_circulante.fornecedores', 'Fornecedores')"`, null);
+    passivoHtml += makeDreRowHTML('Empréstimos Curto Prazo', 'sub', emprestimosCp, false, `onclick="openDrillDown('balanco.passivo_circulante.emprestimos_cp', 'Empréstimos Curto Prazo')"`, null);
+    passivoHtml += makeDreRowHTML('Obrigações Trabalhistas', 'sub', obrigacoesTrab, false, `onclick="openDrillDown('balanco.passivo_circulante.obrigacoes_trab', 'Obrigações Trabalhistas')"`, null);
+    passivoHtml += makeDreRowHTML('Obrigações Tributárias', 'sub', obrigacoesTrib, false, `onclick="openDrillDown('balanco.passivo_circulante.obrigacoes_trib', 'Obrigações Tributárias')"`, null);
+    passivoHtml += makeDreRowHTML('Outras Obrigações', 'sub', passivoCircOutras, false, `onclick="openDrillDown('balanco.passivo_circulante.outras', 'Outras Obrigações')"`, null);
+
+    passivoHtml += makeDreRowHTML('PASSIVO NÃO CIRCULANTE', 'group', PASSIVO_NAO_CIRCULANTE, false, '', null);
+    passivoHtml += makeDreRowHTML('Empréstimos Longo Prazo', 'sub', emprestimosLp, false, `onclick="openDrillDown('balanco.passivo_nao_circulante.emprestimos_lp', 'Empréstimos Longo Prazo')"`, null);
+    passivoHtml += makeDreRowHTML('Parcelamentos', 'sub', parcelamentos, false, `onclick="openDrillDown('balanco.passivo_nao_circulante.parcelamentos', 'Parcelamentos')"`, null);
+
+    passivoHtml += makeDreRowHTML('PATRIMÔNIO LÍQUIDO', 'group', PATRIMONIO_LIQUIDO, false, '', null);
+    passivoHtml += makeDreRowHTML('Capital Social', 'sub', capitalSocial, false, `onclick="openDrillDown('balanco.patrimonio_liquido.capital_social', 'Capital Social')"`, null);
+    passivoHtml += makeDreRowHTML('Reservas', 'sub', reservas, false, `onclick="openDrillDown('balanco.patrimonio_liquido.reservas', 'Reservas')"`, null);
+    passivoHtml += makeDreRowHTML('Lucros Acumulados', 'sub', lucrosAcumulados, false, `onclick="openDrillDown('balanco.patrimonio_liquido.lucros_acumulados', 'Lucros Acumulados')"`, null);
+
+    passivoHtml += makeDreRowHTML('TOTAL PASSIVO E PL', 'total', TOTAL_PASSIVO_PL, false, '', null);
+    passivoTbody.innerHTML = passivoHtml;
 }
 
 function renderConciliationTable() {

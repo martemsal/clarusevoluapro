@@ -157,18 +157,39 @@
 
             <!-- TAB: BALANÇO GERENCIAL -->
             <div id="tab-balanco" class="tab-content">
-                <div class="balanco-grid">
-                    <div class="glass-panel p-24">
-                        <h2 class="balanco-title">ATIVO</h2>
-                        <table class="report-table">
+                <div class="glass-panel p-24">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                        <h2 style="font-size: 18px; margin: 0; color: var(--text-primary);">Balanço Patrimonial Gerencial</h2>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label for="balancoYearSelect" style="font-size: 13px; color: var(--text-secondary);">Ano do Exercício:</label>
+                            <select id="balancoYearSelect" class="efo-select" style="padding: 6px 12px; min-width: 100px; background: rgba(0,0,0,0.3); border-color: var(--glass-border); border-radius: 8px; color: var(--text-primary);">
+                                <!-- Injected by JS -->
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <h3 class="balanco-title" style="margin-top: 10px; margin-bottom: 10px;">ATIVO</h3>
+                    <div class="table-container" style="overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 30px;">
+                        <table class="report-table balanco-table">
+                            <thead>
+                                <tr id="ativoTheadRow">
+                                    <!-- Injected by JS -->
+                                </tr>
+                            </thead>
                             <tbody id="ativoTbody">
                                 <!-- Injected by JS -->
                             </tbody>
                         </table>
                     </div>
-                    <div class="glass-panel p-24">
-                        <h2 class="balanco-title">PASSIVO E PATRIMÔNIO LÍQUIDO</h2>
-                        <table class="report-table">
+
+                    <h3 class="balanco-title" style="margin-top: 20px; margin-bottom: 10px;">PASSIVO E PATRIMÔNIO LÍQUIDO</h3>
+                    <div class="table-container" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                        <table class="report-table balanco-table">
+                            <thead>
+                                <tr id="passivoTheadRow">
+                                    <!-- Injected by JS -->
+                                </tr>
+                            </thead>
                             <tbody id="passivoTbody">
                                 <!-- Injected by JS -->
                             </tbody>
