@@ -131,18 +131,27 @@
             <!-- TAB: DRE GERENCIAL -->
             <div id="tab-dre" class="tab-content active">
                 <div class="glass-panel p-24">
-                    <table class="report-table dre-table">
-                        <thead>
-                            <tr>
-                                <th>Estrutura DRE</th>
-                                <th class="text-right">Valor Mensal (R$)</th>
-                                <th class="text-right">AV (%)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="dreTbody">
-                            <!-- Injected by JS -->
-                        </tbody>
-                    </table>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                        <h2 style="font-size: 18px; margin: 0; color: var(--text-primary);">Demonstrativo de Resultado do Exercício (DRE)</h2>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label for="dreYearSelect" style="font-size: 13px; color: var(--text-secondary);">Ano do Exercício:</label>
+                            <select id="dreYearSelect" class="efo-select" style="padding: 6px 12px; min-width: 100px; background: rgba(0,0,0,0.3); border-color: var(--glass-border); border-radius: 8px; color: var(--text-primary);">
+                                <!-- Injected by JS -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-container" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                        <table class="report-table dre-table">
+                            <thead>
+                                <tr id="dreTheadRow">
+                                    <!-- Injected by JS -->
+                                </tr>
+                            </thead>
+                            <tbody id="dreTbody">
+                                <!-- Injected by JS -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 

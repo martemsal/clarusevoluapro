@@ -37,6 +37,8 @@ let EFO_Parametros = DEFAULT_PARAMETROS;
 let Config_Empresa = DEFAULT_EMPRESA;
 let EFO_Lancamentos = JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS));
 let OFX_Raw_Import = [];
+let EFO_Active_DRE_Year = new Date().getFullYear();
+let EFO_Active_DRE_Divisor = 12;
 
 function migrateAndInitializeData() {
     if (Object.keys(EFO_Companies).length === 0) {
@@ -99,6 +101,13 @@ function loadActiveCompanyData() {
     Config_Empresa = company.config || DEFAULT_EMPRESA;
     EFO_Lancamentos = company.lancamentos || JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS));
     OFX_Raw_Import = company.ofx || [];
+    
+    const availableYears = getDREYears();
+    if (availableYears.length > 0) {
+        EFO_Active_DRE_Year = availableYears[0];
+    } else {
+        EFO_Active_DRE_Year = new Date().getFullYear();
+    }
 }
 
 function saveActiveCompanyData() {
@@ -458,6 +467,16 @@ function manualCategorize(fitid, categoryPath) {
 window.applyManualCategorization = (fitid) => {
     const sel = document.getElementById(`sel_${fitid}`);
     if (!sel.value) return showToast('Aviso', 'Selecione uma categoria.', 'warning');
+    
+    const dateInput = document.getElementById(`date_${fitid}`);
+    if (dateInput && dateInput.value) {
+        const txn = OFX_Raw_Import.find(t => t.transaction_id === fitid);
+        if (txn) {
+            // Update the transaction's date with the user-selected/modified date
+            txn.date = dateInput.value;
+        }
+    }
+    
     manualCategorize(fitid, sel.value);
 };
 
@@ -476,7 +495,14 @@ function renderDrillDownTable() {
     const tbody = document.getElementById('drillDownTbody');
     tbody.innerHTML = '';
     
-    const relatedTxns = OFX_Raw_Import.filter(t => t.status === 'Categorizado' && t.assigned_account === currentDrillDownPath);
+    const relatedTxns = OFX_Raw_Import.filter(t => {
+        if (t.status !== 'Categorizado' || !t.assigned_account) return false;
+        const isMatch = t.assigned_account === currentDrillDownPath || t.assigned_account.startsWith(currentDrillDownPath + '.');
+        if (!isMatch) return false;
+        
+        const dateObj = new Date(t.date);
+        return dateObj.getFullYear() === EFO_Active_DRE_Year;
+    });
     
     if(relatedTxns.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" class="text-center">Nenhum lançamento vinculado via OFX para esta conta.</td></tr>`;
@@ -620,67 +646,310 @@ function renderDashboard() {
     updatePieChart([custos_diretos, despesas_fixas, desp_comerciais, deducoes]);
 }
 
+function getDREYears() {
+    const years = new Set([new Date().getFullYear()]);
+    if (Array.isArray(OFX_Raw_Import)) {
+        OFX_Raw_Import.forEach(txn => {
+            if (txn.date) {
+                const year = new Date(txn.date).getFullYear();
+                if (!isNaN(year)) {
+                    years.add(year);
+                }
+            }
+        });
+    }
+    return Array.from(years).sort((a, b) => b - a);
+}
+
+function calculateDREData(year) {
+    const dreKeys = {
+        'dre.receita_bruta.produtos': new Array(12).fill(0),
+        'dre.receita_bruta.servicos': new Array(12).fill(0),
+        'dre.receita_bruta.outras': new Array(12).fill(0),
+        'dre.deducoes.impostos': new Array(12).fill(0),
+        'dre.deducoes.devolucoes': new Array(12).fill(0),
+        'dre.deducoes.descontos': new Array(12).fill(0),
+        'dre.custos.mercadorias': new Array(12).fill(0),
+        'dre.custos.producao': new Array(12).fill(0),
+        'dre.custos.servicos': new Array(12).fill(0),
+        'dre.custos.operacionais': new Array(12).fill(0),
+        'dre.despesas_comercial.marketing': new Array(12).fill(0),
+        'dre.despesas_comercial.trafego': new Array(12).fill(0),
+        'dre.despesas_comercial.comissao': new Array(12).fill(0),
+        'dre.despesas_comercial.viagens': new Array(12).fill(0),
+        'dre.despesas_comercial.transporte_logistica': new Array(12).fill(0),
+        'dre.despesas_comercial.outras': new Array(12).fill(0),
+        'dre.despesas_administrativas.pro_labore': new Array(12).fill(0),
+        'dre.despesas_administrativas.salarios': new Array(12).fill(0),
+        'dre.despesas_administrativas.encargos': new Array(12).fill(0),
+        'dre.despesas_administrativas.aluguel': new Array(12).fill(0),
+        'dre.despesas_administrativas.outras': new Array(12).fill(0),
+        'dre.despesas_pessoal.salarios': new Array(12).fill(0),
+        'dre.despesas_pessoal.inss': new Array(12).fill(0),
+        'dre.despesas_pessoal.fgts': new Array(12).fill(0),
+        'dre.despesas_pessoal.beneficios': new Array(12).fill(0),
+        'dre.despesas_pessoal.rescisoes': new Array(12).fill(0),
+        'dre.despesas_estrutura.manutencao': new Array(12).fill(0),
+        'dre.despesas_estrutura.reparos': new Array(12).fill(0),
+        'dre.despesas_estrutura.limpeza': new Array(12).fill(0),
+        'dre.despesas_veiculos.combustivel': new Array(12).fill(0),
+        'dre.despesas_veiculos.manutencao': new Array(12).fill(0),
+        'dre.despesas_veiculos.seguro': new Array(12).fill(0),
+        'dre.despesas_veiculos.ipva': new Array(12).fill(0),
+        'dre.receitas_financeiras.rendimentos': new Array(12).fill(0),
+        'dre.receitas_financeiras.juros_recebidos': new Array(12).fill(0),
+        'dre.despesas_financeiras.tarifas': new Array(12).fill(0),
+        'dre.despesas_financeiras.juros': new Array(12).fill(0),
+        'dre.despesas_financeiras.iof': new Array(12).fill(0),
+        'dre.nao_operacional.resultado': new Array(12).fill(0),
+        'dre.depreciacao.valor': new Array(12).fill(0),
+        'dre.impostos_lucro.irpj_csll': new Array(12).fill(0)
+    };
+
+    if (Array.isArray(OFX_Raw_Import)) {
+        OFX_Raw_Import.forEach(txn => {
+            if (txn.status === 'Categorizado' && txn.assigned_account) {
+                const dateObj = new Date(txn.date);
+                const txnYear = dateObj.getFullYear();
+                if (txnYear === year) {
+                    const txnMonth = dateObj.getMonth(); // 0-11
+                    
+                    let acc = txn.assigned_account;
+                    if (acc === 'dre.despesas_veiculos') acc = 'dre.despesas_veiculos.manutencao';
+                    if (acc === 'dre.despesas_estrutura') acc = 'dre.despesas_estrutura.manutencao';
+                    if (acc === 'dre.receitas_financeiras') acc = 'dre.receitas_financeiras.rendimentos';
+                    if (acc === 'dre.despesas_financeiras') acc = 'dre.despesas_financeiras.tarifas';
+                    
+                    if (dreKeys[acc]) {
+                        dreKeys[acc][txnMonth] += Math.abs(txn.amount);
+                    } else {
+                        const matchedKey = Object.keys(dreKeys).find(k => k.startsWith(acc + '.'));
+                        if (matchedKey) {
+                            dreKeys[matchedKey][txnMonth] += Math.abs(txn.amount);
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    return dreKeys;
+}
+
+function sumArrays(...arrays) {
+    const result = new Array(12).fill(0);
+    for (let i = 0; i < 12; i++) {
+        for (let j = 0; j < arrays.length; j++) {
+            if (arrays[j] && arrays[j][i]) {
+                result[i] += arrays[j][i];
+            }
+        }
+    }
+    return result;
+}
+
+function makeDreRowHTML(label, rowType, monthValues, isNegative = false, clickHandler = '', avBaseValues = null) {
+    const divisor = EFO_Active_DRE_Divisor || 12;
+    let total = 0;
+    for (let i = 0; i < 12; i++) {
+        total += monthValues[i];
+    }
+    const media = total / divisor;
+
+    let rowClass = '';
+    if (rowType === 'group') rowClass = 'row-group';
+    if (rowType === 'sub') rowClass = 'row-sub clickable-row';
+    if (rowType === 'total') rowClass = 'row-total';
+    if (isNegative && rowType === 'group') rowClass += ' text-danger';
+    if (!isNegative && rowType === 'group' && label.includes('RECEITA')) rowClass += ' text-success';
+
+    let html = `<tr class="${rowClass}" ${clickHandler}>`;
+    html += `<td>${label}</td>`;
+
+    // Months
+    for (let i = 0; i < 12; i++) {
+        let val = monthValues[i];
+        html += `<td class="text-right">${val === 0 ? '-' : formatCurrency(val)}</td>`;
+    }
+
+    // Media
+    let mediaAV = '';
+    if (avBaseValues) {
+        let baseTotal = avBaseValues.reduce((a,b) => a + b, 0);
+        let baseMedia = baseTotal / divisor;
+        if (baseMedia > 0) {
+            mediaAV = ` <span style="font-size:10px; opacity:0.7;">(${formatPercent((media / baseMedia) * 100)})</span>`;
+        } else {
+            mediaAV = ` <span style="font-size:10px; opacity:0.7;">(0%)</span>`;
+        }
+    }
+    html += `<td class="text-right" style="background: rgba(241, 196, 15, 0.08); font-weight: bold; color: #f1c40f;">${media === 0 ? '-' : formatCurrency(media)}${mediaAV}</td>`;
+
+    // Total
+    html += `<td class="text-right" style="background: rgba(99, 102, 241, 0.08); font-weight: bold; color: var(--accent-primary);">${total === 0 ? '-' : formatCurrency(total)}</td>`;
+
+    html += `</tr>`;
+    return html;
+}
+
 function renderDRE() {
+    const yearSelect = document.getElementById('dreYearSelect');
+    if (yearSelect) {
+        const years = getDREYears();
+        let optionsHtml = '';
+        years.forEach(y => {
+            optionsHtml += `<option value="${y}" ${y === EFO_Active_DRE_Year ? 'selected' : ''}>${y}</option>`;
+        });
+        yearSelect.innerHTML = optionsHtml;
+        
+        yearSelect.onchange = (e) => {
+            EFO_Active_DRE_Year = parseInt(e.target.value);
+            updateAllViews();
+        };
+    }
+
+    const theadRow = document.getElementById('dreTheadRow');
     const tbody = document.getElementById('dreTbody');
-    const dre = EFO_Lancamentos.dre;
+    if (!theadRow || !tbody) return;
 
-    const rBruta = sumObj(dre.receita_bruta);
-    const deducoes = sumObj(dre.deducoes);
-    const rLiquida = rBruta - deducoes;
-    const custos = sumObj(dre.custos);
-    const lBruto = rLiquida - custos;
-    
-    const dCom = sumObj(dre.despesas_comercial);
-    const dAdm = sumObj(dre.despesas_administrativas);
-    const dPes = sumObj(dre.despesas_pessoal);
-    const dEst = sumObj(dre.despesas_estrutura);
-    const dVei = sumObj(dre.despesas_veiculos);
-    const dOperacionais = dCom + dAdm + dPes + dEst + dVei;
-    
-    const rFin = sumObj(dre.receitas_financeiras);
-    const dFin = sumObj(dre.despesas_financeiras);
-    const nOp = sumObj(dre.nao_operacional);
-    
-    const ebitda = lBruto - dOperacionais + rFin - dFin + nOp;
-    const lOp = ebitda - sumObj(dre.depreciacao);
-    const lLiq = lOp - sumObj(dre.impostos_lucro);
+    // Headers
+    let headerHtml = `<th style="text-align: left;">Estrutura DRE</th>`;
+    const monthsShort = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    for (let m = 0; m < 12; m++) {
+        headerHtml += `<th class="text-right">${monthsShort[m]}/${EFO_Active_DRE_Year}</th>`;
+    }
+    headerHtml += `<th class="text-right" style="background: rgba(241, 196, 15, 0.12); color: #f1c40f;">MÉDIA</th>`;
+    headerHtml += `<th class="text-right" style="background: rgba(99, 102, 241, 0.12); color: var(--accent-primary);">TOTAL</th>`;
+    theadRow.innerHTML = headerHtml;
 
-    const av = (val) => rBruta > 0 ? formatPercent((val / rBruta) * 100) : '0%';
+    // Divisor
+    const activeMonths = [];
+    for (let m = 0; m < 12; m++) {
+        const hasData = OFX_Raw_Import.some(t => {
+            if (t.status === 'Categorizado') {
+                const dateObj = new Date(t.date);
+                return dateObj.getFullYear() === EFO_Active_DRE_Year && dateObj.getMonth() === m;
+            }
+            return false;
+        });
+        if (hasData) {
+            activeMonths.push(m);
+        }
+    }
+    EFO_Active_DRE_Divisor = activeMonths.length > 0 ? activeMonths.length : 12;
 
-    tbody.innerHTML = `
-        <tr class="row-group"><td>1. RECEITA OPERACIONAL BRUTA</td><td class="text-right">${formatCurrency(rBruta)}</td><td class="text-right">${av(rBruta)}</td></tr>
-        <tr class="row-sub clickable-row" onclick="openDrillDown('dre.receita_bruta.produtos', 'Receita de Produtos')"><td>Receita de Produtos</td><td class="text-right">${formatCurrency(dre.receita_bruta.produtos)}</td><td class="text-right">${av(dre.receita_bruta.produtos)}</td></tr>
-        <tr class="row-sub clickable-row" onclick="openDrillDown('dre.receita_bruta.servicos', 'Receita de Serviços')"><td>Receita de Serviços</td><td class="text-right">${formatCurrency(dre.receita_bruta.servicos)}</td><td class="text-right">${av(dre.receita_bruta.servicos)}</td></tr>
-        <tr class="row-sub clickable-row" onclick="openDrillDown('dre.receita_bruta.outras', 'Outras Receitas')"><td>Outras Receitas</td><td class="text-right">${formatCurrency(dre.receita_bruta.outras)}</td><td class="text-right">${av(dre.receita_bruta.outras)}</td></tr>
-        
-        <tr class="row-group text-danger"><td>(-) DEDUÇÕES DA RECEITA</td><td class="text-right">${formatCurrency(deducoes)}</td><td class="text-right">${av(deducoes)}</td></tr>
-        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.deducoes.impostos', 'Impostos S/ Faturamento')"><td>Impostos S/ Faturamento</td><td class="text-right">${formatCurrency(dre.deducoes.impostos)}</td><td class="text-right">${av(dre.deducoes.impostos)}</td></tr>
-        <tr class="row-total"><td>(=) RECEITA OPERACIONAL LÍQUIDA</td><td class="text-right">${formatCurrency(rLiquida)}</td><td class="text-right">${av(rLiquida)}</td></tr>
-        
-        <tr class="row-group text-danger"><td>(-) CUSTOS DOS PRODUTOS/SERVIÇOS</td><td class="text-right">${formatCurrency(custos)}</td><td class="text-right">${av(custos)}</td></tr>
-        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.custos.mercadorias', 'CMV')"><td>CMV</td><td class="text-right">${formatCurrency(dre.custos.mercadorias)}</td><td class="text-right">${av(dre.custos.mercadorias)}</td></tr>
-        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.custos.servicos', 'Serviços Terceiros')"><td>Serviços Terceiros</td><td class="text-right">${formatCurrency(dre.custos.servicos)}</td><td class="text-right">${av(dre.custos.servicos)}</td></tr>
-        
-        <tr class="row-total"><td>(=) LUCRO BRUTO</td><td class="text-right">${formatCurrency(lBruto)}</td><td class="text-right">${av(lBruto)}</td></tr>
-        
-        <tr class="row-group text-danger"><td>(-) DESPESAS OPERACIONAIS</td><td class="text-right">${formatCurrency(dOperacionais)}</td><td class="text-right">${av(dOperacionais)}</td></tr>
-        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_comercial.transporte_logistica', 'Transporte e Logística')"><td>Transporte e Logística</td><td class="text-right">${formatCurrency(dre.despesas_comercial.transporte_logistica)}</td><td class="text-right">${av(dre.despesas_comercial.transporte_logistica)}</td></tr>
-        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_comercial.comissao', 'Comissões s/ Vendas')"><td>Comissões s/ Vendas</td><td class="text-right">${formatCurrency(dre.despesas_comercial.comissao)}</td><td class="text-right">${av(dre.despesas_comercial.comissao)}</td></tr>
-        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_comercial.trafego', 'Despesas Comerciais/Mkt')"><td>Marketing/Tráfego</td><td class="text-right">${formatCurrency(dre.despesas_comercial.trafego)}</td><td class="text-right">${av(dre.despesas_comercial.trafego)}</td></tr>
-        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_administrativas.outras', 'Despesas Administrativas (Outras)')"><td>Despesas Administrativas (Outras)</td><td class="text-right">${formatCurrency(dre.despesas_administrativas.outras)}</td><td class="text-right">${av(dre.despesas_administrativas.outras)}</td></tr>
-        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_administrativas.aluguel', 'Despesas Administrativas (Aluguel)')"><td>Despesas Administrativas (Aluguel)</td><td class="text-right">${formatCurrency(dre.despesas_administrativas.aluguel)}</td><td class="text-right">${av(dre.despesas_administrativas.aluguel)}</td></tr>
-        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_pessoal.salarios', 'Despesas de Pessoal')"><td>Despesas de Pessoal</td><td class="text-right">${formatCurrency(dPes)}</td><td class="text-right">${av(dPes)}</td></tr>
-        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_estrutura.manutencao', 'Despesas Estrutura/Veículos')"><td>Despesas Estrutura/Veículos</td><td class="text-right">${formatCurrency(dEst + dVei)}</td><td class="text-right">${av(dEst + dVei)}</td></tr>
+    const dreKeys = calculateDREData(EFO_Active_DRE_Year);
 
-        <tr class="row-group text-success"><td>(+) RECEITAS FINANCEIRAS</td><td class="text-right">${formatCurrency(rFin)}</td><td class="text-right">${av(rFin)}</td></tr>
-        <tr class="row-sub clickable-row text-success" onclick="openDrillDown('dre.receitas_financeiras.rendimentos', 'Rendimentos/Juros')"><td>Rendimentos/Juros</td><td class="text-right">${formatCurrency(dre.receitas_financeiras.rendimentos)}</td><td class="text-right">${av(dre.receitas_financeiras.rendimentos)}</td></tr>
-        
-        <tr class="row-group text-danger"><td>(-) DESPESAS FINANCEIRAS</td><td class="text-right">${formatCurrency(dFin)}</td><td class="text-right">${av(dFin)}</td></tr>
-        <tr class="row-sub clickable-row text-danger" onclick="openDrillDown('dre.despesas_financeiras.tarifas', 'Tarifas e Juros')"><td>Tarifas e Juros</td><td class="text-right">${formatCurrency(dre.despesas_financeiras.tarifas)}</td><td class="text-right">${av(dre.despesas_financeiras.tarifas)}</td></tr>
-        
-        <tr class="row-total"><td>(=) EBITDA GERENCIAL</td><td class="text-right">${formatCurrency(ebitda)}</td><td class="text-right">${av(ebitda)}</td></tr>
-        <tr class="row-total ${lLiq < 0 ? 'danger-txt' : ''}"><td>(=) LUCRO LÍQUIDO</td><td class="text-right">${formatCurrency(lLiq)}</td><td class="text-right">${av(lLiq)}</td></tr>
-    `;
+    const rBrutaProd = dreKeys['dre.receita_bruta.produtos'];
+    const rBrutaServ = dreKeys['dre.receita_bruta.servicos'];
+    const rBrutaOutras = dreKeys['dre.receita_bruta.outras'];
+    const R_BRUTA = sumArrays(rBrutaProd, rBrutaServ, rBrutaOutras);
+
+    const dImpostos = dreKeys['dre.deducoes.impostos'];
+    const dDevolucoes = dreKeys['dre.deducoes.devolucoes'];
+    const dDescontos = dreKeys['dre.deducoes.descontos'];
+    const DEDUCOES = sumArrays(dImpostos, dDevolucoes, dDescontos);
+
+    const R_LIQUIDA = R_BRUTA.map((v, i) => v - DEDUCOES[i]);
+
+    const cMercadorias = dreKeys['dre.custos.mercadorias'];
+    const cProducao = dreKeys['dre.custos.producao'];
+    const cServicos = dreKeys['dre.custos.servicos'];
+    const cOperacionais = dreKeys['dre.custos.operacionais'];
+    const CUSTOS = sumArrays(cMercadorias, cProducao, cServicos, cOperacionais);
+
+    const L_BRUTO = R_LIQUIDA.map((v, i) => v - CUSTOS[i]);
+
+    const dComTransporte = dreKeys['dre.despesas_comercial.transporte_logistica'];
+    const dComComissao = dreKeys['dre.despesas_comercial.comissao'];
+    const dComTrafego = dreKeys['dre.despesas_comercial.trafego'];
+    const dComMkt = dreKeys['dre.despesas_comercial.marketing'];
+    const dComViagens = dreKeys['dre.despesas_comercial.viagens'];
+    const dComOutras = dreKeys['dre.despesas_comercial.outras'];
+    const D_COM = sumArrays(dComTransporte, dComComissao, dComTrafego, dComMkt, dComViagens, dComOutras);
+
+    const dAdmAluguel = dreKeys['dre.despesas_administrativas.aluguel'];
+    const dAdmOutras = dreKeys['dre.despesas_administrativas.outras'];
+    const dAdmProLabore = dreKeys['dre.despesas_administrativas.pro_labore'];
+    const dAdmSalarios = dreKeys['dre.despesas_administrativas.salarios'];
+    const dAdmEncargos = dreKeys['dre.despesas_administrativas.encargos'];
+    const D_ADM = sumArrays(dAdmAluguel, dAdmOutras, dAdmProLabore, dAdmSalarios, dAdmEncargos);
+
+    const dPesSalarios = dreKeys['dre.despesas_pessoal.salarios'];
+    const dPesInss = dreKeys['dre.despesas_pessoal.inss'];
+    const dPesFgts = dreKeys['dre.despesas_pessoal.fgts'];
+    const dPesBeneficios = dreKeys['dre.despesas_pessoal.beneficios'];
+    const dPesRescisoes = dreKeys['dre.despesas_pessoal.rescisoes'];
+    const D_PES = sumArrays(dPesSalarios, dPesInss, dPesFgts, dPesBeneficios, dPesRescisoes);
+
+    const dEstManutencao = dreKeys['dre.despesas_estrutura.manutencao'];
+    const dEstReparos = dreKeys['dre.despesas_estrutura.reparos'];
+    const dEstLimpeza = dreKeys['dre.despesas_estrutura.limpeza'];
+    const D_EST = sumArrays(dEstManutencao, dEstReparos, dEstLimpeza);
+
+    const dVeiCombustivel = dreKeys['dre.despesas_veiculos.combustivel'];
+    const dVeiManutencao = dreKeys['dre.despesas_veiculos.manutencao'];
+    const dVeiSeguro = dreKeys['dre.despesas_veiculos.seguro'];
+    const dVeiIpva = dreKeys['dre.despesas_veiculos.ipva'];
+    const D_VEI = sumArrays(dVeiCombustivel, dVeiManutencao, dVeiSeguro, dVeiIpva);
+
+    const D_OPERACIONAIS = sumArrays(D_COM, D_ADM, D_PES, D_EST, D_VEI);
+
+    const rFinRendimentos = dreKeys['dre.receitas_financeiras.rendimentos'];
+    const rFinJuros = dreKeys['dre.receitas_financeiras.juros_recebidos'];
+    const R_FIN = sumArrays(rFinRendimentos, rFinJuros);
+
+    const dFinTarifas = dreKeys['dre.despesas_financeiras.tarifas'];
+    const dFinJuros = dreKeys['dre.despesas_financeiras.juros'];
+    const dFinIof = dreKeys['dre.despesas_financeiras.iof'];
+    const D_FIN = sumArrays(dFinTarifas, dFinJuros, dFinIof);
+
+    const nOpResultado = dreKeys['dre.nao_operacional.resultado'];
+
+    const EBITDA = L_BRUTO.map((v, i) => v - D_OPERACIONAIS[i] + R_FIN[i] - D_FIN[i] + nOpResultado[i]);
+
+    const depreciacaoVal = dreKeys['dre.depreciacao.valor'];
+    const impostoLucroVal = dreKeys['dre.impostos_lucro.irpj_csll'];
+    const L_LIQUIDO = EBITDA.map((v, i) => v - depreciacaoVal[i] - impostoLucroVal[i]);
+
+    let bodyHtml = '';
+
+    // Render Rows
+    bodyHtml += makeDreRowHTML('1. RECEITA OPERACIONAL BRUTA', 'group', R_BRUTA, false, '', R_BRUTA);
+    bodyHtml += makeDreRowHTML('Receita de Produtos', 'sub', rBrutaProd, false, `onclick="openDrillDown('dre.receita_bruta.produtos', 'Receita de Produtos')"`, R_BRUTA);
+    bodyHtml += makeDreRowHTML('Receita de Serviços', 'sub', rBrutaServ, false, `onclick="openDrillDown('dre.receita_bruta.servicos', 'Receita de Serviços')"`, R_BRUTA);
+    bodyHtml += makeDreRowHTML('Outras Receitas', 'sub', rBrutaOutras, false, `onclick="openDrillDown('dre.receita_bruta.outras', 'Outras Receitas')"`, R_BRUTA);
+
+    bodyHtml += makeDreRowHTML('(-) DEDUÇÕES DA RECEITA', 'group', DEDUCOES, true, '', R_BRUTA);
+    bodyHtml += makeDreRowHTML('Impostos S/ Faturamento', 'sub', dImpostos, true, `onclick="openDrillDown('dre.deducoes.impostos', 'Impostos S/ Faturamento')"`, R_BRUTA);
+
+    bodyHtml += makeDreRowHTML('(=) RECEITA OPERACIONAL LÍQUIDA', 'total', R_LIQUIDA, false, '', R_BRUTA);
+
+    bodyHtml += makeDreRowHTML('(-) CUSTOS DOS PRODUTOS/SERVIÇOS', 'group', CUSTOS, true, '', R_BRUTA);
+    bodyHtml += makeDreRowHTML('CMV', 'sub', cMercadorias, true, `onclick="openDrillDown('dre.custos.mercadorias', 'CMV')"`, R_BRUTA);
+    bodyHtml += makeDreRowHTML('Serviços Terceiros', 'sub', cServicos, true, `onclick="openDrillDown('dre.custos.servicos', 'Serviços Terceiros')"`, R_BRUTA);
+
+    bodyHtml += makeDreRowHTML('(=) LUCRO BRUTO', 'total', L_BRUTO, false, '', R_BRUTA);
+
+    bodyHtml += makeDreRowHTML('(-) DESPESAS OPERACIONAIS', 'group', D_OPERACIONAIS, true, '', R_BRUTA);
+    bodyHtml += makeDreRowHTML('Transporte e Logística', 'sub', dComTransporte, true, `onclick="openDrillDown('dre.despesas_comercial.transporte_logistica', 'Transporte e Logística')"`, R_BRUTA);
+    bodyHtml += makeDreRowHTML('Comissões s/ Vendas', 'sub', dComComissao, true, `onclick="openDrillDown('dre.despesas_comercial.comissao', 'Comissões s/ Vendas')"`, R_BRUTA);
+    bodyHtml += makeDreRowHTML('Marketing/Tráfego', 'sub', dComTrafego, true, `onclick="openDrillDown('dre.despesas_comercial.trafego', 'Despesas Comerciais/Mkt')"`, R_BRUTA);
+    bodyHtml += makeDreRowHTML('Despesas Administrativas (Outras)', 'sub', dAdmOutras, true, `onclick="openDrillDown('dre.despesas_administrativas.outras', 'Despesas Administrativas (Outras)')"`, R_BRUTA);
+    bodyHtml += makeDreRowHTML('Despesas Administrativas (Aluguel)', 'sub', dAdmAluguel, true, `onclick="openDrillDown('dre.despesas_administrativas.aluguel', 'Despesas Administrativas (Aluguel)')"`, R_BRUTA);
+    bodyHtml += makeDreRowHTML('Despesas de Pessoal', 'sub', D_PES, true, `onclick="openDrillDown('dre.despesas_pessoal.salarios', 'Despesas de Pessoal')"`, R_BRUTA);
+    bodyHtml += makeDreRowHTML('Despesas Estrutura/Veículos', 'sub', sumArrays(D_EST, D_VEI), true, `onclick="openDrillDown('dre.despesas_estrutura.manutencao', 'Despesas Estrutura/Veículos')"`, R_BRUTA);
+
+    bodyHtml += makeDreRowHTML('(+) RECEITAS FINANCEIRAS', 'group', R_FIN, false, '', R_BRUTA);
+    bodyHtml += makeDreRowHTML('Rendimentos/Juros', 'sub', rFinRendimentos, false, `onclick="openDrillDown('dre.receitas_financeiras.rendimentos', 'Rendimentos/Juros')"`, R_BRUTA);
+
+    bodyHtml += makeDreRowHTML('(-) DESPESAS FINANCEIRAS', 'group', D_FIN, true, '', R_BRUTA);
+    bodyHtml += makeDreRowHTML('Tarifas e Juros', 'sub', dFinTarifas, true, `onclick="openDrillDown('dre.despesas_financeiras.tarifas', 'Tarifas e Juros')"`, R_BRUTA);
+
+    bodyHtml += makeDreRowHTML('(=) EBITDA GERENCIAL', 'total', EBITDA, false, '', R_BRUTA);
+    bodyHtml += makeDreRowHTML('(=) LUCRO LÍQUIDO', 'total', L_LIQUIDO, false, '', R_BRUTA);
+
+    tbody.innerHTML = bodyHtml;
 }
 
 function renderBalanco() {
@@ -743,14 +1012,15 @@ function renderConciliationTable() {
     pendentes.forEach(txn => {
         const tr = document.createElement('tr');
         if (txn.status === 'Flagged') tr.classList.add('row-flagged');
-        const dateObj = new Date(txn.date);
-        const dateStr = dateObj.toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'});
-        
+        const formattedDate = txn.date ? txn.date.substring(0, 10) : '';
         let statusHtml = txn.status === 'Flagged' ? `<span class="status-badge flagged">⚠️ Conformidade</span>` : `<span class="status-badge pendente">Pendente</span>`;
         let reasonHtml = txn.flag_reason ? `<div style="font-size:11px; color:var(--danger); margin-top:4px;">${txn.flag_reason}</div>` : '';
 
         tr.innerHTML = `
-            <td>${dateStr}</td>
+            <td>
+                <input type="date" id="date_${txn.transaction_id}" value="${formattedDate}" 
+                       style="background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); padding: 6px; font-size: 12px; width: 120px;">
+            </td>
             <td class="desc-cell"><strong>${txn.description}</strong>${reasonHtml}</td>
             <td style="color: ${txn.amount > 0 ? 'var(--success)' : 'var(--danger)'}">${formatCurrency(txn.amount)}</td>
             <td>${statusHtml}</td>
