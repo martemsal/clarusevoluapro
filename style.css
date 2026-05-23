@@ -618,7 +618,15 @@ select.efo-select:focus { outline: none; border-color: var(--accent-primary); }
 .ind-val.positive { color: var(--success); }
 
 /* ============ STICKY FIRST COLUMN (Excel freeze pane) ============ */
-/* Applied to all scrollable report tables */
+/* ALL first-child td/th must be position:sticky with a SOLID, OPAQUE background.
+   Semi-transparent colours bleed through when cells scroll underneath.
+   Dark-mode solid equivalents:
+     --bg-secondary  (#1a1d2d)  → normal rows / row-sub
+     row-group uses rgba(0,0,0,0.2) on #1a1d2d  → solid #131520
+     row-total uses rgba(99,102,241,0.1) on #1a1d2d → solid #1e1f35
+     indicadores section header rgba(99,102,241,0.15) → solid #1c1e38
+*/
+
 .dre-table th:first-child,
 .dre-table td:first-child,
 .balanco-table th:first-child,
@@ -628,31 +636,50 @@ select.efo-select:focus { outline: none; border-color: var(--accent-primary); }
     position: sticky;
     left: 0;
     z-index: 3;
-    /* Solid background so it covers scrolling cells behind it */
-    background: var(--bg-secondary);
+    background: #1a1d2d;          /* solid opaque = var(--bg-secondary) */
     min-width: 180px;
     max-width: 240px;
-    white-space: normal !important; /* allow label to wrap, don't force nowrap */
-    border-right: 2px solid var(--glass-border);
+    white-space: normal !important;
+    border-right: 2px solid rgba(255,255,255,0.12);
+    /* shadow on the right edge to signal freeze point */
+    box-shadow: 3px 0 8px rgba(0,0,0,0.35);
 }
 
-/* Header first cell sits on top of body stickies */
+/* thead header cell — sits above all body stickies */
 .dre-table thead th:first-child,
 .balanco-table thead th:first-child,
 #indicadoresTable thead th:first-child {
     z-index: 4;
-    background: #12152a; /* slightly darker than body rows */
+    background: #12152a;
 }
 
-/* Row-group / row-total first cells keep their own colour */
+/* row-group first cell — solid equivalent of rgba(0,0,0,0.2) over #1a1d2d */
 .dre-table .row-group td:first-child,
 .balanco-table .row-group td:first-child,
-#indicadoresTable .row-group td:first-child,
-#indicadoresTable .indicadores-section-header td:first-child {
-    background: inherit; /* inherit the row background */
+#indicadoresTable .row-group td:first-child {
+    background: #131520;
 }
 
-/* Light mode overrides for sticky cells */
+/* row-total first cell — solid equiv of rgba(99,102,241,0.1) over #1a1d2d */
+.dre-table .row-total td:first-child,
+.balanco-table .row-total td:first-child,
+#indicadoresTable .row-total td:first-child {
+    background: #1e1f35;
+}
+
+/* indicadores section-header first cell */
+#indicadoresTable .indicadores-section-header td:first-child {
+    background: #1c1e38;
+}
+
+/* hover — keep the first cell opaque on mouse-over so it doesn't go transparent */
+.dre-table .clickable-row:hover td:first-child,
+.balanco-table .clickable-row:hover td:first-child,
+#indicadoresTable tr:hover td:first-child {
+    background: #252846;   /* solid equivalent of rgba(99,102,241,0.2) */
+}
+
+/* ---- LIGHT MODE solid overrides ---- */
 body.light-mode .dre-table th:first-child,
 body.light-mode .dre-table td:first-child,
 body.light-mode .balanco-table th:first-child,
@@ -660,10 +687,29 @@ body.light-mode .balanco-table td:first-child,
 body.light-mode #indicadoresTable th:first-child,
 body.light-mode #indicadoresTable td:first-child {
     background: #f5f7ff;
+    box-shadow: 3px 0 8px rgba(0,0,0,0.08);
+    border-right-color: rgba(0,0,0,0.12);
 }
 body.light-mode .dre-table thead th:first-child,
 body.light-mode .balanco-table thead th:first-child,
 body.light-mode #indicadoresTable thead th:first-child {
     background: #eaedf8;
+}
+body.light-mode .dre-table .row-group td:first-child,
+body.light-mode .balanco-table .row-group td:first-child,
+body.light-mode #indicadoresTable .row-group td:first-child {
+    background: #eff1fa;
+}
+body.light-mode .dre-table .row-total td:first-child,
+body.light-mode .balanco-table .row-total td:first-child {
+    background: #e8eafd;
+}
+body.light-mode #indicadoresTable .indicadores-section-header td:first-child {
+    background: #e6e9fc;
+}
+body.light-mode .dre-table .clickable-row:hover td:first-child,
+body.light-mode .balanco-table .clickable-row:hover td:first-child,
+body.light-mode #indicadoresTable tr:hover td:first-child {
+    background: #dde1f8;
 }
 
