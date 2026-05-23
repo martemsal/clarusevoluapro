@@ -70,6 +70,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('btnExportPDF').addEventListener('click', exportPDF);
     
+    // Backup & Sync
+    document.getElementById('btnExportBackup').addEventListener('click', exportToJSON);
+    document.getElementById('btnImportBackup').addEventListener('click', triggerImportJSON);
+    document.getElementById('importBackupFile').addEventListener('change', handleImportJSON);
+    document.getElementById('btnShareLink').addEventListener('click', copyShareLink);
+    
     document.getElementById('btnResetData').addEventListener('click', () => {
         if(confirm("Tem certeza que deseja zerar todos os dados do EFO? (Recomendado para limpar cache e testar novas estruturas rastreáveis)")) {
             localStorage.removeItem('EFO_Lancamentos_V3');
@@ -80,6 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     updateAllViews();
+    checkShareHash();
 });
 
 // --- TABS ---
@@ -716,4 +723,187 @@ function showToast(title, message, type = 'warning') {
     container.appendChild(toast);
     setTimeout(() => toast.classList.add('show'), 10);
     setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 5000);
+}
+
+// --- COMPRESSION, BACKUP & SHARING CODES ---
+
+// Compress JSON to Base64 (gzip)
+async function compressToHash(dataObj) {
+    const jsonString = JSON.stringify(dataObj);
+    if (typeof CompressionStream !== 'undefined') {
+        try {
+            const stream = new Blob([jsonString]).stream().pipeThrough(new CompressionStream('gzip'));
+            const response = new Response(stream);
+            const buffer = await response.arrayBuffer();
+            const bytes = new Uint8Array(buffer);
+            let binary = '';
+            for (let i = 0; i < bytes.byteLength; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return window.btoa(binary);
+        } catch (e) {
+            console.error("CompressionStream error, falling back", e);
+            return window.btoa(unescape(encodeURIComponent(jsonString)));
+        }
+    } else {
+        return window.btoa(unescape(encodeURIComponent(jsonString)));
+    }
+}
+
+// Decompress Base64 to JSON (gzip)
+async function decompressFromHash(base64Str) {
+    try {
+        const binaryString = window.atob(base64Str);
+        const len = binaryString.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        if (typeof DecompressionStream !== 'undefined') {
+            try {
+                const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+                const response = new Response(stream);
+                const text = await response.text();
+                return JSON.parse(text);
+            } catch (e) {
+                console.error("DecompressionStream error, trying fallback", e);
+                return JSON.parse(decodeURIComponent(escape(binaryString)));
+            }
+        } else {
+            return JSON.parse(decodeURIComponent(escape(binaryString)));
+        }
+    } catch (e) {
+        console.error("Failed to decompress base64 string", e);
+        throw e;
+    }
+}
+
+// Check URL Hash for shared data
+async function checkShareHash() {
+    const hash = window.location.hash;
+    if (hash && hash.startsWith('#share=')) {
+        const base64Str = hash.substring(7);
+        try {
+            const importedData = await decompressFromHash(base64Str);
+            if (importedData && (importedData.EFO_Lancamentos || importedData.OFX_Raw_Import)) {
+                if (confirm("Recebemos dados compartilhados de um link. Deseja importá-los para o seu painel? (Atenção: isso substituirá os dados atuais deste navegador)")) {
+                    if (importedData.EFO_Parametros) {
+                        localStorage.setItem('EFO_Parametros', JSON.stringify(importedData.EFO_Parametros));
+                        EFO_Parametros = importedData.EFO_Parametros;
+                    }
+                    if (importedData.Config_Empresa) {
+                        localStorage.setItem('Config_Empresa', JSON.stringify(importedData.Config_Empresa));
+                        Config_Empresa = importedData.Config_Empresa;
+                    }
+                    if (importedData.EFO_Lancamentos) {
+                        localStorage.setItem('EFO_Lancamentos_V3', JSON.stringify(importedData.EFO_Lancamentos));
+                        EFO_Lancamentos = importedData.EFO_Lancamentos;
+                    }
+                    if (importedData.OFX_Raw_Import) {
+                        localStorage.setItem('OFX_Raw_Import_V2', JSON.stringify(importedData.OFX_Raw_Import));
+                        OFX_Raw_Import = importedData.OFX_Raw_Import;
+                    }
+                    showToast('Sucesso', 'Dados importados com sucesso!', 'success');
+                    history.replaceState(null, null, ' ');
+                    updateAllViews();
+                    renderParametros();
+                } else {
+                    history.replaceState(null, null, ' ');
+                }
+            }
+        } catch (e) {
+            console.error(e);
+            showToast('Erro', 'Não foi possível ler os dados do link compartilhado.', 'danger');
+            history.replaceState(null, null, ' ');
+        }
+    }
+}
+
+// Export state to JSON file
+function exportToJSON() {
+    const dataObj = {
+        EFO_Parametros,
+        Config_Empresa,
+        EFO_Lancamentos,
+        OFX_Raw_Import
+    };
+    const blob = new Blob([JSON.stringify(dataObj, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `EFO_Backup_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('Exportado', 'Arquivo de backup JSON gerado com sucesso!', 'success');
+}
+
+// Trigger input click for importing JSON file
+function triggerImportJSON() {
+    document.getElementById('importBackupFile').click();
+}
+
+// Handle JSON file import
+function handleImportJSON(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        try {
+            const importedData = JSON.parse(event.target.result);
+            if (importedData && (importedData.EFO_Lancamentos || importedData.OFX_Raw_Import)) {
+                if (confirm("Deseja importar este arquivo de backup? (Isso substituirá os dados atuais deste navegador)")) {
+                    if (importedData.EFO_Parametros) {
+                        localStorage.setItem('EFO_Parametros', JSON.stringify(importedData.EFO_Parametros));
+                        EFO_Parametros = importedData.EFO_Parametros;
+                    }
+                    if (importedData.Config_Empresa) {
+                        localStorage.setItem('Config_Empresa', JSON.stringify(importedData.Config_Empresa));
+                        Config_Empresa = importedData.Config_Empresa;
+                    }
+                    if (importedData.EFO_Lancamentos) {
+                        localStorage.setItem('EFO_Lancamentos_V3', JSON.stringify(importedData.EFO_Lancamentos));
+                        EFO_Lancamentos = importedData.EFO_Lancamentos;
+                    }
+                    if (importedData.OFX_Raw_Import) {
+                        localStorage.setItem('OFX_Raw_Import_V2', JSON.stringify(importedData.OFX_Raw_Import));
+                        OFX_Raw_Import = importedData.OFX_Raw_Import;
+                    }
+                    showToast('Sucesso', 'Backup importado com sucesso!', 'success');
+                    updateAllViews();
+                    renderParametros();
+                }
+            } else {
+                showToast('Erro', 'Arquivo JSON inválido ou incompatível.', 'danger');
+            }
+        } catch (err) {
+            showToast('Erro', 'Erro ao ler arquivo JSON de backup.', 'danger');
+        }
+        e.target.value = '';
+    };
+    reader.readAsText(file);
+}
+
+// Copy Shareable Link (compressed base64 hash)
+async function copyShareLink() {
+    const dataObj = {
+        EFO_Parametros,
+        Config_Empresa,
+        EFO_Lancamentos,
+        OFX_Raw_Import
+    };
+    showToast('Gerando Link', 'Compactando dados para compartilhamento...', 'success');
+    try {
+        const compressed = await compressToHash(dataObj);
+        const shareUrl = window.location.origin + window.location.pathname + '#share=' + compressed;
+        
+        // Use clipboard API
+        await navigator.clipboard.writeText(shareUrl);
+        showToast('Link Copiado!', 'O link com todos os dados foi copiado para a área de transferência. Envie para o seu cliente!', 'success');
+    } catch (e) {
+        console.error(e);
+        showToast('Erro', 'Erro ao gerar link de compartilhamento. Tente exportar como JSON.', 'danger');
+    }
 }

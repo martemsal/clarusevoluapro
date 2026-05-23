@@ -49,6 +49,16 @@
                 </div>
                 <button id="btnResetData" class="btn-secondary text-danger mt-2 w-100" style="border-color: var(--danger)">Zerar Dados</button>
             </div>
+
+            <div class="parameters-section">
+                <h3>Sincronização & Compartilhamento</h3>
+                <div style="display:flex; gap:8px;">
+                    <button id="btnExportBackup" class="btn-secondary" style="flex:1; padding: 10px 4px; font-size: 11px;" title="Exportar dados atuais para arquivo JSON">📥 Exportar JSON</button>
+                    <button id="btnImportBackup" class="btn-secondary" style="flex:1; padding: 10px 4px; font-size: 11px;" title="Importar arquivo JSON de backup">📤 Importar JSON</button>
+                </div>
+                <input type="file" id="importBackupFile" accept=".json" style="display:none;">
+                <button id="btnShareLink" class="btn-secondary mt-2 w-100" style="padding: 10px; font-size: 12px;" title="Gerar link com todos os dados do painel">🔗 Copiar Link de Compartilhamento</button>
+            </div>
         </aside>
 
         <!-- Main Content Area -->
