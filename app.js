@@ -232,12 +232,12 @@ function initTabs() {
             const target = btn.getAttribute('data-target');
             document.getElementById(target).classList.add('active');
             
-            let title = "Painel de Saúde Operacional";
-            if (target === 'tab-dashboard') {
-                title = (EFO_Session && EFO_Session.role === 'client') ? "Painel Operacional" : "Painel de Saúde Operacional";
-            }
+            let title = "Indicadores EFO";
+            if (target === 'tab-dashboard') title = "Indicadores EFO";
             if (target === 'tab-dre') title = "Demonstrativo de Resultado (DRE)";
             if (target === 'tab-balanco') title = "Balanço Gerencial";
+            if (target === 'tab-parecer') title = "Parecer Estratégico";
+            if (target === 'tab-alinhamento') title = "Alinhamento Estratégico";
             if (target === 'tab-conciliation') title = "Conciliação Bancária";
             if (target === 'tab-clients') {
                 title = "Clientes & Empresas";
@@ -1090,7 +1090,7 @@ function applyRoleUI() {
         btnConfigEmpresa.style.display = 'inline-block';
         btnResetData.style.display = 'block';
         
-        navDashboardBtn.textContent = 'Painel de Saúde';
+        navDashboardBtn.textContent = 'Indicadores EFO';
         renderCompanySelect();
     } else {
         adminCompanySelectorSection.style.display = 'none';
@@ -1103,7 +1103,7 @@ function applyRoleUI() {
         btnConfigEmpresa.style.display = 'none';
         btnResetData.style.display = 'none';
         
-        navDashboardBtn.textContent = 'Painel Operacional';
+        navDashboardBtn.textContent = 'Indicadores EFO';
         
         // If they are on a hidden tab, force select the dashboard
         const activeNav = document.querySelector('.nav-btn.active');

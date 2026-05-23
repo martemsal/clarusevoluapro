@@ -38,9 +38,11 @@
             </div>
             
             <nav class="sidebar-nav">
-                <button class="nav-btn active" data-target="tab-dashboard" id="navDashboardBtn">Painel de Saúde</button>
-                <button class="nav-btn" data-target="tab-dre">DRE Gerencial</button>
+                <button class="nav-btn active" data-target="tab-dre">DRE Gerencial</button>
                 <button class="nav-btn" data-target="tab-balanco">Balanço Gerencial</button>
+                <button class="nav-btn" data-target="tab-dashboard" id="navDashboardBtn">Indicadores EFO</button>
+                <button class="nav-btn" data-target="tab-parecer" id="navParecerBtn">Parecer Estratégico</button>
+                <button class="nav-btn" data-target="tab-alinhamento" id="navAlinhamentoBtn">Alinhamento</button>
                 <button class="nav-btn" data-target="tab-conciliation" id="navConciliationBtn">
                     Conciliação Bancária
                     <span class="badge nav-badge" id="navPendingCount">0</span>
@@ -80,7 +82,7 @@
         <!-- Main Content Area -->
         <main class="content-area" id="exportableArea">
             <header class="dash-header">
-                <h1 id="pageTitle">Painel de Saúde Operacional</h1>
+                <h1 id="pageTitle">Demonstrativo de Resultado (DRE)</h1>
                 <div style="display: flex; gap: 12px; align-items: center;">
                     <button id="btnExportPDF" class="btn-secondary" style="padding: 6px 12px; font-size: 13px;">📥 Exportar PDF</button>
                     <div class="date-badge" id="currentDateBadge">Mês Atual</div>
@@ -88,7 +90,7 @@
             </header>
 
             <!-- TAB: DASHBOARD -->
-            <div id="tab-dashboard" class="tab-content active">
+            <div id="tab-dashboard" class="tab-content">
                 <div class="metrics-grid">
                     <div class="widget glass-panel status-widget">
                         <h3>Saúde Operacional</h3>
@@ -127,7 +129,7 @@
             </div>
 
             <!-- TAB: DRE GERENCIAL -->
-            <div id="tab-dre" class="tab-content">
+            <div id="tab-dre" class="tab-content active">
                 <div class="glass-panel p-24">
                     <table class="report-table dre-table">
                         <thead>
@@ -163,6 +165,75 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+
+            <!-- TAB: PARECER ESTRATÉGICO -->
+            <div id="tab-parecer" class="tab-content">
+                <div class="glass-panel p-24" style="text-align: center; max-width: 800px; margin: 0 auto; padding: 40px;">
+                    <div style="font-size: 60px; margin-bottom: 20px;">📊</div>
+                    <h2 style="font-size: 24px; font-weight: 700; margin-bottom: 12px; color: var(--accent-secondary);">Parecer Estratégico Clarus</h2>
+                    <p style="color: var(--text-secondary); line-height: 1.6; margin-bottom: 30px;">
+                        Esta seção está sendo customizada e trará uma análise interpretativa gerada por consultores parceiros em conjunto com inteligência artificial para otimização dos resultados operacionais, enquadramento fiscal e ponto de equilíbrio.
+                    </p>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; text-align: left; margin-bottom: 30px;">
+                        <div class="glass-panel" style="padding: 16px; background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.05);">
+                            <h4 style="color: var(--text-primary); margin-bottom: 8px; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                                <span style="color: var(--accent-primary)">●</span> Saúde Fiscal
+                            </h4>
+                            <p style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">Relatório automático de oportunidades de elisão fiscal e redução de alíquota efetiva do regime tributário.</p>
+                        </div>
+                        <div class="glass-panel" style="padding: 16px; background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.05);">
+                            <h4 style="color: var(--text-primary); margin-bottom: 8px; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                                <span style="color: var(--accent-primary)">●</span> MC vs. Despesas
+                            </h4>
+                            <p style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">Análise cruzada entre Margem de Contribuição e custos fixos com plano de contenção sugerido.</p>
+                        </div>
+                        <div class="glass-panel" style="padding: 16px; background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.05);">
+                            <h4 style="color: var(--text-primary); margin-bottom: 8px; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                                <span style="color: var(--accent-primary)">●</span> Metas Financeiras
+                            </h4>
+                            <p style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">Evolução histórica do EBITDA comparada à meta de lucratividade do período.</p>
+                        </div>
+                    </div>
+                    
+                    <span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-secondary); padding: 8px 16px; font-size: 12px;">Módulo em Desenvolvimento &bullet; Clarus Evolua Pro</span>
+                </div>
+            </div>
+
+            <!-- TAB: ALINHAMENTO -->
+            <div id="tab-alinhamento" class="tab-content">
+                <div class="glass-panel p-24" style="text-align: center; max-width: 800px; margin: 0 auto; padding: 40px;">
+                    <div style="font-size: 60px; margin-bottom: 20px;">🎯</div>
+                    <h2 style="font-size: 24px; font-weight: 700; margin-bottom: 12px; color: var(--accent-secondary);">Alinhamento de Metas & Objetivos</h2>
+                    <p style="color: var(--text-secondary); line-height: 1.6; margin-bottom: 30px;">
+                        Visualize e acompanhe o plano de metas trimestrais e o progresso das ações corretivas propostas para o seu negócio em tempo real.
+                    </p>
+                    
+                    <!-- Timeline diagram -->
+                    <div style="position: relative; max-width: 500px; margin: 0 auto 30px auto; text-align: left; padding-left: 20px; border-left: 2px solid rgba(255,255,255,0.1);">
+                        <div style="margin-bottom: 20px; position: relative;">
+                            <div style="position: absolute; left: -26px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent-primary); box-shadow: 0 0 8px var(--accent-primary);"></div>
+                            <h4 style="font-size: 14px; color: var(--text-primary); margin-bottom: 4px;">Etapa 1: Ingestão de OFX & Estruturação DRE</h4>
+                            <p style="font-size: 12px; color: var(--text-secondary);">Estrutura de planos de contas reconciliados e categorizados de forma automática.</p>
+                            <span class="badge" style="background: rgba(46, 213, 115, 0.2); color: #2ed573; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-top: 4px; display: inline-block;">Concluído</span>
+                        </div>
+                        <div style="margin-bottom: 20px; position: relative;">
+                            <div style="position: absolute; left: -26px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--accent-secondary); box-shadow: 0 0 8px var(--accent-secondary);"></div>
+                            <h4 style="font-size: 14px; color: var(--text-primary); margin-bottom: 4px;">Etapa 2: Auditoria Fiscal & Ajustes de Margens</h4>
+                            <p style="font-size: 12px; color: var(--text-secondary);">Análise de carga tributária e definição exata do ponto de equilíbrio por atividade.</p>
+                            <span class="badge" style="background: rgba(255, 165, 2, 0.2); color: #ffa502; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-top: 4px; display: inline-block;">Em Andamento</span>
+                        </div>
+                        <div style="position: relative;">
+                            <div style="position: absolute; left: -26px; top: 2px; width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.2);"></div>
+                            <h4 style="font-size: 14px; color: var(--text-secondary); margin-bottom: 4px;">Etapa 3: Parecer Estratégico & Simulação Anual</h4>
+                            <p style="font-size: 12px; color: var(--text-secondary);">Relatório executivo final com orientações táticas e projeções fiscais.</p>
+                            <span class="badge" style="background: rgba(255,255,255,0.1); color: var(--text-secondary); font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-top: 4px; display: inline-block;">Agendado</span>
+                        </div>
+                    </div>
+                    
+                    <span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-secondary); padding: 8px 16px; font-size: 12px;">Módulo em Desenvolvimento &bullet; Clarus Evolua Pro</span>
                 </div>
             </div>
 
