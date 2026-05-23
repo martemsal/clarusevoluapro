@@ -37,7 +37,10 @@
                 </select>
             </div>
             
-            <nav class="sidebar-nav">
+            <nav class="sidebar-nav" style="display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; justify-content: flex-end; padding: 0 4px 8px;">
+                    <button id="btnThemeToggle" title="Alternar modo claro/escuro">🌙</button>
+                </div>
                 <button class="nav-btn active" data-target="tab-dre">DRE Gerencial</button>
                 <button class="nav-btn" data-target="tab-balanco">Balanço Gerencial</button>
                 <button class="nav-btn" data-target="tab-dashboard" id="navDashboardBtn">Indicadores EFO</button>
@@ -89,41 +92,29 @@
                 </div>
             </header>
 
-            <!-- TAB: DASHBOARD -->
+            <!-- TAB: DASHBOARD / INDICADORES EFO -->
             <div id="tab-dashboard" class="tab-content">
-                <div class="metrics-grid">
-                    <div class="widget glass-panel status-widget">
-                        <h3>Saúde Operacional</h3>
-                        <div class="status-display" id="statusIndicator">
-                            <div class="status-dot"></div>
-                            <span class="status-text">Aguardando dados</span>
-                        </div>
-                        <div class="metric-details">
-                            <p>Faturamento Bruto: <strong id="valFaturamento">R$ 0,00</strong></p>
-                            <p>Ponto de Equilíbrio: <strong id="valBreakEven">R$ 0,00</strong></p>
-                            <p>Margem de Contribuição: <strong id="valMargemPerc">0%</strong></p>
+                <div class="glass-panel p-24">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                        <h2 style="font-size: 18px; margin: 0; color: var(--text-primary);">Indicadores EFO</h2>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label for="indYearSelect" style="font-size: 13px; color: var(--text-secondary);">Ano do Exercício:</label>
+                            <select id="indYearSelect" class="efo-select" style="padding: 6px 12px; min-width: 100px; background: rgba(0,0,0,0.3); border-color: var(--glass-border); border-radius: 8px; color: var(--text-primary);">
+                                <!-- Injected by JS -->
+                            </select>
                         </div>
                     </div>
-
-                    <div class="widget glass-panel gauge-widget">
-                        <h3>Lucratividade Real (EBITDA)</h3>
-                        <div class="chart-container gauge-container">
-                            <canvas id="gaugeChart"></canvas>
-                            <div class="gauge-center">
-                                <span id="valLucratividade">0%</span>
-                                <small>Meta: <span id="valMetaLucratividade">0%</span></small>
-                            </div>
-                        </div>
-                        <div class="metric-details text-center mt-2">
-                            <p>EBITDA Gerencial: <strong id="valEbitda">R$ 0,00</strong></p>
-                        </div>
-                    </div>
-
-                    <div class="widget glass-panel pie-widget">
-                        <h3>Composição de Custos</h3>
-                        <div class="chart-container">
-                            <canvas id="pieChart"></canvas>
-                        </div>
+                    <div class="table-container" style="overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                        <table class="report-table balanco-table" id="indicadoresTable">
+                            <thead>
+                                <tr id="indTheadRow">
+                                    <!-- Injected by JS -->
+                                </tr>
+                            </thead>
+                            <tbody id="indTbody">
+                                <!-- Injected by JS -->
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>

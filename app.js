@@ -151,9 +151,21 @@ let currentDrillDownTitle = null;
 // --- INIT ---
 document.addEventListener('DOMContentLoaded', () => {
     initTabs();
-    initCharts();
     renderParametros();
     
+    // Theme toggle
+    const themeToggle = document.getElementById('btnThemeToggle');
+    const savedTheme = localStorage.getItem('EFO_Theme') || 'dark';
+    if (savedTheme === 'light') {
+        document.body.classList.add('light-mode');
+        themeToggle.textContent = '☀️';
+    }
+    themeToggle.addEventListener('click', () => {
+        const isLight = document.body.classList.toggle('light-mode');
+        themeToggle.textContent = isLight ? '☀️' : '🌙';
+        localStorage.setItem('EFO_Theme', isLight ? 'light' : 'dark');
+    });
+
     // OFX
     document.getElementById('ofxUpload').addEventListener('change', handleOFXUpload);
     
@@ -595,56 +607,192 @@ function getOptGroupsHTML() {
 
 // --- VIEWS RENDERERS ---
 function updateAllViews() {
-    renderDashboard();
+    renderIndicadores();
     renderDRE();
     renderBalanco();
     renderConciliationTable();
 }
 
-function renderDashboard() {
-    const dre = EFO_Lancamentos.dre;
-    
-    const faturamento_bruto = sumObj(dre.receita_bruta);
-    const custos_diretos = sumObj(dre.custos);
-    const deducoes = sumObj(dre.deducoes);
-    const receita_liquida = faturamento_bruto - deducoes;
-    
-    const desp_comerciais = sumObj(dre.despesas_comercial);
-    const desp_admin = sumObj(dre.despesas_administrativas);
-    const desp_pessoal = sumObj(dre.despesas_pessoal);
-    const desp_estrutura = sumObj(dre.despesas_estrutura);
-    const desp_veiculos = sumObj(dre.despesas_veiculos);
-    
-    const despesas_fixas = desp_admin + desp_pessoal + desp_estrutura + desp_veiculos;
-    const outras_variaveis = desp_comerciais; 
-    
-    const margem_contribuicao_valor = receita_liquida - custos_diretos;
-    const margem_contribuicao_perc = faturamento_bruto > 0 ? (margem_contribuicao_valor / faturamento_bruto) * 100 : 0;
-    const ponto_equilibrio = margem_contribuicao_perc > 0 ? despesas_fixas / (margem_contribuicao_perc / 100) : 0;
-    
-    const ebitda = margem_contribuicao_valor - despesas_fixas - outras_variaveis + sumObj(dre.receitas_financeiras) - sumObj(dre.despesas_financeiras) + sumObj(dre.nao_operacional);
-    const lucratividade_perc = faturamento_bruto > 0 ? (ebitda / faturamento_bruto) * 100 : 0;
-
-    document.getElementById('valFaturamento').textContent = formatCurrency(faturamento_bruto);
-    document.getElementById('valBreakEven').textContent = formatCurrency(ponto_equilibrio);
-    document.getElementById('valMargemPerc').textContent = formatPercent(margem_contribuicao_perc);
-    document.getElementById('valEbitda').textContent = formatCurrency(ebitda);
-
-    const statusDot = document.querySelector('.status-dot');
-    const statusText = document.querySelector('.status-text');
-    if (faturamento_bruto > ponto_equilibrio) {
-        statusDot.className = 'status-dot positive';
-        statusText.textContent = 'Positivo';
-        statusText.style.color = 'var(--success)';
-    } else if (faturamento_bruto > 0) {
-        statusDot.className = 'status-dot critical';
-        statusText.textContent = 'Crítico';
-        statusText.style.color = 'var(--danger)';
+function renderIndicadores() {
+    const yearSelect = document.getElementById('indYearSelect');
+    if (yearSelect) {
+        const years = getDREYears();
+        let optionsHtml = '';
+        years.forEach(y => {
+            optionsHtml += `<option value="${y}" ${y === EFO_Active_DRE_Year ? 'selected' : ''}>${y}</option>`;
+        });
+        yearSelect.innerHTML = optionsHtml;
+        yearSelect.onchange = (e) => {
+            EFO_Active_DRE_Year = parseInt(e.target.value);
+            updateAllViews();
+        };
     }
 
-    updateGaugeChart(lucratividade_perc, EFO_Parametros.meta_lucro_desejada);
-    updatePieChart([custos_diretos, despesas_fixas, desp_comerciais, deducoes]);
+    const theadRow = document.getElementById('indTheadRow');
+    const tbody = document.getElementById('indTbody');
+    if (!theadRow || !tbody) return;
+
+    const mShort = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const yr = EFO_Active_DRE_Year;
+
+    // Build header
+    let hdr = `<th style="text-align:left; min-width:200px;">Indicador</th>`;
+    for (let m = 0; m < 12; m++) hdr += `<th class="text-right">${mShort[m]}/${yr}</th>`;
+    hdr += `<th class="text-right" style="background:rgba(241,196,15,0.12);color:#f1c40f;">MÉDIA</th>`;
+    theadRow.innerHTML = hdr;
+
+    // Get DRE data
+    const d = calculateDREData(yr);
+    const divisor = EFO_Active_DRE_Divisor || 12;
+
+    const R_BRUTA = sumArrays(
+        d['dre.receita_bruta.produtos'],
+        d['dre.receita_bruta.servicos'],
+        d['dre.receita_bruta.outras']
+    );
+    const DEDUCOES = sumArrays(
+        d['dre.deducoes.impostos'],
+        d['dre.deducoes.devolucoes'],
+        d['dre.deducoes.descontos']
+    );
+    const R_LIQUIDA = R_BRUTA.map((v, i) => v - DEDUCOES[i]);
+    const CUSTOS = sumArrays(
+        d['dre.custos.mercadorias'],
+        d['dre.custos.producao'],
+        d['dre.custos.servicos'],
+        d['dre.custos.operacionais']
+    );
+    const L_BRUTO = R_LIQUIDA.map((v, i) => v - CUSTOS[i]);
+    const D_COM = sumArrays(
+        d['dre.despesas_comercial.comissao'],
+        d['dre.despesas_comercial.trafego'],
+        d['dre.despesas_comercial.marketing'],
+        d['dre.despesas_comercial.viagens'],
+        d['dre.despesas_comercial.transporte_logistica'],
+        d['dre.despesas_comercial.outras']
+    );
+    const D_PES = sumArrays(
+        d['dre.despesas_pessoal.salarios'],
+        d['dre.despesas_pessoal.inss'],
+        d['dre.despesas_pessoal.fgts'],
+        d['dre.despesas_pessoal.beneficios'],
+        d['dre.despesas_pessoal.rescisoes']
+    );
+    const D_ADM = sumArrays(
+        d['dre.despesas_administrativas.pro_labore'],
+        d['dre.despesas_administrativas.salarios'],
+        d['dre.despesas_administrativas.encargos'],
+        d['dre.despesas_administrativas.aluguel'],
+        d['dre.despesas_administrativas.outras']
+    );
+    const D_EST = sumArrays(
+        d['dre.despesas_estrutura.manutencao'],
+        d['dre.despesas_estrutura.reparos'],
+        d['dre.despesas_estrutura.limpeza']
+    );
+    const D_FIN = sumArrays(
+        d['dre.despesas_financeiras.tarifas'],
+        d['dre.despesas_financeiras.juros'],
+        d['dre.despesas_financeiras.iof']
+    );
+    const R_FIN = sumArrays(
+        d['dre.receitas_financeiras.rendimentos'],
+        d['dre.receitas_financeiras.juros_recebidos']
+    );
+    const D_TOTAL = sumArrays(D_COM, D_PES, D_ADM, D_EST, D_FIN);
+    const EBITDA = L_BRUTO.map((v, i) => v - D_TOTAL[i] + R_FIN[i]);
+    const L_LIQ = EBITDA.map((v, i) => v - d['dre.impostos_lucro.irpj_csll'][i]);
+
+    // Helper: render a percent or numeric row
+    function indRow(label, valArr, isPercent = false, decimals = 2, colorize = false) {
+        let html = `<tr class="ind-row"><td>${label}</td>`;
+        let total = 0, count = 0;
+        for (let m = 0; m < 12; m++) {
+            const v = valArr[m];
+            if (v !== 0) { total += v; count++; }
+            let display = v === 0 ? '-' : (isPercent ? formatPercent(v) : formatCurrency(v));
+            let cls = '';
+            if (colorize && v !== 0) cls = v < 0 ? ' negative' : ' positive';
+            html += `<td class="ind-val${cls}">${display}</td>`;
+        }
+        const avg = count > 0 ? total / count : 0;
+        html += `<td class="ind-val" style="background:rgba(241,196,15,0.08);font-weight:bold;color:#f1c40f;">${avg === 0 ? '-' : (isPercent ? formatPercent(avg) : formatCurrency(avg))}</td>`;
+        html += `</tr>`;
+        return html;
+    }
+    function sectionHeader(label) {
+        return `<tr class="indicadores-section-header"><td colspan="14">${label}</td></tr>`;
+    }
+
+    // ---- Derived monthly arrays ----
+    const markup = R_LIQUIDA.map((v, i) => CUSTOS[i] > 0 ? v / CUSTOS[i] : 0);
+    const margemContrib = R_BRUTA.map((v, i) => v > 0 ? (L_BRUTO[i] / v) * 100 : 0);
+    const custoOp = R_BRUTA.map((v, i) => v > 0 ? (D_TOTAL[i] / v) * 100 : 0);
+    const faturamento = R_BRUTA;
+    const comissaoPerc = R_BRUTA.map((v, i) => v > 0 ? (D_COM[i] / v) * 100 : 0);
+    const impostosPerc = R_BRUTA.map((v, i) => v > 0 ? (DEDUCOES[i] / v) * 100 : 0);
+    const ticketMedio = R_BRUTA.map((v) => v); // placeholder until nVendas available
+    const margemOp = R_BRUTA.map((v, i) => v > 0 ? (EBITDA[i] / v) * 100 : 0);
+    const margemLiq = R_BRUTA.map((v, i) => v > 0 ? (L_LIQ[i] / v) * 100 : 0);
+    // Liquidity placeholders (require Balanço data)
+    const bData = calculateBalancoData(yr);
+    const ATIVO_CIRC = sumArrays(
+        bData['balanco.ativo_circulante.caixa_bancos'],
+        bData['balanco.ativo_circulante.aplicacoes'],
+        bData['balanco.ativo_circulante.clientes_receber'],
+        bData['balanco.ativo_circulante.estoques'],
+        bData['balanco.ativo_circulante.adiantamentos'],
+        bData['balanco.ativo_circulante.tributos_recuperar']
+    );
+    const PASSIVO_CIRC = sumArrays(
+        bData['balanco.passivo_circulante.fornecedores'],
+        bData['balanco.passivo_circulante.emprestimos_cp'],
+        bData['balanco.passivo_circulante.obrigacoes_trab'],
+        bData['balanco.passivo_circulante.obrigacoes_trib'],
+        bData['balanco.passivo_circulante.outras']
+    );
+    const PASSIVO_TOTAL = sumArrays(
+        PASSIVO_CIRC,
+        bData['balanco.passivo_nao_circulante.emprestimos_lp'],
+        bData['balanco.passivo_nao_circulante.parcelamentos']
+    );
+    const PL = sumArrays(
+        bData['balanco.patrimonio_liquido.capital_social'],
+        bData['balanco.patrimonio_liquido.reservas'],
+        bData['balanco.patrimonio_liquido.lucros_acumulados']
+    );
+    const liqGeral = PASSIVO_TOTAL.map((v, i) => v > 0 ? (ATIVO_CIRC[i] + (bData['balanco.ativo_nao_circulante.imobilizado'][i] || 0)) / v : 0);
+    const liqCorrente = PASSIVO_CIRC.map((v, i) => v > 0 ? ATIVO_CIRC[i] / v : 0);
+    const capTerceiros = PL.map((v, i) => v > 0 ? PASSIVO_TOTAL[i] / v : 0);
+    const roi = ATIVO_CIRC.map((v, i) => v > 0 ? (EBITDA[i] / v) * 100 : 0);
+    const roe = PL.map((v, i) => v > 0 ? (L_LIQ[i] / v) * 100 : 0);
+
+    let html = '';
+    // ---- OPERACIONAL ----
+    html += sectionHeader('OPERACIONAL');
+    html += indRow('Markup (x)', markup, false, 2);
+    html += indRow('Margem de Contribuição', margemContrib, true);
+    html += indRow('Custo Operacional s/ Faturamento', custoOp, true);
+    html += indRow('Faturamento Bruto', faturamento, false);
+    html += indRow('% Comissão', comissaoPerc, true);
+    html += indRow('% Impostos', impostosPerc, true);
+    html += indRow('EBITDA Gerencial', EBITDA, false, 2, true);
+    html += indRow('Margem EBITDA', margemOp, true, 2, true);
+    html += indRow('Lucro Líquido', L_LIQ, false, 2, true);
+
+    // ---- ECONÔMICO E FINANCEIRO ----
+    html += sectionHeader('ECONÔMICO E FINANCEIRO');
+    html += indRow('Liquidez Geral', liqGeral, false, 2);
+    html += indRow('Liquidez Corrente', liqCorrente, false, 2);
+    html += indRow('Capital de Terceiros (x PL)', capTerceiros, false, 2);
+    html += indRow('Margem Operacional', margemOp, true, 2, true);
+    html += indRow('Margem Líquida', margemLiq, true, 2, true);
+    html += indRow('ROI – Retorno sobre Ativo', roi, true, 2, true);
+    html += indRow('ROE – Retorno sobre Capital', roe, true, 2, true);
+
+    tbody.innerHTML = html;
 }
+
 
 function getDREYears() {
     const years = new Set([new Date().getFullYear()]);
