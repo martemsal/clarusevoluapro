@@ -431,6 +431,56 @@
         </div>
     </div>
 
+    <!-- Edit Client Modal -->
+    <div id="editClientModal" class="modal">
+        <div class="modal-content glass-panel" style="width: 480px; padding: 30px;">
+            <span class="close-modal close-edit-client">&times;</span>
+            <h2 style="margin-bottom: 18px;">&#9999;&#65039; Editar Cliente</h2>
+            <form id="formEditClient" style="margin-top: 15px;">
+                <input type="hidden" id="edit_client_index">
+                <div class="form-group mb-3">
+                    <label>Nome do Cliente / Empresa</label>
+                    <input type="text" id="edit_client_name" required placeholder="Ex: Clarus Consultoria"
+                        style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px; color: var(--text-primary); width:100%;">
+                </div>
+                <div class="form-group mb-3">
+                    <label>E-mail de Acesso (Login)</label>
+                    <input type="email" id="edit_client_email" required placeholder="Ex: cliente@clarus.com.br"
+                        style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px; color: var(--text-primary); width:100%;">
+                </div>
+                <div class="form-group mb-3">
+                    <label>Nova Senha <small style="color:var(--text-secondary);">(deixe em branco para manter)</small></label>
+                    <input type="password" id="edit_client_password" placeholder="Nova senha"
+                        style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px; color: var(--text-primary); width:100%;">
+                </div>
+                <div class="form-group mb-3">
+                    <label>CNPJ</label>
+                    <input type="text" id="edit_client_cnpj" placeholder="00.000.000/0001-00"
+                        style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px; color: var(--text-primary); width:100%;">
+                </div>
+                <div class="form-group mb-3">
+                    <label>CNAE Principal</label>
+                    <input type="text" id="edit_client_cnae" placeholder="Ex: 6204000"
+                        style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px; color: var(--text-primary); width:100%;">
+                </div>
+                <div class="form-group mb-3">
+                    <label>Regime Tributário</label>
+                    <select id="edit_client_regime" class="efo-select w-100"
+                        style="max-width:none; padding:10px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--glass-border); border-radius: 8px;">
+                        <option value="Simples Nacional">Simples Nacional</option>
+                        <option value="Lucro Presumido">Lucro Presumido</option>
+                        <option value="Lucro Real">Lucro Real</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="close-edit-client" onclick="document.getElementById('editClientModal').style.display='none'"
+                        style="flex:1; padding:10px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 8px; color:var(--text-secondary); cursor:pointer; font-size:13px;">Cancelar</button>
+                    <button type="submit" class="btn-primary" style="flex:2; padding:10px;">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Login Overlay Screen -->
     <div id="loginScreen" class="login-screen">
         <div class="login-card glass-panel">

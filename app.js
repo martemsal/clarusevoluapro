@@ -230,6 +230,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('formClient').addEventListener('submit', handleCreateClient);
 
+    // Edit Client Modal
+    document.querySelector('.close-edit-client').addEventListener('click', () => {
+        document.getElementById('editClientModal').style.display = 'none';
+    });
+    document.getElementById('formEditClient').addEventListener('submit', saveEditClient);
+
+
     // Apply active UI state
     applyRoleUI();
     
@@ -1687,7 +1694,11 @@ function renderClientsTable() {
             <td>${company.config?.cnpj || '-'}</td>
             <td>${company.config?.cnae_principal || '-'}</td>
             <td><span class="badge" style="background: var(--accent-primary); color: white; font-size: 11px; padding: 4px 8px;">${company.config?.regime_tributario || '-'}</span></td>
-            <td style="text-align:center;">
+            <td style="text-align:center; display:flex; gap:6px; justify-content:center;">
+                <button class="action-btn" onclick="openEditClient(${index})" title="Editar cliente"
+                    style="background: rgba(99,102,241,0.15); border-color: var(--accent-primary); color: var(--accent-primary);">
+                    &#9999;&#65039; Editar
+                </button>
                 <button class="action-btn-danger" onclick="deleteClient(${index})">Excluir</button>
             </td>
         `;
@@ -1723,6 +1734,64 @@ window.deleteClient = (index) => {
         }
     }
 };
+
+// ---- EDIT CLIENT ----
+window.openEditClient = (index) => {
+    const user = EFO_Users[index];
+    if (!user) return;
+    const company = EFO_Companies[user.companyId] || {};
+    const cfg = company.config || {};
+
+    document.getElementById('edit_client_index').value = index;
+    document.getElementById('edit_client_name').value = user.name || '';
+    document.getElementById('edit_client_email').value = user.email || '';
+    document.getElementById('edit_client_password').value = '';   // blank = keep current
+    document.getElementById('edit_client_cnpj').value = cfg.cnpj || '';
+    document.getElementById('edit_client_cnae').value = cfg.cnae_principal || '';
+    document.getElementById('edit_client_regime').value = cfg.regime_tributario || 'Simples Nacional';
+
+    document.getElementById('editClientModal').style.display = 'block';
+};
+
+function saveEditClient(e) {
+    e.preventDefault();
+    const index = parseInt(document.getElementById('edit_client_index').value);
+    const user = EFO_Users[index];
+    if (!user) return;
+
+    const name     = document.getElementById('edit_client_name').value.trim();
+    const email    = document.getElementById('edit_client_email').value.trim();
+    const newPass  = document.getElementById('edit_client_password').value;
+    const cnpj     = document.getElementById('edit_client_cnpj').value.trim();
+    const cnae     = document.getElementById('edit_client_cnae').value.trim();
+    const regime   = document.getElementById('edit_client_regime').value;
+
+    // Determine activity from CNAE
+    let activity = 'Serviço';
+    if (cnae.startsWith('45') || cnae.startsWith('46') || cnae.startsWith('47')) activity = 'Comércio';
+    else if (cnae.startsWith('1') || cnae.startsWith('2') || cnae.startsWith('3')) activity = 'Indústria';
+
+    // Update user record
+    EFO_Users[index].name  = name;
+    EFO_Users[index].email = email;
+    if (newPass) EFO_Users[index].password = newPass;
+    localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
+
+    // Update company config
+    const company = EFO_Companies[user.companyId];
+    if (company) {
+        company.name = name;
+        company.config = { ...company.config, cnpj, cnae_principal: cnae, regime_tributario: regime, tipo_atividade: activity };
+        EFO_Companies[user.companyId] = company;
+        localStorage.setItem('EFO_Companies', JSON.stringify(EFO_Companies));
+    }
+
+    document.getElementById('editClientModal').style.display = 'none';
+    showToast('Salvo', `Dados de ${name} atualizados com sucesso.`, 'success');
+    renderClientsTable();
+    renderCompanySelect();
+}
+
 
 function handleLogin(e) {
     e.preventDefault();
