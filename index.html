@@ -22,17 +22,33 @@
                 <span>Antigravity Dashboard</span>
             </div>
             
+            <div class="user-profile-section glass-panel" id="userProfile" style="padding: 12px; margin-top: -5px; font-size: 13px; display: flex; align-items: center; justify-content: space-between; border-color: rgba(255,255,255,0.05); background: rgba(0,0,0,0.15);">
+                <div>
+                    <div style="font-weight: 600;" id="userProfileName">Nome do Usuário</div>
+                    <div style="font-size: 11px; color: var(--text-secondary);" id="userProfileRole">Administrador</div>
+                </div>
+                <button id="btnLogout" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; margin: 0; height: fit-content; border-radius: 4px;">Sair 🚪</button>
+            </div>
+            
+            <div class="parameters-section" id="adminCompanySelectorSection" style="margin-top: -5px;">
+                <h3>Empresa Ativa</h3>
+                <select id="activeCompanySelect" class="efo-select w-100" style="max-width:none; padding:10px; background: rgba(0,0,0,0.3); border-color: var(--glass-border); border-radius: 8px;">
+                    <!-- Injected by JS -->
+                </select>
+            </div>
+            
             <nav class="sidebar-nav">
-                <button class="nav-btn active" data-target="tab-dashboard">Painel de Saúde</button>
+                <button class="nav-btn active" data-target="tab-dashboard" id="navDashboardBtn">Painel de Saúde</button>
                 <button class="nav-btn" data-target="tab-dre">DRE Gerencial</button>
                 <button class="nav-btn" data-target="tab-balanco">Balanço Gerencial</button>
-                <button class="nav-btn" data-target="tab-conciliation">
+                <button class="nav-btn" data-target="tab-conciliation" id="navConciliationBtn">
                     Conciliação Bancária
                     <span class="badge nav-badge" id="navPendingCount">0</span>
                 </button>
+                <button class="nav-btn" data-target="tab-clients" id="navClientsBtn" style="display:none;">Clientes & Empresas</button>
             </nav>
 
-            <div class="parameters-section mt-auto">
+            <div class="parameters-section mt-auto" id="importSection">
                 <h3>Importação Bancária</h3>
                 <div class="form-group">
                     <label for="ofxUpload" class="btn-secondary" style="display:block; text-align:center; padding:10px;">Upload de .OFX (Múltiplos)</label>
@@ -50,7 +66,7 @@
                 <button id="btnResetData" class="btn-secondary text-danger mt-2 w-100" style="border-color: var(--danger)">Zerar Dados</button>
             </div>
 
-            <div class="parameters-section">
+            <div class="parameters-section" id="sharingSection">
                 <h3>Sincronização & Compartilhamento</h3>
                 <div style="display:flex; gap:8px;">
                     <button id="btnExportBackup" class="btn-secondary" style="flex:1; padding: 10px 4px; font-size: 11px;" title="Exportar dados atuais para arquivo JSON">📥 Exportar JSON</button>
@@ -176,6 +192,34 @@
                 </div>
             </div>
 
+            <!-- TAB: CLIENTES & EMPRESAS (ADMIN ONLY) -->
+            <div id="tab-clients" class="tab-content">
+                <div class="glass-panel p-24">
+                    <div class="conciliation-header" style="margin-bottom: 20px;">
+                        <h2>Clientes & Empresas Cadastrados</h2>
+                        <button id="btnNewClient" class="btn-primary" style="padding: 8px 16px; font-size: 13px;">+ Novo Cliente</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="report-table">
+                            <thead>
+                                <tr>
+                                    <th>Nome / Empresa</th>
+                                    <th>E-mail (Login)</th>
+                                    <th>Senha</th>
+                                    <th>CNPJ</th>
+                                    <th>CNAE</th>
+                                    <th>Regime</th>
+                                    <th style="text-align:center;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clientsTbody">
+                                <!-- Injected by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
 
@@ -253,6 +297,71 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+
+    <!-- New Client Modal -->
+    <div id="clientModal" class="modal">
+        <div class="modal-content glass-panel" style="width: 450px; padding: 30px;">
+            <span class="close-modal close-client">&times;</span>
+            <h2>Cadastrar Novo Cliente</h2>
+            <form id="formClient" style="margin-top: 15px;">
+                <div class="form-group mb-3">
+                    <label>Nome do Cliente / Empresa</label>
+                    <input type="text" id="client_name" required placeholder="Ex: Clarus Consultoria" style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px; color: var(--text-primary);">
+                </div>
+                <div class="form-group mb-3">
+                    <label>E-mail de Acesso (Login)</label>
+                    <input type="email" id="client_email" required placeholder="Ex: cliente@clarus.com.br" style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px; color: var(--text-primary);">
+                </div>
+                <div class="form-group mb-3">
+                    <label>Senha de Acesso</label>
+                    <input type="password" id="client_password" required placeholder="Defina uma senha" style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px; color: var(--text-primary);">
+                </div>
+                <div class="form-group mb-3">
+                    <label>CNPJ</label>
+                    <input type="text" id="client_cnpj" placeholder="00.000.000/0001-00" style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px; color: var(--text-primary);">
+                </div>
+                <div class="form-group mb-3">
+                    <label>CNAE Principal</label>
+                    <input type="text" id="client_cnae" placeholder="Ex: 6204000" style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px; color: var(--text-primary);">
+                </div>
+                <div class="form-group mb-3">
+                    <label>Regime Tributário</label>
+                    <select id="client_regime" class="efo-select w-100" style="max-width:none; padding:10px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--glass-border); border-radius: 8px;">
+                        <option value="Simples Nacional">Simples Nacional</option>
+                        <option value="Lucro Presumido">Lucro Presumido</option>
+                        <option value="Lucro Real">Lucro Real</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary w-100 mt-4">Criar Cliente & Empresa</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Login Overlay Screen -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-card glass-panel">
+            <div class="brand mb-4" style="justify-content: center; display: flex; align-items: center; gap: 12px; margin-bottom: 24px;">
+                <div class="logo">EFO</div>
+                <span>Clarus Evolua Pro</span>
+            </div>
+            <h2 class="text-center mb-3" style="text-align: center; margin-bottom: 12px;">Acesso ao Sistema</h2>
+            <form id="formLogin">
+                <div class="form-group mb-3">
+                    <label for="loginEmail">E-mail</label>
+                    <input type="text" id="loginEmail" required placeholder="Digite seu e-mail" style="background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px; color: var(--text-primary); font-size: 14px;">
+                </div>
+                <div class="form-group mb-4" style="margin-bottom: 24px;">
+                    <label for="loginPassword">Senha</label>
+                    <input type="password" id="loginPassword" required placeholder="Digite sua senha" style="background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px; color: var(--text-primary); font-size: 14px;">
+                </div>
+                <button type="submit" class="btn-primary w-100 mb-3" style="margin-bottom: 16px;">Entrar</button>
+                <div class="login-hints text-center" style="font-size: 11px; color: var(--text-secondary); line-height: 1.6; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border: 1px solid var(--glass-border); text-align: center;">
+                    <small>Admin: <strong>admin@clarus.com.br</strong> / Senha: <strong>admin</strong></small><br>
+                    <small>Cliente Teste: <strong>cliente@clarus.com.br</strong> / Senha: <strong>123</strong></small>
+                </div>
+            </form>
         </div>
     </div>
 

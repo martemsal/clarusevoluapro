@@ -27,10 +27,112 @@ const DEFAULT_LANCAMENTOS = {
     }
 };
 
-let EFO_Parametros = JSON.parse(localStorage.getItem('EFO_Parametros')) || DEFAULT_PARAMETROS;
-let Config_Empresa = JSON.parse(localStorage.getItem('Config_Empresa')) || DEFAULT_EMPRESA;
-let EFO_Lancamentos = JSON.parse(localStorage.getItem('EFO_Lancamentos_V3')) || JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS));
-let OFX_Raw_Import = JSON.parse(localStorage.getItem('OFX_Raw_Import_V2')) || [];
+// --- MULTI-TENANT STATE & UTILS ---
+let EFO_Companies = JSON.parse(localStorage.getItem('EFO_Companies')) || {};
+let EFO_Users = JSON.parse(localStorage.getItem('EFO_Users')) || [];
+let EFO_Active_Company_Id = localStorage.getItem('EFO_Active_Company_Id') || '';
+let EFO_Session = JSON.parse(sessionStorage.getItem('EFO_Session')) || null;
+
+let EFO_Parametros = DEFAULT_PARAMETROS;
+let Config_Empresa = DEFAULT_EMPRESA;
+let EFO_Lancamentos = JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS));
+let OFX_Raw_Import = [];
+
+function migrateAndInitializeData() {
+    if (Object.keys(EFO_Companies).length === 0) {
+        const legacyConfig = JSON.parse(localStorage.getItem('Config_Empresa')) || DEFAULT_EMPRESA;
+        const legacyParams = JSON.parse(localStorage.getItem('EFO_Parametros')) || DEFAULT_PARAMETROS;
+        const legacyLancamentos = JSON.parse(localStorage.getItem('EFO_Lancamentos_V3')) || JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS));
+        const legacyOfx = JSON.parse(localStorage.getItem('OFX_Raw_Import_V2')) || [];
+        
+        const defaultCompanyId = 'comp_' + Math.random().toString(36).substring(2, 9);
+        const defaultCompany = {
+            id: defaultCompanyId,
+            name: legacyConfig.cnpj ? `Empresa - ${legacyConfig.cnpj}` : 'Empresa Principal',
+            config: legacyConfig,
+            parametros: legacyParams,
+            lancamentos: legacyLancamentos,
+            ofx: legacyOfx
+        };
+        
+        EFO_Companies[defaultCompanyId] = defaultCompany;
+        localStorage.setItem('EFO_Companies', JSON.stringify(EFO_Companies));
+        
+        EFO_Active_Company_Id = defaultCompanyId;
+        localStorage.setItem('EFO_Active_Company_Id', EFO_Active_Company_Id);
+    }
+    
+    if (!EFO_Active_Company_Id && Object.keys(EFO_Companies).length > 0) {
+        EFO_Active_Company_Id = Object.keys(EFO_Companies)[0];
+        localStorage.setItem('EFO_Active_Company_Id', EFO_Active_Company_Id);
+    }
+
+    if (EFO_Users.length === 0) {
+        EFO_Users = [
+            { email: 'admin@clarus.com.br', password: 'admin', role: 'admin', name: 'Administrador' },
+            { email: 'cliente@clarus.com.br', password: '123', role: 'client', name: 'Cliente Teste', companyId: EFO_Active_Company_Id }
+        ];
+        localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
+    }
+}
+
+function loadActiveCompanyData() {
+    if (!EFO_Session) return;
+    
+    const compId = EFO_Session.role === 'admin' ? EFO_Active_Company_Id : EFO_Session.companyId;
+    let company = EFO_Companies[compId];
+    
+    if (!company) {
+        company = {
+            id: compId,
+            name: 'Nova Empresa',
+            config: JSON.parse(JSON.stringify(DEFAULT_EMPRESA)),
+            parametros: JSON.parse(JSON.stringify(DEFAULT_PARAMETROS)),
+            lancamentos: JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS)),
+            ofx: []
+        };
+        EFO_Companies[compId] = company;
+        localStorage.setItem('EFO_Companies', JSON.stringify(EFO_Companies));
+    }
+    
+    EFO_Parametros = company.parametros || DEFAULT_PARAMETROS;
+    Config_Empresa = company.config || DEFAULT_EMPRESA;
+    EFO_Lancamentos = company.lancamentos || JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS));
+    OFX_Raw_Import = company.ofx || [];
+}
+
+function saveActiveCompanyData() {
+    if (!EFO_Session) return;
+    
+    const compId = EFO_Session.role === 'admin' ? EFO_Active_Company_Id : EFO_Session.companyId;
+    if (EFO_Companies[compId]) {
+        EFO_Companies[compId].parametros = EFO_Parametros;
+        EFO_Companies[compId].config = Config_Empresa;
+        EFO_Companies[compId].lancamentos = EFO_Lancamentos;
+        EFO_Companies[compId].ofx = OFX_Raw_Import;
+        
+        if (Config_Empresa.cnpj) {
+            EFO_Companies[compId].name = `Empresa - ${Config_Empresa.cnpj}`;
+        } else {
+            EFO_Companies[compId].name = EFO_Companies[compId].name || 'Empresa Sem Nome';
+        }
+        
+        localStorage.setItem('EFO_Companies', JSON.stringify(EFO_Companies));
+    }
+    
+    // Legacy sync
+    localStorage.setItem('EFO_Parametros', JSON.stringify(EFO_Parametros));
+    localStorage.setItem('Config_Empresa', JSON.stringify(Config_Empresa));
+    localStorage.setItem('EFO_Lancamentos_V3', JSON.stringify(EFO_Lancamentos));
+    localStorage.setItem('OFX_Raw_Import_V2', JSON.stringify(OFX_Raw_Import));
+}
+
+function saveState() {
+    saveActiveCompanyData();
+}
+
+migrateAndInitializeData();
+loadActiveCompanyData();
 
 let gaugeChartInst = null;
 let pieChartInst = null;
@@ -76,16 +178,45 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('importBackupFile').addEventListener('change', handleImportJSON);
     document.getElementById('btnShareLink').addEventListener('click', copyShareLink);
     
+    // Reset Active Company Data
     document.getElementById('btnResetData').addEventListener('click', () => {
-        if(confirm("Tem certeza que deseja zerar todos os dados do EFO? (Recomendado para limpar cache e testar novas estruturas rastreáveis)")) {
-            localStorage.removeItem('EFO_Lancamentos_V3');
-            localStorage.removeItem('OFX_Raw_Import_V2');
-            localStorage.removeItem('OFX_Raw_Import'); // clean old ones
-            location.reload();
+        if(confirm("Tem certeza que deseja zerar todos os dados da empresa ativa?")) {
+            EFO_Lancamentos = JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS));
+            OFX_Raw_Import = [];
+            saveState();
+            updateAllViews();
+            showToast('Sucesso', 'Dados da empresa ativa foram zerados.', 'success');
         }
     });
 
-    updateAllViews();
+    // Login & User management
+    document.getElementById('formLogin').addEventListener('submit', handleLogin);
+    document.getElementById('btnLogout').addEventListener('click', handleLogout);
+    document.getElementById('activeCompanySelect').addEventListener('change', (e) => {
+        EFO_Active_Company_Id = e.target.value;
+        localStorage.setItem('EFO_Active_Company_Id', EFO_Active_Company_Id);
+        loadActiveCompanyData();
+        updateAllViews();
+        renderParametros();
+        showToast('Troca de Empresa', 'Visualizando dados da empresa selecionada.', 'success');
+    });
+    
+    document.getElementById('btnNewClient').addEventListener('click', () => {
+        document.getElementById('clientModal').style.display = 'block';
+    });
+    document.querySelector('.close-client').addEventListener('click', () => {
+        document.getElementById('clientModal').style.display = 'none';
+    });
+    document.getElementById('formClient').addEventListener('submit', handleCreateClient);
+
+    // Apply active UI state
+    applyRoleUI();
+    
+    if (EFO_Session) {
+        updateAllViews();
+    }
+    
+    // Check share links (which can bypass/login as guest)
     checkShareHash();
 });
 
@@ -102,9 +233,16 @@ function initTabs() {
             document.getElementById(target).classList.add('active');
             
             let title = "Painel de Saúde Operacional";
-            if(target === 'tab-dre') title = "Demonstrativo de Resultado (DRE)";
-            if(target === 'tab-balanco') title = "Balanço Gerencial";
-            if(target === 'tab-conciliation') title = "Conciliação Bancária";
+            if (target === 'tab-dashboard') {
+                title = (EFO_Session && EFO_Session.role === 'client') ? "Painel Operacional" : "Painel de Saúde Operacional";
+            }
+            if (target === 'tab-dre') title = "Demonstrativo de Resultado (DRE)";
+            if (target === 'tab-balanco') title = "Balanço Gerencial";
+            if (target === 'tab-conciliation') title = "Conciliação Bancária";
+            if (target === 'tab-clients') {
+                title = "Clientes & Empresas";
+                renderClientsTable();
+            }
             document.getElementById('pageTitle').textContent = title;
         });
     });
@@ -131,7 +269,7 @@ function handleOFXUpload(e) {
 
             if (processedCount === files.length) {
                 if (totalNewTransactions > 0) {
-                    localStorage.setItem('OFX_Raw_Import_V2', JSON.stringify(OFX_Raw_Import));
+                    saveState();
                     categorizeTransactions();
                     showToast('Importação Lote', `${totalNewTransactions} transações lidas de ${files.length} arquivo(s).`, 'success');
                 } else {
@@ -269,8 +407,7 @@ function categorizeTransactions() {
     });
 
     if (changed) {
-        localStorage.setItem('OFX_Raw_Import_V2', JSON.stringify(OFX_Raw_Import));
-        localStorage.setItem('EFO_Lancamentos_V3', JSON.stringify(EFO_Lancamentos));
+        saveState();
         updateAllViews();
     }
     renderConciliationTable();
@@ -314,9 +451,7 @@ function manualCategorize(fitid, categoryPath) {
         showToast('Sucesso', `Transação ignorada.`, 'success');
     }
     
-    localStorage.setItem('OFX_Raw_Import_V2', JSON.stringify(OFX_Raw_Import));
-    localStorage.setItem('EFO_Lancamentos_V3', JSON.stringify(EFO_Lancamentos));
-    
+    saveState();
     updateAllViews();
 }
 
@@ -392,9 +527,7 @@ window.reclassifyTransaction = (fitid) => {
         txn.assigned_account = newCategoryPath;
     }
 
-    localStorage.setItem('OFX_Raw_Import_V2', JSON.stringify(OFX_Raw_Import));
-    localStorage.setItem('EFO_Lancamentos_V3', JSON.stringify(EFO_Lancamentos));
-    
+    saveState();
     showToast('Reclassificação', `O lançamento foi transferido e o DRE foi recalculado.`, 'success');
     
     // Atualiza a tabela modal atual para sumir a linha e atualiza os dashboards
@@ -681,7 +814,7 @@ function saveEmpresa(e) {
         regime_tributario: document.getElementById('config_regime').value,
         tipo_atividade: document.getElementById('config_atividade').value
     };
-    localStorage.setItem('Config_Empresa', JSON.stringify(Config_Empresa));
+    saveState();
     document.getElementById('empresaModal').style.display = 'none';
     renderParametros();
     showToast('Sucesso', 'Configurações da empresa salvas.', 'success');
@@ -690,7 +823,7 @@ function saveEmpresa(e) {
 function saveParams(e) {
     e.preventDefault();
     EFO_Parametros = { impostos: parseFloat(document.getElementById('param_impostos').value), comissoes: parseFloat(document.getElementById('param_comissoes').value), meta_lucro_desejada: parseFloat(document.getElementById('param_meta_lucro').value) };
-    localStorage.setItem('EFO_Parametros', JSON.stringify(EFO_Parametros));
+    saveState();
     renderParametros(); document.getElementById('paramsModal').style.display = 'none';
     updateAllViews(); showToast('Sucesso', 'Parâmetros atualizados.', 'success');
 }
@@ -779,7 +912,7 @@ async function decompressFromHash(base64Str) {
     }
 }
 
-// Check URL Hash for shared data
+// Check URL Hash for shared data (auto-logs in as guest client)
 async function checkShareHash() {
     const hash = window.location.hash;
     if (hash && hash.startsWith('#share=')) {
@@ -787,27 +920,37 @@ async function checkShareHash() {
         try {
             const importedData = await decompressFromHash(base64Str);
             if (importedData && (importedData.EFO_Lancamentos || importedData.OFX_Raw_Import)) {
-                if (confirm("Recebemos dados compartilhados de um link. Deseja importá-los para o seu painel? (Atenção: isso substituirá os dados atuais deste navegador)")) {
-                    if (importedData.EFO_Parametros) {
-                        localStorage.setItem('EFO_Parametros', JSON.stringify(importedData.EFO_Parametros));
-                        EFO_Parametros = importedData.EFO_Parametros;
-                    }
-                    if (importedData.Config_Empresa) {
-                        localStorage.setItem('Config_Empresa', JSON.stringify(importedData.Config_Empresa));
-                        Config_Empresa = importedData.Config_Empresa;
-                    }
-                    if (importedData.EFO_Lancamentos) {
-                        localStorage.setItem('EFO_Lancamentos_V3', JSON.stringify(importedData.EFO_Lancamentos));
-                        EFO_Lancamentos = importedData.EFO_Lancamentos;
-                    }
-                    if (importedData.OFX_Raw_Import) {
-                        localStorage.setItem('OFX_Raw_Import_V2', JSON.stringify(importedData.OFX_Raw_Import));
-                        OFX_Raw_Import = importedData.OFX_Raw_Import;
-                    }
-                    showToast('Sucesso', 'Dados importados com sucesso!', 'success');
+                if (confirm("Deseja carregar os dados compartilhados deste link no painel?")) {
+                    const tempCompId = 'temp_share_' + Math.random().toString(36).substring(2, 9);
+                    const sharedCompany = {
+                        id: tempCompId,
+                        name: importedData.Config_Empresa?.cnpj ? `Empresa - ${importedData.Config_Empresa.cnpj}` : 'Empresa Compartilhada',
+                        config: importedData.Config_Empresa || DEFAULT_EMPRESA,
+                        parametros: importedData.EFO_Parametros || DEFAULT_PARAMETROS,
+                        lancamentos: importedData.EFO_Lancamentos || JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS)),
+                        ofx: importedData.OFX_Raw_Import || []
+                    };
+                    
+                    // Store temporarily in memory and session
+                    EFO_Companies[tempCompId] = sharedCompany;
+                    EFO_Session = {
+                        email: 'guest@clarus.com.br',
+                        name: sharedCompany.name,
+                        role: 'client',
+                        companyId: tempCompId
+                    };
+                    
+                    sessionStorage.setItem('EFO_Session', JSON.stringify(EFO_Session));
+                    
+                    // Clear hash to prevent double prompt on reload
                     history.replaceState(null, null, ' ');
+                    
+                    loadActiveCompanyData();
+                    applyRoleUI();
                     updateAllViews();
                     renderParametros();
+                    
+                    showToast('Sucesso', 'Painel de dados compartilhado carregado!', 'success');
                 } else {
                     history.replaceState(null, null, ' ');
                 }
@@ -906,4 +1049,235 @@ async function copyShareLink() {
         console.error(e);
         showToast('Erro', 'Erro ao gerar link de compartilhamento. Tente exportar como JSON.', 'danger');
     }
+}
+
+// --- USER ACCESS & ROLE CONTROL ---
+function applyRoleUI() {
+    const loginScreen = document.getElementById('loginScreen');
+    const userProfile = document.getElementById('userProfile');
+    const userProfileName = document.getElementById('userProfileName');
+    const userProfileRole = document.getElementById('userProfileRole');
+    
+    const adminCompanySelectorSection = document.getElementById('adminCompanySelectorSection');
+    const navClientsBtn = document.getElementById('navClientsBtn');
+    const navConciliationBtn = document.getElementById('navConciliationBtn');
+    const navDashboardBtn = document.getElementById('navDashboardBtn');
+    
+    const importSection = document.getElementById('importSection');
+    const sharingSection = document.getElementById('sharingSection');
+    
+    const btnEditParams = document.getElementById('btnEditParams');
+    const btnConfigEmpresa = document.getElementById('btnConfigEmpresa');
+    const btnResetData = document.getElementById('btnResetData');
+    
+    if (!EFO_Session) {
+        loginScreen.style.display = 'flex';
+        return;
+    }
+    
+    loginScreen.style.display = 'none';
+    userProfileName.textContent = EFO_Session.name;
+    userProfileRole.textContent = EFO_Session.role === 'admin' ? 'Administrador' : 'Cliente';
+    
+    if (EFO_Session.role === 'admin') {
+        adminCompanySelectorSection.style.display = 'block';
+        navClientsBtn.style.display = 'block';
+        navConciliationBtn.style.display = 'flex';
+        if (importSection) importSection.style.display = 'block';
+        if (sharingSection) sharingSection.style.display = 'block';
+        
+        btnEditParams.style.display = 'inline-block';
+        btnConfigEmpresa.style.display = 'inline-block';
+        btnResetData.style.display = 'block';
+        
+        navDashboardBtn.textContent = 'Painel de Saúde';
+        renderCompanySelect();
+    } else {
+        adminCompanySelectorSection.style.display = 'none';
+        navClientsBtn.style.display = 'none';
+        navConciliationBtn.style.display = 'none';
+        if (importSection) importSection.style.display = 'none';
+        if (sharingSection) sharingSection.style.display = 'none';
+        
+        btnEditParams.style.display = 'none';
+        btnConfigEmpresa.style.display = 'none';
+        btnResetData.style.display = 'none';
+        
+        navDashboardBtn.textContent = 'Painel Operacional';
+        
+        // If they are on a hidden tab, force select the dashboard
+        const activeNav = document.querySelector('.nav-btn.active');
+        if (activeNav && (activeNav.getAttribute('data-target') === 'tab-conciliation' || activeNav.getAttribute('data-target') === 'tab-clients')) {
+            navDashboardBtn.click();
+        }
+    }
+}
+
+function renderCompanySelect() {
+    const select = document.getElementById('activeCompanySelect');
+    if (!select) return;
+    select.innerHTML = '';
+    
+    Object.keys(EFO_Companies).forEach(id => {
+        const option = document.createElement('option');
+        option.value = id;
+        option.textContent = EFO_Companies[id].name || id;
+        if (id === EFO_Active_Company_Id) {
+            option.selected = true;
+        }
+        select.appendChild(option);
+    });
+}
+
+function renderClientsTable() {
+    const tbody = document.getElementById('clientsTbody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    EFO_Users.forEach((user, index) => {
+        if (user.role === 'admin') return;
+        
+        const company = EFO_Companies[user.companyId] || {};
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${user.name || 'Sem Nome'}</strong></td>
+            <td>${user.email}</td>
+            <td><code>${user.password}</code></td>
+            <td>${company.config?.cnpj || '-'}</td>
+            <td>${company.config?.cnae_principal || '-'}</td>
+            <td><span class="badge" style="background: var(--accent-primary); color: white; font-size: 11px; padding: 4px 8px;">${company.config?.regime_tributario || '-'}</span></td>
+            <td style="text-align:center;">
+                <button class="action-btn-danger" onclick="deleteClient(${index})">Excluir</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+window.deleteClient = (index) => {
+    if (confirm("Tem certeza que deseja excluir este cliente?")) {
+        const user = EFO_Users[index];
+        if (user) {
+            const otherUsersWithCompany = EFO_Users.filter((u, i) => i !== index && u.companyId === user.companyId);
+            if (otherUsersWithCompany.length === 0) {
+                delete EFO_Companies[user.companyId];
+                localStorage.setItem('EFO_Companies', JSON.stringify(EFO_Companies));
+            }
+            
+            EFO_Users.splice(index, 1);
+            localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
+            
+            showToast('Sucesso', 'Cliente e dados de empresa excluídos.', 'success');
+            renderClientsTable();
+            renderCompanySelect();
+            
+            // If the deleted company was the active company, switch to another
+            if (user.companyId === EFO_Active_Company_Id) {
+                EFO_Active_Company_Id = Object.keys(EFO_Companies)[0] || '';
+                localStorage.setItem('EFO_Active_Company_Id', EFO_Active_Company_Id);
+                loadActiveCompanyData();
+                updateAllViews();
+                renderParametros();
+            }
+        }
+    }
+};
+
+function handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    const pass = document.getElementById('loginPassword').value;
+    
+    const user = EFO_Users.find(u => u.email === email && u.password === pass);
+    if (user) {
+        EFO_Session = user;
+        sessionStorage.setItem('EFO_Session', JSON.stringify(EFO_Session));
+        
+        if (user.role === 'admin') {
+            if (!EFO_Active_Company_Id && Object.keys(EFO_Companies).length > 0) {
+                EFO_Active_Company_Id = Object.keys(EFO_Companies)[0];
+                localStorage.setItem('EFO_Active_Company_Id', EFO_Active_Company_Id);
+            }
+        }
+        
+        loadActiveCompanyData();
+        applyRoleUI();
+        updateAllViews();
+        renderParametros();
+        showToast('Login Efetuado', `Bem-vindo, ${user.name}!`, 'success');
+    } else {
+        showToast('Erro de Acesso', 'E-mail ou senha incorretos.', 'danger');
+    }
+}
+
+function handleLogout() {
+    EFO_Session = null;
+    sessionStorage.removeItem('EFO_Session');
+    history.replaceState(null, null, ' ');
+    
+    EFO_Parametros = DEFAULT_PARAMETROS;
+    Config_Empresa = DEFAULT_EMPRESA;
+    EFO_Lancamentos = JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS));
+    OFX_Raw_Import = [];
+    
+    applyRoleUI();
+    showToast('Logout', 'Sua sessão foi encerrada.', 'success');
+}
+
+function handleCreateClient(e) {
+    e.preventDefault();
+    const name = document.getElementById('client_name').value.trim();
+    const email = document.getElementById('client_email').value.trim();
+    const password = document.getElementById('client_password').value;
+    const cnpj = document.getElementById('client_cnpj').value.trim();
+    const cnae = document.getElementById('client_cnae').value.trim();
+    const regime = document.getElementById('client_regime').value;
+    
+    if (EFO_Users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
+        showToast('Erro', 'Este e-mail de acesso já está cadastrado.', 'danger');
+        return;
+    }
+    
+    const compId = 'comp_' + Math.random().toString(36).substring(2, 9);
+    
+    let activity = 'Serviço';
+    if(cnae.startsWith('62') || cnae.startsWith('63') || cnae.startsWith('69')) activity = 'Serviço';
+    else if(cnae.startsWith('45') || cnae.startsWith('46') || cnae.startsWith('47')) activity = 'Comércio';
+    else if(cnae.startsWith('1') || cnae.startsWith('2') || cnae.startsWith('3')) activity = 'Indústria';
+    
+    const newCompany = {
+        id: compId,
+        name: name,
+        config: {
+            cnpj: cnpj,
+            cnae_principal: cnae,
+            regime_tributario: regime,
+            tipo_atividade: activity
+        },
+        parametros: JSON.parse(JSON.stringify(DEFAULT_PARAMETROS)),
+        lancamentos: JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS)),
+        ofx: []
+    };
+    
+    EFO_Companies[compId] = newCompany;
+    localStorage.setItem('EFO_Companies', JSON.stringify(EFO_Companies));
+    
+    const newUser = {
+        name: name,
+        email: email,
+        password: password,
+        role: 'client',
+        companyId: compId
+    };
+    
+    EFO_Users.push(newUser);
+    localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
+    
+    document.getElementById('formClient').reset();
+    document.getElementById('clientModal').style.display = 'none';
+    
+    showToast('Sucesso', `Cliente ${name} e sua empresa foram cadastrados.`, 'success');
+    
+    renderClientsTable();
+    renderCompanySelect();
 }
