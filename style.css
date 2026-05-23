@@ -72,6 +72,22 @@ h1, h2, h3, h4 {
     flex-direction: column;
     gap: 24px;
     flex-shrink: 0;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+}
+
+.sidebar::-webkit-scrollbar {
+    width: 4px;
+}
+.sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.sidebar::-webkit-scrollbar-thumb {
+    background: var(--glass-border);
+    border-radius: 2px;
+}
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
 }
 
 .brand {
