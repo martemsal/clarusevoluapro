@@ -138,6 +138,8 @@ function saveActiveCompanyData() {
 
 function saveState() {
     saveActiveCompanyData();
+    // Background sync to Supabase (non-blocking)
+    db_syncActiveCompany().catch(e => console.warn('Supabase sync error:', e));
 }
 
 migrateAndInitializeData();
@@ -237,13 +239,30 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('formEditClient').addEventListener('submit', saveEditClient);
 
 
+    // Cloud sync status + migration
+    document.getElementById('btnMigrateCloud').addEventListener('click', () => {
+        document.getElementById('migrateModal').style.display = 'block';
+    });
+    document.getElementById('btnConfirmMigrate').addEventListener('click', runMigration);
+
     // Apply active UI state
     applyRoleUI();
-    
-    if (EFO_Session) {
-        updateAllViews();
-    }
-    
+
+    // Bootstrap: try Supabase first, then render
+    updateCloudStatus('checking');
+    db_bootstrap().then(online => {
+        updateCloudStatus(online ? 'online' : 'offline');
+        if (EFO_Session) {
+            loadActiveCompanyData();
+            updateAllViews();
+            renderParametros();
+            if (online) showToast('Nuvem', 'Dados sincronizados com o Supabase.', 'success');
+        }
+    }).catch(() => {
+        updateCloudStatus('offline');
+        if (EFO_Session) { updateAllViews(); }
+    });
+
     // Check share links (which can bypass/login as guest)
     checkShareHash();
 });
@@ -1711,13 +1730,18 @@ window.deleteClient = (index) => {
         const user = EFO_Users[index];
         if (user) {
             const otherUsersWithCompany = EFO_Users.filter((u, i) => i !== index && u.companyId === user.companyId);
-            if (otherUsersWithCompany.length === 0) {
-                delete EFO_Companies[user.companyId];
+            const companyToDelete = otherUsersWithCompany.length === 0 ? user.companyId : null;
+
+            if (companyToDelete) {
+                delete EFO_Companies[companyToDelete];
                 localStorage.setItem('EFO_Companies', JSON.stringify(EFO_Companies));
+                // Delete from Supabase (OFX cascade-deletes via FK)
+                db_deleteCompany(companyToDelete).catch(() => {});
             }
-            
+
             EFO_Users.splice(index, 1);
             localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
+            db_deleteUser(user.email).catch(() => {});
             
             showToast('Sucesso', 'Cliente e dados de empresa excluídos.', 'success');
             renderClientsTable();
@@ -1734,6 +1758,7 @@ window.deleteClient = (index) => {
         }
     }
 };
+
 
 // ---- EDIT CLIENT ----
 window.openEditClient = (index) => {
@@ -1784,7 +1809,11 @@ function saveEditClient(e) {
         company.config = { ...company.config, cnpj, cnae_principal: cnae, regime_tributario: regime, tipo_atividade: activity };
         EFO_Companies[user.companyId] = company;
         localStorage.setItem('EFO_Companies', JSON.stringify(EFO_Companies));
+        db_upsertCompany(company).catch(() => {});
     }
+
+    // Sync updated user to Supabase
+    db_upsertUser(EFO_Users[index]).catch(() => {});
 
     document.getElementById('editClientModal').style.display = 'none';
     showToast('Salvo', `Dados de ${name} atualizados com sucesso.`, 'success');
@@ -1793,23 +1822,37 @@ function saveEditClient(e) {
 }
 
 
-function handleLogin(e) {
+
+// Async login: tries Supabase first, falls back to in-memory EFO_Users
+async function handleLogin(e) {
     e.preventDefault();
     const email = document.getElementById('loginEmail').value.trim();
-    const pass = document.getElementById('loginPassword').value;
-    
-    const user = EFO_Users.find(u => u.email === email && u.password === pass);
+    const pass  = document.getElementById('loginPassword').value;
+
+    // 1. Try Supabase (authoritative)
+    let user = await db_loginUser(email, pass);
+
+    // 2. Fallback: check in-memory / localStorage users
+    if (!user) {
+        user = EFO_Users.find(u => u.email === email && u.password === pass) || null;
+    }
+
     if (user) {
+        // After successful Supabase login, refresh all data from cloud
+        if (DB_ONLINE) {
+            await db_bootstrap();
+        }
+
         EFO_Session = user;
         sessionStorage.setItem('EFO_Session', JSON.stringify(EFO_Session));
-        
+
         if (user.role === 'admin') {
             if (!EFO_Active_Company_Id && Object.keys(EFO_Companies).length > 0) {
                 EFO_Active_Company_Id = Object.keys(EFO_Companies)[0];
                 localStorage.setItem('EFO_Active_Company_Id', EFO_Active_Company_Id);
             }
         }
-        
+
         loadActiveCompanyData();
         applyRoleUI();
         updateAllViews();
@@ -1882,6 +1925,10 @@ function handleCreateClient(e) {
     
     EFO_Users.push(newUser);
     localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
+
+    // Sync new company + user to Supabase in background
+    db_upsertCompany(newCompany).catch(() => {});
+    db_upsertUser(newUser).catch(() => {});
     
     document.getElementById('formClient').reset();
     document.getElementById('clientModal').style.display = 'none';
@@ -1890,4 +1937,59 @@ function handleCreateClient(e) {
     
     renderClientsTable();
     renderCompanySelect();
+}
+
+// ──────────────────────────────────────────────────────────────
+//  CLOUD STATUS HELPERS
+// ──────────────────────────────────────────────────────────────
+
+function updateCloudStatus(state) {
+    const dot  = document.getElementById('cloudStatusDot');
+    const text = document.getElementById('cloudStatusText');
+    if (!dot || !text) return;
+    const map = {
+        checking: { color: '#f59e0b', label: 'Verificando nuvem...' },
+        online:   { color: '#10b981', label: '✓ Nuvem conectada (Supabase)' },
+        offline:  { color: '#ef4444', label: '✗ Sem nuvem — modo local' },
+        syncing:  { color: '#6366f1', label: '↻ Sincronizando...' }
+    };
+    const s = map[state] || map.offline;
+    dot.style.background  = s.color;
+    text.textContent      = s.label;
+}
+
+async function runMigration() {
+    const progress = document.getElementById('migrateProgress');
+    const bar      = document.getElementById('migrateProgressBar');
+    const txt      = document.getElementById('migrateProgressText');
+    const btns     = document.getElementById('migrateBtns');
+
+    progress.style.display = 'block';
+    btns.style.display     = 'none';
+    updateCloudStatus('syncing');
+
+    try {
+        const done = await db_migrateLocalStorageToSupabase((current, total, label) => {
+            const pct = Math.round((current / total) * 100);
+            bar.style.width    = pct + '%';
+            txt.textContent    = `${label} (${current}/${total})`;
+        });
+
+        bar.style.width  = '100%';
+        txt.textContent  = `✓ Migração concluída — ${done} registros enviados para o Supabase.`;
+        updateCloudStatus('online');
+        showToast('Migração Concluída', `${done} registros enviados para a nuvem.`, 'success');
+
+        setTimeout(() => {
+            document.getElementById('migrateModal').style.display = 'none';
+            progress.style.display = 'none';
+            bar.style.width        = '0%';
+            btns.style.display     = 'flex';
+        }, 3000);
+
+    } catch (err) {
+        txt.textContent = '✗ Erro durante a migração: ' + err.message;
+        updateCloudStatus('offline');
+        btns.style.display = 'flex';
+    }
 }

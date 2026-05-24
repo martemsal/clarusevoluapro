@@ -1,0 +1,273 @@
+// =============================================================
+//  EFO — Supabase Integration Layer
+//  Centralizes all DB operations. Keeps localStorage as cache.
+//  Strategy: Supabase is source of truth; localStorage = cache.
+// =============================================================
+
+const SUPABASE_URL  = 'https://eiozmfbyfoaogszypkbg.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpb3ptZmJ5Zm9hb2dzenlwa2JnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk1ODE1NzYsImV4cCI6MjA5NTE1NzU3Nn0.50kHcrOVeLS8jKIp4rHiZuSV7rnghLf4AsLwfkwD80Q';
+
+// Create client using the global `supabase` object injected by CDN
+const _supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+let DB_ONLINE = false; // set to true after first successful query
+
+// ──────────────────────────────────────────────────────────────
+//  USERS
+// ──────────────────────────────────────────────────────────────
+
+async function db_loadUsers() {
+    try {
+        const { data, error } = await _supa.from('efo_users').select('*');
+        if (error) throw error;
+        DB_ONLINE = true;
+        return data.map(u => ({
+            name:      u.name,
+            email:     u.email,
+            password:  u.password,
+            role:      u.role,
+            companyId: u.company_id
+        }));
+    } catch (e) {
+        console.warn('[Supabase] db_loadUsers failed — using localStorage.', e.message);
+        return null;
+    }
+}
+
+async function db_upsertUser(user) {
+    try {
+        const { error } = await _supa.from('efo_users').upsert({
+            email:      user.email,
+            password:   user.password,
+            name:       user.name,
+            role:       user.role,
+            company_id: user.companyId || null
+        }, { onConflict: 'email' });
+        if (error) throw error;
+    } catch (e) {
+        console.warn('[Supabase] db_upsertUser failed.', e.message);
+    }
+}
+
+async function db_deleteUser(email) {
+    try {
+        const { error } = await _supa.from('efo_users').delete().eq('email', email);
+        if (error) throw error;
+    } catch (e) {
+        console.warn('[Supabase] db_deleteUser failed.', e.message);
+    }
+}
+
+async function db_loginUser(email, password) {
+    try {
+        const { data, error } = await _supa
+            .from('efo_users')
+            .select('*')
+            .eq('email', email)
+            .eq('password', password)
+            .maybeSingle();
+        if (error) throw error;
+        if (!data) return null;
+        DB_ONLINE = true;
+        return {
+            name:      data.name,
+            email:     data.email,
+            password:  data.password,
+            role:      data.role,
+            companyId: data.company_id
+        };
+    } catch (e) {
+        console.warn('[Supabase] db_loginUser failed — falling back to localStorage.', e.message);
+        return null;
+    }
+}
+
+// ──────────────────────────────────────────────────────────────
+//  COMPANIES
+// ──────────────────────────────────────────────────────────────
+
+async function db_loadCompanies() {
+    try {
+        const { data, error } = await _supa.from('efo_companies').select('*');
+        if (error) throw error;
+        DB_ONLINE = true;
+        const obj = {};
+        data.forEach(c => {
+            obj[c.id] = {
+                id:          c.id,
+                name:        c.name,
+                config:      c.config      || {},
+                parametros:  c.parametros  || {},
+                lancamentos: c.lancamentos || null,  // null → will use DEFAULT
+                ofx:         []  // loaded separately
+            };
+        });
+        return obj;
+    } catch (e) {
+        console.warn('[Supabase] db_loadCompanies failed — using localStorage.', e.message);
+        return null;
+    }
+}
+
+async function db_upsertCompany(company) {
+    try {
+        const { error } = await _supa.from('efo_companies').upsert({
+            id:          company.id,
+            name:        company.name,
+            config:      company.config     || {},
+            parametros:  company.parametros || {},
+            lancamentos: company.lancamentos || {}
+        });
+        if (error) throw error;
+    } catch (e) {
+        console.warn('[Supabase] db_upsertCompany failed.', e.message);
+    }
+}
+
+async function db_deleteCompany(companyId) {
+    try {
+        const { error } = await _supa.from('efo_companies').delete().eq('id', companyId);
+        if (error) throw error;
+    } catch (e) {
+        console.warn('[Supabase] db_deleteCompany failed.', e.message);
+    }
+}
+
+// ──────────────────────────────────────────────────────────────
+//  OFX TRANSACTIONS
+// ──────────────────────────────────────────────────────────────
+
+async function db_loadOFX(companyId) {
+    try {
+        const { data, error } = await _supa
+            .from('efo_ofx_raw')
+            .select('raw_data')
+            .eq('company_id', companyId);
+        if (error) throw error;
+        DB_ONLINE = true;
+        return data.map(r => r.raw_data);
+    } catch (e) {
+        console.warn('[Supabase] db_loadOFX failed — using localStorage.', e.message);
+        return null;
+    }
+}
+
+async function db_saveOFX(companyId, transactions) {
+    if (!companyId) return;
+    try {
+        // Delete then re-insert (simplest bulk upsert strategy)
+        await _supa.from('efo_ofx_raw').delete().eq('company_id', companyId);
+        if (!transactions || transactions.length === 0) return;
+
+        const rows = transactions.map(txn => ({
+            company_id:      companyId,
+            transaction_id:  txn.transaction_id || '',
+            date:            txn.date ? txn.date.substring(0, 10) : null,
+            description:     txn.description || '',
+            amount:          txn.amount || 0,
+            status:          txn.status || 'Pendente',
+            assigned_account: txn.assigned_account || null,
+            flag_reason:     txn.flag_reason || null,
+            raw_data:        txn
+        }));
+
+        // Batch in chunks of 500 to avoid payload limits
+        const CHUNK = 500;
+        for (let i = 0; i < rows.length; i += CHUNK) {
+            const { error } = await _supa.from('efo_ofx_raw').insert(rows.slice(i, i + CHUNK));
+            if (error) throw error;
+        }
+    } catch (e) {
+        console.warn('[Supabase] db_saveOFX failed.', e.message);
+    }
+}
+
+// ──────────────────────────────────────────────────────────────
+//  FULL SYNC  (called in background on every saveState)
+// ──────────────────────────────────────────────────────────────
+
+async function db_syncActiveCompany() {
+    // These are the global app variables defined in app.js
+    const compId = (typeof EFO_Session !== 'undefined' && EFO_Session)
+        ? (EFO_Session.role === 'admin' ? EFO_Active_Company_Id : EFO_Session.companyId)
+        : null;
+    if (!compId) return;
+
+    const company = EFO_Companies[compId];
+    if (!company) return;
+
+    await db_upsertCompany(company);
+    await db_saveOFX(compId, OFX_Raw_Import);
+}
+
+// ──────────────────────────────────────────────────────────────
+//  BOOTSTRAP  (load everything from Supabase into memory)
+// ──────────────────────────────────────────────────────────────
+
+async function db_bootstrap() {
+    // 1. Load companies
+    const companies = await db_loadCompanies();
+    if (companies && Object.keys(companies).length > 0) {
+        // Merge: Supabase is authoritative, but keep lancamentos from memory if server returns null
+        Object.keys(companies).forEach(id => {
+            if (!companies[id].lancamentos || Object.keys(companies[id].lancamentos).length === 0) {
+                companies[id].lancamentos = (EFO_Companies[id] && EFO_Companies[id].lancamentos)
+                    ? EFO_Companies[id].lancamentos
+                    : JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS));
+            }
+        });
+        EFO_Companies = companies;
+        localStorage.setItem('EFO_Companies', JSON.stringify(EFO_Companies));
+    }
+
+    // 2. Load users
+    const users = await db_loadUsers();
+    if (users && users.length > 0) {
+        EFO_Users = users;
+        localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
+    }
+
+    // 3. Load OFX for active company
+    const compId = EFO_Active_Company_Id;
+    if (compId) {
+        const ofx = await db_loadOFX(compId);
+        if (ofx && ofx.length > 0) {
+            OFX_Raw_Import = ofx;
+            localStorage.setItem('OFX_Raw_Import_V2', JSON.stringify(OFX_Raw_Import));
+            if (EFO_Companies[compId]) {
+                EFO_Companies[compId].ofx = OFX_Raw_Import;
+            }
+        }
+    }
+
+    return DB_ONLINE;
+}
+
+// ──────────────────────────────────────────────────────────────
+//  MIGRATION  (push existing localStorage data → Supabase)
+//  Called once via the "Migrar para Nuvem" button
+// ──────────────────────────────────────────────────────────────
+
+async function db_migrateLocalStorageToSupabase(onProgress) {
+    const companies = EFO_Companies;
+    const users     = EFO_Users;
+    const total     = Object.keys(companies).length + users.length;
+    let done = 0;
+
+    // Push companies
+    for (const id of Object.keys(companies)) {
+        await db_upsertCompany(companies[id]);
+        await db_saveOFX(id, companies[id].ofx || []);
+        done++;
+        if (onProgress) onProgress(done, total, `Empresa: ${companies[id].name}`);
+    }
+
+    // Push users
+    for (const user of users) {
+        await db_upsertUser(user);
+        done++;
+        if (onProgress) onProgress(done, total, `Usuário: ${user.email}`);
+    }
+
+    return done;
+}

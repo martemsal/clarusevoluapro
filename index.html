@@ -10,6 +10,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="stylesheet" href="style.css">
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase_db.js"></script>
 </head>
 <body>
     <div class="toast-container" id="toastContainer"></div>
@@ -73,6 +76,12 @@
 
             <div class="parameters-section" id="sharingSection">
                 <h3>Sincronização & Compartilhamento</h3>
+                <!-- Cloud sync status -->
+                <div id="cloudStatusBar" style="display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; background:rgba(0,0,0,0.2); margin-bottom:8px; font-size:12px;">
+                    <span id="cloudStatusDot" style="width:8px;height:8px;border-radius:50%;background:#f59e0b;flex-shrink:0;"></span>
+                    <span id="cloudStatusText" style="color:var(--text-secondary);">Verificando nuvem...</span>
+                </div>
+                <button id="btnMigrateCloud" class="btn-secondary mt-0 w-100" style="padding:10px; font-size:12px; margin-bottom:8px; border-color:var(--accent-primary); color:var(--accent-primary);">☁️ Migrar Dados para a Nuvem</button>
                 <div style="display:flex; gap:8px;">
                     <button id="btnExportBackup" class="btn-secondary" style="flex:1; padding: 10px 4px; font-size: 11px;" title="Exportar dados atuais para arquivo JSON">📥 Exportar JSON</button>
                     <button id="btnImportBackup" class="btn-secondary" style="flex:1; padding: 10px 4px; font-size: 11px;" title="Importar arquivo JSON de backup">📤 Importar JSON</button>
@@ -478,6 +487,28 @@
                     <button type="submit" class="btn-primary" style="flex:2; padding:10px;">Salvar Alterações</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Migration to Cloud Modal -->
+    <div id="migrateModal" class="modal">
+        <div class="modal-content glass-panel" style="width: 440px; padding: 30px; text-align:center;">
+            <h2 style="margin-bottom:12px;">&#9729;&#65039; Migrar para a Nuvem</h2>
+            <p style="color:var(--text-secondary); font-size:13px; margin-bottom:20px; line-height:1.6;">
+                Envia todos os dados locais (empresas, clientes, OFX) para o Supabase.<br>
+                Após a migração, qualquer dispositivo com acesso ao sistema verá os mesmos dados.
+            </p>
+            <div id="migrateProgress" style="display:none; margin-bottom:16px;">
+                <div style="background:rgba(0,0,0,0.3); border-radius:8px; overflow:hidden; height:10px; margin-bottom:8px;">
+                    <div id="migrateProgressBar" style="height:100%; width:0%; background:var(--accent-primary); transition:width 0.3s;"></div>
+                </div>
+                <p id="migrateProgressText" style="font-size:12px; color:var(--text-secondary);">Preparando...</p>
+            </div>
+            <div id="migrateBtns" style="display:flex; gap:10px; margin-top:8px;">
+                <button onclick="document.getElementById('migrateModal').style.display='none'" 
+                    style="flex:1; padding:10px; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); border-radius:8px; color:var(--text-secondary); cursor:pointer; font-size:13px;">Cancelar</button>
+                <button id="btnConfirmMigrate" class="btn-primary" style="flex:2; padding:10px;">&#9989; Confirmar Migração</button>
+            </div>
         </div>
     </div>
 
