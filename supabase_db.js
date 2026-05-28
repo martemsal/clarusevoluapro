@@ -9,27 +9,42 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 // Create client using the global `supabase` object injected by CDN
 // Initialize with empty headers (or cached credentials if page is refreshed)
-let _supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
-    global: {
-        headers: {
-            'x-efo-email': (typeof sessionStorage !== 'undefined' && JSON.parse(sessionStorage.getItem('EFO_Session'))?.email) || '',
-            'x-efo-password': (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('EFO_Session_Password_Hash')) || ''
-        }
-    }
-});
-
+let _supa = null;
 let DB_ONLINE = false; // set to true after first successful query
+
+if (typeof supabase !== 'undefined') {
+    try {
+        _supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+            global: {
+                headers: {
+                    'x-efo-email': (typeof sessionStorage !== 'undefined' && JSON.parse(sessionStorage.getItem('EFO_Session'))?.email) || '',
+                    'x-efo-password': (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('EFO_Session_Password_Hash')) || ''
+                }
+            }
+        });
+    } catch (e) {
+        console.error('[Supabase] Falha ao instanciar o cliente:', e);
+    }
+} else {
+    console.warn('[Supabase] CDN SDK não carregado. Operando em modo offline / localStorage.');
+}
 
 // Update headers dynamically for REST requests
 function db_updateClientHeaders(email, passwordHash) {
-    _supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
-        global: {
-            headers: {
-                'x-efo-email': email || '',
-                'x-efo-password': passwordHash || ''
-            }
+    if (typeof supabase !== 'undefined' && SUPABASE_URL && SUPABASE_ANON) {
+        try {
+            _supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
+                global: {
+                    headers: {
+                        'x-efo-email': email || '',
+                        'x-efo-password': passwordHash || ''
+                    }
+                }
+            });
+        } catch (e) {
+            console.error('[Supabase] Falha ao atualizar headers:', e);
         }
-    });
+    }
 }
 
 // ──────────────────────────────────────────────────────────────

@@ -33,13 +33,106 @@ let EFO_Users = JSON.parse(localStorage.getItem('EFO_Users')) || [];
 let EFO_Active_Company_Id = localStorage.getItem('EFO_Active_Company_Id') || '';
 let EFO_Session = JSON.parse(sessionStorage.getItem('EFO_Session')) || null;
 
+// Pure JS SHA-256 fallback for non-secure contexts (HTTP)
+function sha256_fallback(ascii) {
+    function rightRotate(value, amount) {
+        return (value >>> amount) | (value << (32 - amount));
+    }
+    
+    var mathPow = Math.pow;
+    var maxWord = mathPow(2, 32);
+    var lengthProperty = 'length';
+    var i, j;
+
+    var result = '';
+    var words = [];
+    var asciiLength = ascii[lengthProperty] * 8;
+    
+    var hash = sha256_fallback.h = sha256_fallback.h || [];
+    var k = sha256_fallback.k = sha256_fallback.k || [];
+    var primeCounter = k[lengthProperty];
+
+    var isPrime = {};
+    for (var factor = 2; primeCounter < 64; factor++) {
+        if (!isPrime[factor]) {
+            for (i = 0; i < 313; i += factor) {
+                isPrime[i] = 1;
+            }
+            hash[primeCounter] = (mathPow(factor, .5) * maxWord) | 0;
+            k[primeCounter++] = (mathPow(factor, 1/3) * maxWord) | 0;
+        }
+    }
+    
+    ascii += '\x80';
+    while (ascii[lengthProperty] % 64 - 56) ascii += '\x00';
+    for (i = 0; i < ascii[lengthProperty]; i++) {
+        j = ascii.charCodeAt(i);
+        if (j >> 8) return ''; // keep it simple
+        words[i >> 2] |= j << (24 - (i % 4) * 8);
+    }
+    words[words[lengthProperty]] = ((asciiLength / maxWord) | 0);
+    words[words[lengthProperty]] = (asciiLength | 0);
+    
+    for (j = 0; j < words[lengthProperty];) {
+        var w = words.slice(j, j += 16);
+        var oldHash = hash.slice(0);
+        
+        hash = hash.slice(0);
+        for (i = 0; i < 64; i++) {
+            var w16 = w[i - 16], w15 = w[i - 15], w7 = w[i - 7], w2 = w[i - 2];
+            var a = hash[0], e = hash[4];
+            
+            var temp1 = hash[7]
+                + (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25))
+                + ((e & hash[5]) ^ (~e & hash[6]))
+                + k[i]
+                + (w[i] = (i < 16) ? w[i] : (
+                        w16
+                        + (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3))
+                        + w7
+                        + (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))
+                    ) | 0
+                );
+            var temp2 = (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22))
+                + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+            
+            hash = [(temp1 + temp2) | 0].concat(hash);
+            hash[4] = (hash[4] + temp1) | 0;
+        }
+        
+        for (i = 0; i < 8; i++) {
+            hash[i] = (hash[i] + oldHash[i]) | 0;
+        }
+    }
+    
+    for (i = 0; i < 8; i++) {
+        var byteVal = hash[i];
+        if (byteVal < 0) byteVal += maxWord;
+        result += byteVal.toString(16).padStart(8, '0');
+    }
+    
+    return result;
+}
+
 // Hashing function for passwords (SHA-256 + Email Salting)
 async function hashPassword(email, password) {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(email.toLowerCase().trim() + ":" + password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    const saltInput = email.toLowerCase().trim() + ":" + password;
+    
+    // Check if crypto.subtle is available (requires HTTPS or localhost)
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.subtle) {
+        try {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(saltInput);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        } catch (e) {
+            console.warn('[Crypto] Native subtle digest failed, falling back to pure JS SHA-256:', e);
+        }
+    }
+    
+    // Fallback for non-secure contexts (HTTP)
+    return sha256_fallback(saltInput);
 }
 
 let EFO_Parametros = DEFAULT_PARAMETROS;
@@ -2286,62 +2379,67 @@ async function saveEditClient(e) {
 // Async login: tries Supabase first, falls back to in-memory EFO_Users
 async function handleLogin(e) {
     e.preventDefault();
-    const email = document.getElementById('loginEmail').value.trim();
-    const pass  = document.getElementById('loginPassword').value;
+    try {
+        const email = document.getElementById('loginEmail').value.trim();
+        const pass  = document.getElementById('loginPassword').value;
 
-    // Hash user password input using standard salting
-    const passHash = await hashPassword(email, pass);
+        // Hash user password input using standard salting
+        const passHash = await hashPassword(email, pass);
 
-    // 1. Try Supabase (authoritative)
-    let user = await db_loginUser(email, passHash);
+        // 1. Try Supabase (authoritative)
+        let user = await db_loginUser(email, passHash);
 
-    // 2. Fallback: check in-memory / localStorage users
-    if (!user) {
-        user = EFO_Users.find(u => {
-            if (u.email.toLowerCase().trim() !== email.toLowerCase().trim()) return false;
-            // Support both secure hash and legacy plain text for offline mode
-            return u.password === passHash || u.password === pass;
-        }) || null;
+        // 2. Fallback: check in-memory / localStorage users
+        if (!user) {
+            user = EFO_Users.find(u => {
+                if (u.email.toLowerCase().trim() !== email.toLowerCase().trim()) return false;
+                // Support both secure hash and legacy plain text for offline mode
+                return u.password === passHash || u.password === pass;
+            }) || null;
 
-        // Auto-upgrade plain text cached credentials
-        if (user && user.password === pass) {
-            user.password = passHash;
-            localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
-            db_upsertUser(user).catch(() => {});
-        }
-    }
-
-    if (user) {
-        // LGPD Session hygiene: Remove password field from active session
-        EFO_Session = { ...user };
-        delete EFO_Session.password;
-        sessionStorage.setItem('EFO_Session', JSON.stringify(EFO_Session));
-        
-        // Cache the hash temporarily in sessionStorage for DB integration headers injection
-        sessionStorage.setItem('EFO_Session_Password_Hash', passHash);
-
-        if (user.role === 'admin') {
-            if (!EFO_Active_Company_Id && Object.keys(EFO_Companies).length > 0) {
-                EFO_Active_Company_Id = Object.keys(EFO_Companies)[0];
-                localStorage.setItem('EFO_Active_Company_Id', EFO_Active_Company_Id);
+            // Auto-upgrade plain text cached credentials
+            if (user && user.password === pass) {
+                user.password = passHash;
+                localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
+                db_upsertUser(user).catch(() => {});
             }
         }
 
-        // Set client headers in database connector
-        db_updateClientHeaders(user.email, passHash);
+        if (user) {
+            // LGPD Session hygiene: Remove password field from active session
+            EFO_Session = { ...user };
+            delete EFO_Session.password;
+            sessionStorage.setItem('EFO_Session', JSON.stringify(EFO_Session));
+            
+            // Cache the hash temporarily in sessionStorage for DB integration headers injection
+            sessionStorage.setItem('EFO_Session_Password_Hash', passHash);
 
-        // After successful Supabase login, refresh all data from cloud
-        if (DB_ONLINE) {
-            await db_bootstrap();
+            if (user.role === 'admin') {
+                if (!EFO_Active_Company_Id && Object.keys(EFO_Companies).length > 0) {
+                    EFO_Active_Company_Id = Object.keys(EFO_Companies)[0];
+                    localStorage.setItem('EFO_Active_Company_Id', EFO_Active_Company_Id);
+                }
+            }
+
+            // Set client headers in database connector
+            db_updateClientHeaders(user.email, passHash);
+
+            // After successful Supabase login, refresh all data from cloud
+            if (DB_ONLINE) {
+                await db_bootstrap();
+            }
+
+            loadActiveCompanyData();
+            applyRoleUI();
+            updateAllViews();
+            renderParametros();
+            showToast('Login Efetuado', `Bem-vindo, ${user.name}!`, 'success');
+        } else {
+            showToast('Erro de Acesso', 'E-mail ou senha incorretos.', 'danger');
         }
-
-        loadActiveCompanyData();
-        applyRoleUI();
-        updateAllViews();
-        renderParametros();
-        showToast('Login Efetuado', `Bem-vindo, ${user.name}!`, 'success');
-    } else {
-        showToast('Erro de Acesso', 'E-mail ou senha incorretos.', 'danger');
+    } catch (err) {
+        console.error('[EFO Login Error]', err);
+        showToast('Erro no Acesso', 'Falha ao processar login: ' + err.message, 'danger');
     }
 }
 
