@@ -1827,15 +1827,27 @@ function renderConciliationTable() {
         const isGeneric = genericTerms.some(g => rawDesc.toUpperCase().trim() === g);
 
         if (!isGeneric) {
-            const normalizedDesc = rawDesc.toUpperCase().trim();
-            const histMatch = OFX_Raw_Import.find(t => 
-                t.description && 
-                t.description.toUpperCase().trim() === normalizedDesc && 
-                t.status === 'Categorizado' && 
-                t.assigned_account
-            );
-            if (histMatch) {
-                suggestedAccount = histMatch.assigned_account;
+            const getNormalizedSupplier = (d) => {
+                if (!d) return '';
+                return d.toUpperCase()
+                    .replace(/[0-9]/g, '') // Remove numbers
+                    .replace(/[^A-Z ]/g, '') // Remove special characters
+                    .replace(/\s+/g, ' ') // Clean spaces
+                    .trim();
+            };
+
+            const normalizedPending = getNormalizedSupplier(rawDesc);
+            
+            if (normalizedPending.length >= 3) {
+                const histMatch = OFX_Raw_Import.find(t => {
+                    if (t.status !== 'Categorizado' || !t.assigned_account || !t.description) return false;
+                    const normalizedHist = getNormalizedSupplier(t.description);
+                    return normalizedHist === normalizedPending;
+                });
+                
+                if (histMatch) {
+                    suggestedAccount = histMatch.assigned_account;
+                }
             }
         }
 

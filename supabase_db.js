@@ -302,12 +302,11 @@ async function db_bootstrap() {
         ];
         localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
     }
-
     // 3. Load OFX for active company
     const compId = EFO_Session.role === 'admin' ? EFO_Active_Company_Id : EFO_Session.companyId;
     if (compId) {
         const ofx = await db_loadOFX(compId);
-        if (ofx && ofx.length > 0) {
+        if (ofx !== null) {
             OFX_Raw_Import = ofx;
             localStorage.setItem('OFX_Raw_Import_V2', JSON.stringify(OFX_Raw_Import));
             if (EFO_Companies[compId]) {
