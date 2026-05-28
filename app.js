@@ -1423,12 +1423,12 @@ function renderParecerEstrategico() {
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 20px; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
                 <div>
                     <span class="badge" style="background: rgba(99, 102, 241, 0.2); color: var(--accent-primary); font-weight: 600; padding: 6px 12px; border-radius: 6px; font-size: 11px;">PARECER ESTRATÉGICO MENSAL EXECUTIVO</span>
-                    <h2 style="font-size: 24px; font-weight: 700; margin-top: 8px; margin-bottom: 4px; color: var(--text-primary); font-family: 'Outfit', sans-serif;">Parecer Gerencial — \${companyName}</h2>
-                    <div style="font-size: 13px; color: var(--text-secondary);">CNPJ: \${companyCNPJ} | Regime: \${companyRegime} | Ano do Exercício: \${yr}</div>
+                    <h2 style="font-size: 24px; font-weight: 700; margin-top: 8px; margin-bottom: 4px; color: var(--text-primary); font-family: 'Outfit', sans-serif;">Parecer Gerencial — ${companyName}</h2>
+                    <div style="font-size: 13px; color: var(--text-secondary);">CNPJ: ${companyCNPJ} | Regime: ${companyRegime} | Ano do Exercício: ${yr}</div>
                 </div>
                 <div style="text-align: right;">
                     <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Atividade Principal</div>
-                    <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: var(--success); font-weight: 600; padding: 6px 12px; border-radius: 6px; display: inline-block; margin-top: 4px; font-size: 12px;">\${companyActivity}</span>
+                    <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: var(--success); font-weight: 600; padding: 6px 12px; border-radius: 6px; display: inline-block; margin-top: 4px; font-size: 12px;">${companyActivity}</span>
                 </div>
             </div>
 
@@ -1436,19 +1436,19 @@ function renderParecerEstrategico() {
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
                 <div class="glass-panel" style="padding: 16px; background: rgba(0,0,0,0.15); border-color: rgba(255,255,255,0.03);">
                     <div style="font-size: 12px; color: var(--text-secondary);">Segmento de Atuação</div>
-                    <div style="font-weight: 600; color: var(--text-primary); margin-top: 4px; font-size: 14px;">\${segment}</div>
+                    <div style="font-weight: 600; color: var(--text-primary); margin-top: 4px; font-size: 14px;">${segment}</div>
                 </div>
                 <div class="glass-panel" style="padding: 16px; background: rgba(0,0,0,0.15); border-color: rgba(255,255,255,0.03);">
                     <div style="font-size: 12px; color: var(--text-secondary);">Faturamento Médio</div>
-                    <div style="font-weight: 600; color: var(--text-primary); margin-top: 4px; font-size: 14px;">\${formatCurrency(avgFaturamento)} /mês</div>
+                    <div style="font-weight: 600; color: var(--text-primary); margin-top: 4px; font-size: 14px;">${formatCurrency(avgFaturamento)} /mês</div>
                 </div>
                 <div class="glass-panel" style="padding: 16px; background: rgba(0,0,0,0.15); border-color: rgba(255,255,255,0.03);">
                     <div style="font-size: 12px; color: var(--text-secondary);">Modelo de Negócio</div>
-                    <div style="font-weight: 600; color: var(--text-primary); margin-top: 4px; font-size: 14px;">\${companyActivity === 'Indústria' ? 'Produção Industrial B2B' : (companyActivity === 'Comércio' ? 'Revenda de Mercadorias' : 'Prestação de Serviços B2B')}</div>
+                    <div style="font-weight: 600; color: var(--text-primary); margin-top: 4px; font-size: 14px;">${companyActivity === 'Indústria' ? 'Produção Industrial B2B' : (companyActivity === 'Comércio' ? 'Revenda de Mercadorias' : 'Prestação de Serviços B2B')}</div>
                 </div>
                 <div class="glass-panel" style="padding: 16px; background: rgba(0,0,0,0.15); border-color: rgba(255,255,255,0.03);">
                     <div style="font-size: 12px; color: var(--text-secondary);">Desafio Financeiro Principal</div>
-                    <div style="font-weight: 600; color: var(--text-primary); margin-top: 4px; font-size: 14px;">\${emprestimosCp > 100000 ? 'Equalização do Passivo Bancário' : 'Gestão de Capital de Giro'}</div>
+                    <div style="font-weight: 600; color: var(--text-primary); margin-top: 4px; font-size: 14px;">${emprestimosCp > 100000 ? 'Equalização do Passivo Bancário' : 'Gestão de Capital de Giro'}</div>
                 </div>
             </div>
 
@@ -1456,24 +1456,24 @@ function renderParecerEstrategico() {
             <div style="margin-bottom: 30px;">
                 <h3 style="font-size: 16px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 6px; margin-bottom: 16px;">1. RESUMO EXECUTIVO (Visão do Empresário)</h3>
                 <p style="color: var(--text-primary); line-height: 1.6; margin-bottom: 16px; font-size: 14px;">
-                    Sob a perspectiva estratégica da diretoria, a empresa encontra-se <strong>\${evolStatus}</strong>. O expressivo desempenho em volume de negócios e vendas reflete a capacidade comercial instalada e tração de mercado. Entretanto, o modelo financeiro apresenta uma distorção relevante entre o lucro escriturado (competência) e a geração de caixa líquido livre no período analisado, o que exigiu tomadas de capital de terceiros significativas de curto prazo.
+                    Sob a perspectiva estratégica da diretoria, a empresa encontra-se <strong>${evolStatus}</strong>. O expressivo desempenho em volume de negócios e vendas reflete a capacidade comercial instalada e tração de mercado. Entretanto, o modelo financeiro apresenta uma distorção relevante entre o lucro escriturado (competência) e a geração de caixa líquido livre no período analisado, o que exigiu tomadas de capital de terceiros significativas de curto prazo.
                 </p>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex-wrap: wrap;">
                     <!-- Alerts -->
                     <div style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.15); padding: 16px; border-radius: 8px;">
                         <h4 style="color: var(--danger); margin-top: 0; font-size: 13px; font-weight: 600; margin-bottom: 12px;">🔴 Principais Alertas</h4>
                         <ul style="margin: 0; padding-left: 18px; font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
-                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Contratação de Dívida Relevante:</strong> Aumento do passivo de empréstimos de curto prazo para \${formatCurrency(emprestimosCp)}, gerando pressão em juros e amortizações.</li>
-                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Margem Operacional Superdimensionada:</strong> EBITDA de \${ebitdaMargin.toFixed(1)}% sugere forte possibilidade de custos industriais e CMV ainda pendentes de categorização.</li>
-                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Carga Tributária Irreal no Simples:</strong> Recolhimento de impostos na ordem de \${taxRate.toFixed(2)}% sobre a receita acumulada, incompatível com o faturamento de \${formatCurrency(totalRevenue)}.</li>
+                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Contratação de Dívida Relevante:</strong> Aumento do passivo de empréstimos de curto prazo para ${formatCurrency(emprestimosCp)}, gerando pressão em juros e amortizações.</li>
+                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Margem Operacional Superdimensionada:</strong> EBITDA de ${ebitdaMargin.toFixed(1)}% sugere forte possibilidade de custos industriais e CMV ainda pendentes de categorização.</li>
+                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Carga Tributária Irreal no Simples:</strong> Recolhimento de impostos na ordem de ${taxRate.toFixed(2)}% sobre a receita acumulada, incompatível com o faturamento de ${formatCurrency(totalRevenue)}.</li>
                         </ul>
                     </div>
                     <!-- Positives -->
                     <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.15); padding: 16px; border-radius: 8px;">
                         <h4 style="color: var(--success); margin-top: 0; font-size: 13px; font-weight: 600; margin-bottom: 12px;">🟢 Pontos Positivos</h4>
                         <ul style="margin: 0; padding-left: 18px; font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
-                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Forte Tração Comercial:</strong> Volume faturado acumulado de \${formatCurrency(totalRevenue)} com forte crescimento no último mês.</li>
-                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Geração Potencial de Caixa:</strong> EBITDA gerado de \${formatCurrency(totalEBITDA)} demonstra forte capacidade intrínseca de gerar valor da operação principal.</li>
+                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Forte Tração Comercial:</strong> Volume faturado acumulado de ${formatCurrency(totalRevenue)} com forte crescimento no último mês.</li>
+                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Geração Potencial de Caixa:</strong> EBITDA gerado de ${formatCurrency(totalEBITDA)} demonstra forte capacidade intrínseca de gerar valor da operação principal.</li>
                             <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Baixo Nível de Despesas Fixas Estruturais:</strong> Gastos administrativos controlados, favorecendo o alavancamento operacional.</li>
                         </ul>
                     </div>
@@ -1487,12 +1487,12 @@ function renderParecerEstrategico() {
             <div style="margin-bottom: 30px;">
                 <h3 style="font-size: 16px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 6px; margin-bottom: 16px;">2. ANÁLISE ECONÔMICA (DRE Gerencial)</h3>
                 <p style="color: var(--text-secondary); line-height: 1.6; font-size: 13px; margin-bottom: 12px;">
-                    O faturamento bruto acumulado de \${formatCurrency(totalRevenue)} é fortemente concentrado na venda de produtos. Analisando a estrutura econômica:
+                    O faturamento bruto acumulado de ${formatCurrency(totalRevenue)} é fortemente concentrado na venda de produtos. Analisando a estrutura econômica:
                 </p>
                 <ul style="margin: 0 0 16px 0; padding-left: 20px; font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
-                    <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Custos de Mercadorias (CMV):</strong> Apenas \${formatCurrency(totalCMV)} (\${cmvRate.toFixed(1)}% do faturamento). Para uma empresa industrial, esta taxa de markup é anormalmente alta. Isto indica forte probabilidade de compras faturadas de matérias-primas que não transitaram pelas contas bancárias mapeadas ou que ainda estão aguardando conciliação.</li>
-                    <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Estrutura de Overhead (Fixo):</strong> O custo com aluguel administrativo de \${formatCurrency(d['dre.despesas_administrativas.aluguel'].reduce((a,b)=>a+b, 0))} e despesas financeiras está adequado e equilibrado em relação ao porte econômico do negócio.</li>
-                    <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Lucratividade Econômica:</strong> O EBITDA gerou \${formatCurrency(totalEBITDA)} com margem de lucro de \${ebitdaMargin.toFixed(1)}%.</li>
+                    <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Custos de Mercadorias (CMV):</strong> Apenas ${formatCurrency(totalCMV)} (${cmvRate.toFixed(1)}% do faturamento). Para uma empresa industrial, esta taxa de markup é anormalmente alta. Isto indica forte probabilidade de compras faturadas de matérias-primas que não transitaram pelas contas bancárias mapeadas ou que ainda estão aguardando conciliação.</li>
+                    <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Estrutura de Overhead (Fixo):</strong> O custo com aluguel administrativo de ${formatCurrency(d['dre.despesas_administrativas.aluguel'].reduce((a,b)=>a+b, 0))} e despesas financeiras está adequado e equilibrado em relação ao porte econômico do negócio.</li>
+                    <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Lucratividade Econômica:</strong> O EBITDA gerou ${formatCurrency(totalEBITDA)} com margem de lucro de ${ebitdaMargin.toFixed(1)}%.</li>
                 </ul>
                 <div style="font-style: italic; font-size: 13px; color: var(--text-primary); background: rgba(0,0,0,0.1); padding: 12px 16px; border-radius: 8px; border-left: 3px solid var(--accent-secondary);">
                     💡 <strong>Diagnóstico de Lucro:</strong> “A empresa ganhou dinheiro no papel porque faturou alto volume de vendas com custos fixos baixos. Contudo, há indícios claros de subfaturamento de despesas variáveis e custos de matéria-prima no plano de contas.”
@@ -1506,8 +1506,8 @@ function renderParecerEstrategico() {
                     A análise do balanço gerencial acende alertas na liquidez corrente de curto prazo:
                 </p>
                 <ul style="margin: 0 0 16px 0; padding-left: 20px; font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
-                    <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Fôlego Financeiro e Caixa:</strong> O saldo de aplicações financeiras encerrou o período em \${formatCurrency(aplicacoes)}. Comparado ao volume mensal de vendas, o caixa disponível cobre poucos dias de custos estruturais.</li>
-                    <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Endividamento Bancário:</strong> O passivo circulante apresenta \${formatCurrency(emprestimosCp)} em empréstimos de curto prazo. Isso significa que o endividamento bancário é superior ao caixa livre em aplicações, gerando uma liquidez corrente líquida restrita.</li>
+                    <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Fôlego Financeiro e Caixa:</strong> O saldo de aplicações financeiras encerrou o período em ${formatCurrency(aplicacoes)}. Comparado ao volume mensal de vendas, o caixa disponível cobre poucos dias de custos estruturais.</li>
+                    <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Endividamento Bancário:</strong> O passivo circulante apresenta ${formatCurrency(emprestimosCp)} em empréstimos de curto prazo. Isso significa que o endividamento bancário é superior ao caixa livre em aplicações, gerando uma liquidez corrente líquida restrita.</li>
                     <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Necessidade de Capital de Giro (NCG):</strong> A operação está consumindo caixa rapidamente devido ao descasamento temporal entre a entrega de produtos e o efetivo recebimento bancário (prazo médio de clientes longo).</li>
                 </ul>
                 <div style="font-style: italic; font-size: 13px; color: var(--text-primary); background: rgba(0,0,0,0.1); padding: 12px 16px; border-radius: 8px; border-left: 3px solid var(--danger);">
@@ -1523,7 +1523,7 @@ function renderParecerEstrategico() {
                 </p>
                 <ul style="margin: 0 0 16px 0; padding-left: 20px; font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
                     <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Ticket Médio e Clientes:</strong> A conversão comercial é alta, focada em pedidos industriais corporativos volumosos.</li>
-                    <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Custos de Frete e Despesas Comerciais:</strong> Custos de logística e transporte faturados em \${formatCurrency(d['dre.despesas_comercial.transporte_logistica'].reduce((a,b)=>a+b,0))} indicam fluxo de entrega eficiente, mas comissões de \${formatCurrency(d['dre.despesas_comercial.comissao'].reduce((a,b)=>a+b,0))} precisam ser indexadas de forma restrita às margens líquidas reais.</li>
+                    <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Custos de Frete e Despesas Comerciais:</strong> Custos de logística e transporte faturados em ${formatCurrency(d['dre.despesas_comercial.transporte_logistica'].reduce((a,b)=>a+b,0))} indicam fluxo de entrega eficiente, mas comissões de ${formatCurrency(d['dre.despesas_comercial.comissao'].reduce((a,b)=>a+b,0))} precisam ser indexadas de forma restrita às margens líquidas reais.</li>
                     <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Produtividade do Trabalho:</strong> Ausência de despesas estruturadas de folha de pagamento no sistema impossibilita o cálculo exato do faturamento por colaborador.</li>
                 </ul>
             </div>
@@ -1535,11 +1535,11 @@ function renderParecerEstrategico() {
                     <p style="margin-top: 0; color: var(--text-primary); font-weight: 600;">Conexões invisíveis encontradas nos demonstrativos do período:</p>
                     <p style="margin-bottom: 8px;">
                         🔍 <strong>Correlação 1: Lucro Alto vs. Dívida Elevada</strong><br>
-                        A DRE aponta um Lucro Líquido acumulado espetacular de \${formatCurrency(totalEBITDA)} (competência). Contudo, no mesmo período, o passivo da empresa contraiu novos empréstimos de curto prazo de \${formatCurrency(emprestimosCp)} no Balanço. Essa forte contradição prova que a rentabilidade operacional não está se convertendo em liquidez imediata. A receita está sendo consumida por prazos longos concedidos aos clientes B2B ou escoada em compras de mercadoria sem registro bancário.
+                        A DRE aponta um Lucro Líquido acumulado espetacular de ${formatCurrency(totalEBITDA)} (competência). Contudo, no mesmo período, o passivo da empresa contraiu novos empréstimos de curto prazo de ${formatCurrency(emprestimosCp)} no Balanço. Essa forte contradição prova que a rentabilidade operacional não está se convertendo em liquidez imediata. A receita está sendo consumida por prazos longos concedidos aos clientes B2B ou escoada em compras de mercadoria sem registro bancário.
                     </p>
                     <p style="margin-bottom: 0;">
                         🔍 <strong>Correlação 2: Simples Nacional vs. Volume de Faturamento</strong><br>
-                        O faturamento anualizado da empresa projeta R$ 14,6M. O Simples Nacional possui teto limite de R$ 4,8M/ano para impostos estaduais/municipais (ICMS/ISS) e federais. A alíquota nominal efetiva de impostos paga de apenas \${taxRate.toFixed(2)}% indica que a empresa está correndo sério risco de desenquadramento imediato ou multas fiscais retroativas por inconsistência de lançamentos das guias do Simples.
+                        O faturamento anualizado da empresa projeta R$ 14,6M. O Simples Nacional possui teto limite de R$ 4,8M/ano para impostos estaduais/municipais (ICMS/ISS) e federais. A alíquota nominal efetiva de impostos paga de apenas ${taxRate.toFixed(2)}% indica que a empresa está correndo sério risco de desenquadramento imediato ou multas fiscais retroativas por inconsistência de lançamentos das guias do Simples.
                     </p>
                 </div>
             </div>
@@ -1552,21 +1552,21 @@ function renderParecerEstrategico() {
                         <span style="font-size: 20px; line-height: 1;">🔴</span>
                         <div>
                             <strong style="color: var(--danger); font-size: 13px;">CRÍTICO (Ações Urgentes)</strong>
-                            <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-secondary);">Endividamento bancário de curto prazo de \${formatCurrency(emprestimosCp)}. É necessário renegociar os vencimentos com os bancos parceiros para alongar os prazos de amortização.</p>
+                            <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-secondary);">Endividamento bancário de curto prazo de ${formatCurrency(emprestimosCp)}. É necessário renegociar os vencimentos com os bancos parceiros para alongar os prazos de amortização.</p>
                         </div>
                     </div>
                     <div style="display: flex; align-items: flex-start; gap: 12px; background: rgba(245,158,11,0.06); padding: 12px; border-radius: 8px; border: 1px solid rgba(245,158,11,0.12);">
                         <span style="font-size: 20px; line-height: 1;">🟡</span>
                         <div>
                             <strong style="color: var(--warning); font-size: 13px;">ATENÇÃO (Monitoramento Constante)</strong>
-                            <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-secondary);">Ausência de lançamentos de custos operacionais (folha de salários e CMV industrial real). Margem bruta elevada de \${(100 - cmvRate).toFixed(1)}% mascara custos variáveis industriais ocultos.</p>
+                            <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-secondary);">Ausência de lançamentos de custos operacionais (folha de salários e CMV industrial real). Margem bruta elevada de ${(100 - cmvRate).toFixed(1)}% mascara custos variáveis industriais ocultos.</p>
                         </div>
                     </div>
                     <div style="display: flex; align-items: flex-start; gap: 12px; background: rgba(16,185,129,0.06); padding: 12px; border-radius: 8px; border: 1px solid rgba(16,185,129,0.12);">
                         <span style="font-size: 20px; line-height: 1;">🟢</span>
                         <div>
                             <strong style="color: var(--success); font-size: 13px;">POSITIVO (Forças do Negócio)</strong>
-                            <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-secondary);">Receita operacional recorde de \${formatCurrency(totalRevenue)} e alta escalabilidade com baixas despesas administrativas fixas.</p>
+                            <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-secondary);">Receita operacional recorde de ${formatCurrency(totalRevenue)} e alta escalabilidade com baixas despesas administrativas fixas.</p>
                         </div>
                     </div>
                 </div>
@@ -1589,7 +1589,7 @@ function renderParecerEstrategico() {
                         <tbody>
                             <tr>
                                 <td style="padding: 10px; border: 1px solid var(--glass-border); font-weight: bold; color: var(--danger);">1. Urgente</td>
-                                <td style="padding: 10px; border: 1px solid var(--glass-border); color: var(--text-primary);">Dívida de curto prazo (\${formatCurrency(emprestimosCp)}) superior ao saldo de aplicações.</td>
+                                <td style="padding: 10px; border: 1px solid var(--glass-border); color: var(--text-primary);">Dívida de curto prazo (${formatCurrency(emprestimosCp)}) superior ao saldo de aplicações.</td>
                                 <td style="padding: 10px; border: 1px solid var(--glass-border); color: var(--text-secondary);">Renegociar vencimento dos contratos vigentes e converter dívida de CP para Longo Prazo (LP).</td>
                                 <td style="padding: 10px; border: 1px solid var(--glass-border); color: var(--text-secondary);">Fôlego no caixa livre imediato.</td>
                                 <td style="padding: 10px; border: 1px solid var(--glass-border); color: var(--text-primary);">15 Dias</td>
@@ -1617,7 +1617,7 @@ function renderParecerEstrategico() {
             <div>
                 <h3 style="font-size: 16px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 6px; margin-bottom: 16px;">8. PARECER FINAL DO CONSULTOR</h3>
                 <p style="color: var(--text-primary); line-height: 1.6; font-size: 13px;">
-                    Como consultor empresarial sênior da Clarus, o que mais me <strong>preocupa</strong> é a velocidade do endividamento da empresa para financiar sua escalabilidade (\&nbsp;\${formatCurrency(emprestimosCp)} tomados de curto prazo de forma rápida) associada a uma aparente lacuna no registro de custos reais na DRE. O que mais me <strong>anima</strong> é o indiscutível apetite de mercado pelos seus produtos B2B, o que gera uma receita robusta e tração comercial.
+                    Como consultor empresarial sênior da Clarus, o que mais me <strong>preocupa</strong> é a velocidade do endividamento da empresa para financiar sua escalabilidade (&nbsp;${formatCurrency(emprestimosCp)} tomados de curto prazo de forma rápida) associada a uma aparente lacuna no registro de custos reais na DRE. O que mais me <strong>anima</strong> é o indiscutível apetite de mercado pelos seus produtos B2B, o que gera uma receita robusta e tração comercial.
                 </p>
                 <p style="color: var(--text-primary); line-height: 1.6; font-size: 13px;">
                     O empresário **não pode ignorar** a iminente fiscalização tributária decorrente de taxas de impostos subfaturadas no sistema e deve decidir, imediatamente, sobre a auditoria das contas de conciliação bancária para lançar os custos ainda omitidos e estruturar um cronograma realista de fluxo de caixa projetado.
