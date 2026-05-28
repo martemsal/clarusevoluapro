@@ -33,6 +33,15 @@ let EFO_Users = JSON.parse(localStorage.getItem('EFO_Users')) || [];
 let EFO_Active_Company_Id = localStorage.getItem('EFO_Active_Company_Id') || '';
 let EFO_Session = JSON.parse(sessionStorage.getItem('EFO_Session')) || null;
 
+// Hashing function for passwords (SHA-256 + Email Salting)
+async function hashPassword(email, password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(email.toLowerCase().trim() + ":" + password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 let EFO_Parametros = DEFAULT_PARAMETROS;
 let Config_Empresa = DEFAULT_EMPRESA;
 let EFO_Lancamentos = JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS));
@@ -84,8 +93,8 @@ function migrateAndInitializeData() {
 
     if (EFO_Users.length === 0) {
         EFO_Users = [
-            { email: 'admin@clarus.com.br', password: 'admin', role: 'admin', name: 'Administrador' },
-            { email: 'cliente@clarus.com.br', password: '123', role: 'client', name: 'Cliente Teste', companyId: EFO_Active_Company_Id }
+            { email: 'admin@clarus.com.br', password: 'e4ad7e0fe6b5bf949f7c67f2381ca4bf8d152f6a3e471fa65779cc4a7f83831e', role: 'admin', name: 'Administrador' },
+            { email: 'cliente@clarus.com.br', password: '33e182a6b1c4796f6ff57edfd41af4f69e9e017122da7ef7180465f243ed6c1d', role: 'client', name: 'Cliente Teste', companyId: EFO_Active_Company_Id }
         ];
         localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
     }
@@ -2143,7 +2152,7 @@ function renderClientsTable() {
         tr.innerHTML = `
             <td><strong>${user.name || 'Sem Nome'}</strong></td>
             <td>${user.email}</td>
-            <td><code>${user.password}</code></td>
+            <td><code>●●●●●●●●</code></td>
             <td>${company.config?.cnpj || '-'}</td>
             <td>${company.config?.cnae_principal || '-'}</td>
             <td><span class="badge" style="background: var(--accent-primary); color: white; font-size: 11px; padding: 4px 8px;">${company.config?.regime_tributario || '-'}</span></td>
@@ -2222,7 +2231,7 @@ window.openEditClient = (index) => {
     document.getElementById('editClientModal').style.display = 'block';
 };
 
-function saveEditClient(e) {
+async function saveEditClient(e) {
     e.preventDefault();
     if (!EFO_Session || EFO_Session.role !== 'admin') {
         showToast('Erro', 'Apenas administradores podem editar clientes.', 'danger');
@@ -2248,7 +2257,9 @@ function saveEditClient(e) {
     // Update user record
     EFO_Users[index].name  = name;
     EFO_Users[index].email = email;
-    if (newPass) EFO_Users[index].password = newPass;
+    if (newPass) {
+        EFO_Users[index].password = await hashPassword(email, newPass);
+    }
     localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
 
     // Update company config
@@ -2278,17 +2289,36 @@ async function handleLogin(e) {
     const email = document.getElementById('loginEmail').value.trim();
     const pass  = document.getElementById('loginPassword').value;
 
+    // Hash user password input using standard salting
+    const passHash = await hashPassword(email, pass);
+
     // 1. Try Supabase (authoritative)
-    let user = await db_loginUser(email, pass);
+    let user = await db_loginUser(email, passHash);
 
     // 2. Fallback: check in-memory / localStorage users
     if (!user) {
-        user = EFO_Users.find(u => u.email === email && u.password === pass) || null;
+        user = EFO_Users.find(u => {
+            if (u.email.toLowerCase().trim() !== email.toLowerCase().trim()) return false;
+            // Support both secure hash and legacy plain text for offline mode
+            return u.password === passHash || u.password === pass;
+        }) || null;
+
+        // Auto-upgrade plain text cached credentials
+        if (user && user.password === pass) {
+            user.password = passHash;
+            localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
+            db_upsertUser(user).catch(() => {});
+        }
     }
 
     if (user) {
-        EFO_Session = user;
+        // LGPD Session hygiene: Remove password field from active session
+        EFO_Session = { ...user };
+        delete EFO_Session.password;
         sessionStorage.setItem('EFO_Session', JSON.stringify(EFO_Session));
+        
+        // Cache the hash temporarily in sessionStorage for DB integration headers injection
+        sessionStorage.setItem('EFO_Session_Password_Hash', passHash);
 
         if (user.role === 'admin') {
             if (!EFO_Active_Company_Id && Object.keys(EFO_Companies).length > 0) {
@@ -2296,6 +2326,9 @@ async function handleLogin(e) {
                 localStorage.setItem('EFO_Active_Company_Id', EFO_Active_Company_Id);
             }
         }
+
+        // Set client headers in database connector
+        db_updateClientHeaders(user.email, passHash);
 
         // After successful Supabase login, refresh all data from cloud
         if (DB_ONLINE) {
@@ -2315,6 +2348,14 @@ async function handleLogin(e) {
 function handleLogout() {
     EFO_Session = null;
     sessionStorage.removeItem('EFO_Session');
+    sessionStorage.removeItem('EFO_Session_Password_Hash');
+    
+    // LGPD Security: Clear local caches on disconnect to prevent data leaks on shared devices
+    localStorage.removeItem('EFO_Companies');
+    localStorage.removeItem('EFO_Users');
+    localStorage.removeItem('OFX_Raw_Import_V2');
+    localStorage.removeItem('EFO_Active_Company_Id');
+    
     history.replaceState(null, null, ' ');
     
     EFO_Parametros = DEFAULT_PARAMETROS;
@@ -2322,11 +2363,14 @@ function handleLogout() {
     EFO_Lancamentos = JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS));
     OFX_Raw_Import = [];
     
+    // Clear credentials headers in DB layer
+    db_updateClientHeaders('', '');
+    
     applyRoleUI();
     showToast('Logout', 'Sua sessão foi encerrada.', 'success');
 }
 
-function handleCreateClient(e) {
+async function handleCreateClient(e) {
     e.preventDefault();
     if (!EFO_Session || EFO_Session.role !== 'admin') {
         showToast('Erro', 'Apenas administradores podem criar clientes.', 'danger');
@@ -2370,10 +2414,12 @@ function handleCreateClient(e) {
     EFO_Companies[compId] = newCompany;
     localStorage.setItem('EFO_Companies', JSON.stringify(EFO_Companies));
     
+    // Hash password before saving
+    const passHash = await hashPassword(email, password);
     const newUser = {
         name: name,
         email: email,
-        password: password,
+        password: passHash,
         role: 'client',
         companyId: compId
     };

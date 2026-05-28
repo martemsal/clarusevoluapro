@@ -468,7 +468,10 @@
                         <option value="executive">Executive (R$ 4.697,00/mês)</option>
                     </select>
                 </div>
-                <button type="submit" class="btn-primary w-100 mt-4">Criar Cliente & Empresa</button>
+                <div style="font-size: 11px; color: var(--text-secondary); margin: 15px 0; line-height: 1.4;">
+                    🔒 Em conformidade com a LGPD, a senha é criptografada com SHA-256 no seu navegador antes do envio ao banco. Nem mesmo o administrador poderá visualizá-la futuramente.
+                </div>
+                <button type="submit" class="btn-primary w-100 mt-2">Criar Cliente & Empresa</button>
             </form>
         </div>
     </div>
@@ -523,7 +526,10 @@
                         <option value="executive">Executive (R$ 4.697,00/mês)</option>
                     </select>
                 </div>
-                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <div style="font-size: 11px; color: var(--text-secondary); margin: 15px 0; line-height: 1.4;">
+                    🔒 Modificações de senha são criptografadas com SHA-256 no seu navegador antes de serem enviadas para o banco de dados.
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
                     <button type="button" class="close-edit-client" onclick="document.getElementById('editClientModal').style.display='none'"
                         style="flex:1; padding:10px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 8px; color:var(--text-secondary); cursor:pointer; font-size:13px;">Cancelar</button>
                     <button type="submit" class="btn-primary" style="flex:2; padding:10px;">Salvar Alterações</button>
@@ -569,6 +575,9 @@
                 <div class="form-group mb-4" style="margin-bottom: 24px;">
                     <label for="loginPassword">Senha</label>
                     <input type="password" id="loginPassword" required placeholder="Digite sua senha" style="background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px; color: var(--text-primary); font-size: 14px;">
+                </div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.4; text-align: center;">
+                    🔒 Ao entrar, você concorda com o processamento de dados financeiros estritamente para fins de análise e geração do parecer estratégico, em conformidade com a LGPD (Lei 13.709/18).
                 </div>
                 <button type="submit" class="btn-primary w-100" style="margin-bottom: 0;">Entrar</button>
             </form>
