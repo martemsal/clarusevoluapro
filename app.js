@@ -218,6 +218,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Reset Active Company Data
     document.getElementById('btnResetData').addEventListener('click', () => {
+        if (!EFO_Session || EFO_Session.role !== 'admin') {
+            showToast('Erro', 'Apenas administradores podem zerar os dados.', 'danger');
+            return;
+        }
         if(confirm("Tem certeza que deseja zerar todos os dados da empresa ativa?")) {
             EFO_Lancamentos = JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS));
             OFX_Raw_Import = [];
@@ -320,6 +324,11 @@ const sumObj = (obj) => Object.values(obj).reduce((a, b) => a + b, 0);
 
 // --- OFX ENGINE & COMPLIANCE ---
 function handleOFXUpload(e) {
+    if (!EFO_Session || EFO_Session.role !== 'admin') {
+        showToast('Erro', 'Apenas administradores podem fazer upload de arquivos OFX.', 'danger');
+        e.target.value = '';
+        return;
+    }
     const files = e.target.files;
     if (!files.length) return;
 
@@ -479,6 +488,7 @@ function categorizeTransactions() {
 }
 
 function manualCategorize(fitid, categoryPath) {
+    if (!EFO_Session || EFO_Session.role !== 'admin') return;
     const txn = OFX_Raw_Import.find(t => t.transaction_id === fitid);
     if (!txn || (txn.status !== 'Pendente' && txn.status !== 'Flagged')) return;
 
@@ -521,6 +531,10 @@ function manualCategorize(fitid, categoryPath) {
 }
 
 window.applyManualCategorization = (fitid) => {
+    if (!EFO_Session || EFO_Session.role !== 'admin') {
+        showToast('Acesso Negado', 'Apenas administradores podem categorizar transações.', 'danger');
+        return;
+    }
     const sel = document.getElementById(`sel_${fitid}`);
     if (!sel.value) return showToast('Aviso', 'Selecione uma categoria.', 'warning');
     
@@ -566,6 +580,8 @@ function renderDrillDownTable() {
     }
 
     const optgroups = getOptGroupsHTML();
+    const isClient = EFO_Session && EFO_Session.role !== 'admin';
+    const disabledAttr = isClient ? 'disabled style="cursor: not-allowed; opacity: 0.75;"' : '';
 
     relatedTxns.forEach(txn => {
         const tr = document.createElement('tr');
@@ -577,7 +593,7 @@ function renderDrillDownTable() {
             <td class="desc-cell"><strong>${txn.description}</strong></td>
             <td style="color: ${txn.amount > 0 ? 'var(--success)' : 'var(--danger)'}">${formatCurrency(txn.amount)}</td>
             <td>
-                <select class="efo-select w-100" id="reclass_${txn.transaction_id}" onchange="reclassifyTransaction('${txn.transaction_id}')">
+                <select class="efo-select w-100" id="reclass_${txn.transaction_id}" onchange="reclassifyTransaction('${txn.transaction_id}')" ${disabledAttr}>
                     ${optgroups.replace(`value="${txn.assigned_account}"`, `value="${txn.assigned_account}" selected`)}
                 </select>
             </td>
@@ -587,6 +603,10 @@ function renderDrillDownTable() {
 }
 
 window.reclassifyTransaction = (fitid) => {
+    if (!EFO_Session || EFO_Session.role !== 'admin') {
+        showToast('Acesso Negado', 'Apenas administradores podem reclassificar transações.', 'danger');
+        return;
+    }
     const txn = OFX_Raw_Import.find(t => t.transaction_id === fitid);
     const newCategoryPath = document.getElementById(`reclass_${fitid}`).value;
     
@@ -1720,6 +1740,10 @@ function openEmpresaModal() {
 
 function saveEmpresa(e) {
     e.preventDefault();
+    if (!EFO_Session || EFO_Session.role !== 'admin') {
+        showToast('Erro', 'Apenas administradores podem configurar a empresa.', 'danger');
+        return;
+    }
     Config_Empresa = {
         cnpj: document.getElementById('config_cnpj').value,
         cnae_principal: document.getElementById('config_cnae').value,
@@ -1734,6 +1758,10 @@ function saveEmpresa(e) {
 
 function saveParams(e) {
     e.preventDefault();
+    if (!EFO_Session || EFO_Session.role !== 'admin') {
+        showToast('Erro', 'Apenas administradores podem alterar os parâmetros.', 'danger');
+        return;
+    }
     EFO_Parametros = { impostos: parseFloat(document.getElementById('param_impostos').value), comissoes: parseFloat(document.getElementById('param_comissoes').value), meta_lucro_desejada: parseFloat(document.getElementById('param_meta_lucro').value) };
     saveState();
     renderParametros(); document.getElementById('paramsModal').style.display = 'none';
@@ -1902,6 +1930,11 @@ function triggerImportJSON() {
 
 // Handle JSON file import
 function handleImportJSON(e) {
+    if (!EFO_Session || EFO_Session.role !== 'admin') {
+        showToast('Erro', 'Apenas administradores podem importar arquivos de backup.', 'danger');
+        e.target.value = '';
+        return;
+    }
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
@@ -2071,6 +2104,10 @@ function renderClientsTable() {
 }
 
 window.deleteClient = (index) => {
+    if (!EFO_Session || EFO_Session.role !== 'admin') {
+        showToast('Erro', 'Apenas administradores podem excluir clientes.', 'danger');
+        return;
+    }
     if (confirm("Tem certeza que deseja excluir este cliente?")) {
         const user = EFO_Users[index];
         if (user) {
@@ -2125,6 +2162,10 @@ window.openEditClient = (index) => {
 
 function saveEditClient(e) {
     e.preventDefault();
+    if (!EFO_Session || EFO_Session.role !== 'admin') {
+        showToast('Erro', 'Apenas administradores podem editar clientes.', 'danger');
+        return;
+    }
     const index = parseInt(document.getElementById('edit_client_index').value);
     const user = EFO_Users[index];
     if (!user) return;
@@ -2224,6 +2265,10 @@ function handleLogout() {
 
 function handleCreateClient(e) {
     e.preventDefault();
+    if (!EFO_Session || EFO_Session.role !== 'admin') {
+        showToast('Erro', 'Apenas administradores podem criar clientes.', 'danger');
+        return;
+    }
     const name = document.getElementById('client_name').value.trim();
     const email = document.getElementById('client_email').value.trim();
     const password = document.getElementById('client_password').value;
@@ -2304,6 +2349,10 @@ function updateCloudStatus(state) {
 }
 
 async function runMigration() {
+    if (!EFO_Session || EFO_Session.role !== 'admin') {
+        showToast('Erro', 'Apenas administradores podem iniciar a migração de dados.', 'danger');
+        return;
+    }
     const progress = document.getElementById('migrateProgress');
     const bar      = document.getElementById('migrateProgressBar');
     const txt      = document.getElementById('migrateProgressText');
