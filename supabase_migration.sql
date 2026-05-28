@@ -54,14 +54,27 @@ ALTER TABLE efo_ofx_raw   ENABLE ROW LEVEL SECURITY;
 
 -- 6. SECURITY DEFINER FUNCTIONS (Prevents infinite recursion in RLS policies)
 
+-- Helper function to extract headers safely (supporting PostgREST v9+ JSON format and legacy individual headers)
+CREATE OR REPLACE FUNCTION efo_get_header(header_name text)
+RETURNS text AS $$
+BEGIN
+    RETURN COALESCE(
+        (nullif(current_setting('request.headers', true), '')::json)->>lower(header_name),
+        current_setting('request.header.' || lower(header_name), true)
+    );
+EXCEPTION WHEN OTHERS THEN
+    RETURN current_setting('request.header.' || lower(header_name), true);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
 -- Check if request is authenticated as Admin
 CREATE OR REPLACE FUNCTION efo_is_admin()
 RETURNS boolean AS $$
 BEGIN
     RETURN EXISTS (
         SELECT 1 FROM efo_users 
-        WHERE email = nullif(current_setting('request.header.x-efo-email', true), '')
-          AND password = nullif(current_setting('request.header.x-efo-password', true), '')
+        WHERE email = nullif(efo_get_header('x-efo-email'), '')
+          AND password = nullif(efo_get_header('x-efo-password'), '')
           AND role = 'admin'
     );
 END;
@@ -79,12 +92,13 @@ BEGIN
     -- 2. Client is authorized only for their own company
     RETURN EXISTS (
         SELECT 1 FROM efo_users
-        WHERE email = nullif(current_setting('request.header.x-efo-email', true), '')
-          AND password = nullif(current_setting('request.header.x-efo-password', true), '')
+        WHERE email = nullif(efo_get_header('x-efo-email'), '')
+          AND password = nullif(efo_get_header('x-efo-password'), '')
           AND company_id = comp_id
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
 
 -- Secure Login RPC Function (Checks password hash, auto-migrates plain text passwords)
 CREATE OR REPLACE FUNCTION efo_login_user(p_email TEXT, p_password_hash TEXT)
@@ -95,6 +109,7 @@ RETURNS TABLE (
     company_id TEXT,
     authenticated BOOLEAN
 ) AS $$
+#variable_conflict use_column
 DECLARE
     v_id UUID;
     v_stored_pass TEXT;
@@ -104,10 +119,10 @@ DECLARE
     v_authenticated BOOLEAN := FALSE;
 BEGIN
     -- Find user
-    SELECT id, password, role, name, efo_users.company_id
+    SELECT u.id, u.password, u.role, u.name, u.company_id
     INTO v_id, v_stored_pass, v_role, v_name, v_company_id
-    FROM efo_users
-    WHERE efo_users.email = p_email;
+    FROM efo_users u
+    WHERE u.email = p_email;
 
     IF FOUND THEN
         -- Case 1: Already hashed password matches
@@ -149,7 +164,7 @@ CREATE POLICY user_read_policy ON efo_users
     FOR SELECT
     USING (
         efo_is_admin()
-        OR email = nullif(current_setting('request.header.x-efo-email', true), '')
+        OR email = nullif(efo_get_header('x-efo-email'), '')
     );
 
 DROP POLICY IF EXISTS user_write_policy ON efo_users;
