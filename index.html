@@ -49,6 +49,7 @@
                 <button class="nav-btn" data-target="tab-dashboard" id="navDashboardBtn">Indicadores EFO</button>
                 <button class="nav-btn" data-target="tab-parecer" id="navParecerBtn">Parecer Estratégico</button>
                 <button class="nav-btn" data-target="tab-alinhamento" id="navAlinhamentoBtn">Alinhamento</button>
+                <button class="nav-btn" data-target="tab-reuniao" id="navReuniaoBtn">Reunião com Consultor</button>
                 <button class="nav-btn" data-target="tab-conciliation" id="navConciliationBtn">
                     Conciliação Bancária
                     <span class="badge nav-badge" id="navPendingCount">0</span>
@@ -283,6 +284,7 @@
                                     <th>CNPJ</th>
                                     <th>CNAE</th>
                                     <th>Regime</th>
+                                    <th>Pacote</th>
                                     <th style="text-align:center;">Ações</th>
                                 </tr>
                             </thead>
@@ -291,6 +293,99 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+            
+            <!-- TAB: REUNIÃO COM CONSULTOR -->
+            <div id="tab-reuniao" class="tab-content">
+                <div class="glass-panel p-24" style="max-width: 800px; margin: 0 auto; padding: 40px; text-align: center;">
+                    <div style="font-size: 50px; margin-bottom: 20px;">📅</div>
+                    <h2 style="font-size: 24px; font-weight: 700; margin-bottom: 12px; color: var(--accent-primary);">Agenda Mensal de Mentoria & Consultoria</h2>
+                    <p style="color: var(--text-secondary); line-height: 1.6; margin-bottom: 30px;">
+                        Como membro do plano <strong style="color: var(--accent-primary);">Executive</strong>, você possui reuniões mensais exclusivas com seu consultor estratégico. Agende sua próxima sessão de análise de DRE, Balanço e metas operacionais abaixo:
+                    </p>
+                    
+                    <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); padding: 30px; border-radius: 12px; text-align: left; max-width: 500px; margin: 0 auto;">
+                        <h3 style="margin-top: 0; color: var(--text-primary); font-size: 16px; margin-bottom: 15px;">Próxima Reunião Disponível</h3>
+                        <ul style="list-style: none; padding: 0; margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.8;">
+                            <li>📅 <strong>Frequência:</strong> 1x por mês (Individual)</li>
+                            <li>⏳ <strong>Duração:</strong> 60 minutos</li>
+                            <li>🎯 <strong>Foco:</strong> Revisão dos Indicadores EFO, DRE e Plano de Ação</li>
+                        </ul>
+                        <button class="btn-primary w-100 mt-4" onclick="showToast('Agendamento', 'Redirecionando para a agenda do consultor...', 'success')">📅 Agendar com o Consultor</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: UPGRADE (Locked Modules Upsell) -->
+            <div id="tab-upgrade" class="tab-content">
+                <div class="glass-panel p-24" style="max-width: 900px; margin: 0 auto; padding: 40px; text-align: center;">
+                    <div style="font-size: 50px; margin-bottom: 20px;">🔒</div>
+                    <h2 id="lockedTabTitle" style="font-size: 22px; font-weight: 700; margin-bottom: 8px; color: var(--accent-secondary);">Módulo Bloqueado no seu Plano</h2>
+                    <p style="color: var(--text-secondary); line-height: 1.6; margin-bottom: 30px; max-width: 600px; margin-left: auto; margin-right: auto;">
+                        Este recurso faz parte de um plano superior. Faça o upgrade do seu pacote e libere o acompanhamento de indicadores EFO, parecer do consultor e plano de ação estruturado.
+                    </p>
+                    
+                    <div class="table-container" style="margin-top: 30px; margin-bottom: 30px;">
+                        <table class="report-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+                            <thead>
+                                <tr style="background: rgba(255,255,255,0.03);">
+                                    <th style="padding: 12px; font-weight: 600;">Módulos / Recursos</th>
+                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Essential</th>
+                                    <th style="padding: 12px; text-align: center; font-weight: 600; color: var(--accent-primary);">Performance ⭐</th>
+                                    <th style="padding: 12px; text-align: center; font-weight: 600;">Executive</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <td style="padding: 12px;">DRE Gerencial</td>
+                                    <td style="padding: 12px; text-align: center; color: var(--success);">✓</td>
+                                    <td style="padding: 12px; text-align: center; color: var(--success);">✓</td>
+                                    <td style="padding: 12px; text-align: center; color: var(--success);">✓</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <td style="padding: 12px;">Balanço Gerencial</td>
+                                    <td style="padding: 12px; text-align: center; color: var(--success);">✓</td>
+                                    <td style="padding: 12px; text-align: center; color: var(--success);">✓</td>
+                                    <td style="padding: 12px; text-align: center; color: var(--success);">✓</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <td style="padding: 12px;">Indicadores EFO</td>
+                                    <td style="padding: 12px; text-align: center; color: var(--text-secondary);">—</td>
+                                    <td style="padding: 12px; text-align: center; color: var(--success);">✓</td>
+                                    <td style="padding: 12px; text-align: center; color: var(--success);">✓</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <td style="padding: 12px;">Parecer Estratégico</td>
+                                    <td style="padding: 12px; text-align: center; color: var(--text-secondary);">—</td>
+                                    <td style="padding: 12px; text-align: center; color: var(--success);">✓</td>
+                                    <td style="padding: 12px; text-align: center; color: var(--success);">✓</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <td style="padding: 12px;">Plano de Ação (Alinhamento)</td>
+                                    <td style="padding: 12px; text-align: center; color: var(--text-secondary);">—</td>
+                                    <td style="padding: 12px; text-align: center; color: var(--success);">✓</td>
+                                    <td style="padding: 12px; text-align: center; color: var(--success);">✓</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <td style="padding: 12px;">Reunião com consultor</td>
+                                    <td style="padding: 12px; text-align: center; color: var(--text-secondary);">—</td>
+                                    <td style="padding: 12px; text-align: center; color: var(--text-secondary);">—</td>
+                                    <td style="padding: 12px; text-align: center; color: var(--success);">✓</td>
+                                </tr>
+                                <tr style="background: rgba(255,255,255,0.02); font-weight: 700;">
+                                    <td style="padding: 15px;">Investimento Mensal</td>
+                                    <td style="padding: 15px; text-align: center; font-size: 15px;">R$ 1.697</td>
+                                    <td style="padding: 15px; text-align: center; font-size: 16px; color: var(--accent-primary);">R$ 2.997</td>
+                                    <td style="padding: 15px; text-align: center; font-size: 15px;">R$ 4.697</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <a href="https://wa.me/5511999999999" target="_blank" class="btn-primary" style="display: inline-block; padding: 12px 24px; text-decoration: none; font-size: 14px; border-radius: 8px;">
+                        💬 Solicitar Upgrade do Plano
+                    </a>
                 </div>
             </div>
 
@@ -408,6 +503,14 @@
                         <option value="Lucro Real">Lucro Real</option>
                     </select>
                 </div>
+                <div class="form-group mb-3">
+                    <label>Pacote Contratado</label>
+                    <select id="client_package" class="efo-select w-100" style="max-width:none; padding:10px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--glass-border); border-radius: 8px;">
+                        <option value="essential">Essential (R$ 1.697,00/mês)</option>
+                        <option value="performance" selected>Performance (R$ 2.997,00/mês) ★</option>
+                        <option value="executive">Executive (R$ 4.697,00/mês)</option>
+                    </select>
+                </div>
                 <button type="submit" class="btn-primary w-100 mt-4">Criar Cliente & Empresa</button>
             </form>
         </div>
@@ -452,6 +555,15 @@
                         <option value="Simples Nacional">Simples Nacional</option>
                         <option value="Lucro Presumido">Lucro Presumido</option>
                         <option value="Lucro Real">Lucro Real</option>
+                    </select>
+                </div>
+                <div class="form-group mb-3">
+                    <label>Pacote Contratado</label>
+                    <select id="edit_client_package" class="efo-select w-100"
+                        style="max-width:none; padding:10px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--glass-border); border-radius: 8px;">
+                        <option value="essential">Essential (R$ 1.697,00/mês)</option>
+                        <option value="performance">Performance (R$ 2.997,00/mês) ★</option>
+                        <option value="executive">Executive (R$ 4.697,00/mês)</option>
                     </select>
                 </div>
                 <div style="display: flex; gap: 10px; margin-top: 20px;">

@@ -1,6 +1,6 @@
 // --- DATA SCHEMA ---
 const DEFAULT_PARAMETROS = { impostos: 10, comissoes: 5, meta_lucro_desejada: 15 };
-const DEFAULT_EMPRESA = { cnpj: "", cnae_principal: "", regime_tributario: "Simples Nacional", tipo_atividade: "Serviço" };
+const DEFAULT_EMPRESA = { cnpj: "", cnae_principal: "", regime_tributario: "Simples Nacional", tipo_atividade: "Serviço", package: "performance" };
 
 const DEFAULT_LANCAMENTOS = {
     dre: {
@@ -43,6 +43,9 @@ let EFO_Active_DRE_Divisor = 12;
 function migrateAndInitializeData() {
     if (Object.keys(EFO_Companies).length === 0) {
         const legacyConfig = JSON.parse(localStorage.getItem('Config_Empresa')) || DEFAULT_EMPRESA;
+        if (!legacyConfig.package) {
+            legacyConfig.package = 'performance';
+        }
         const legacyParams = JSON.parse(localStorage.getItem('EFO_Parametros')) || DEFAULT_PARAMETROS;
         const legacyLancamentos = JSON.parse(localStorage.getItem('EFO_Lancamentos_V3')) || JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS));
         const legacyOfx = JSON.parse(localStorage.getItem('OFX_Raw_Import_V2')) || [];
@@ -63,6 +66,16 @@ function migrateAndInitializeData() {
         EFO_Active_Company_Id = defaultCompanyId;
         localStorage.setItem('EFO_Active_Company_Id', EFO_Active_Company_Id);
     }
+    
+    // Ensure all companies have a package property
+    Object.keys(EFO_Companies).forEach(id => {
+        const comp = EFO_Companies[id];
+        if (comp && comp.config) {
+            if (!comp.config.package) {
+                comp.config.package = 'performance';
+            }
+        }
+    });
     
     if (!EFO_Active_Company_Id && Object.keys(EFO_Companies).length > 0) {
         EFO_Active_Company_Id = Object.keys(EFO_Companies)[0];
@@ -287,18 +300,47 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // --- TABS ---
+function checkTabLocked(tabId, packageCode) {
+    if (packageCode === 'executive') return false;
+    
+    if (packageCode === 'performance') {
+        return tabId === 'tab-reuniao';
+    }
+    
+    if (packageCode === 'essential') {
+        const lockedTabs = ['tab-dashboard', 'tab-parecer', 'tab-alinhamento', 'tab-reuniao'];
+        return lockedTabs.includes(tabId);
+    }
+    
+    return false;
+}
+
 function initTabs() {
     const navBtns = document.querySelectorAll('.nav-btn');
     navBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
+            let target = btn.getAttribute('data-target');
+            
+            // Check package permissions for client
+            if (EFO_Session && EFO_Session.role === 'client') {
+                const company = EFO_Companies[EFO_Session.companyId] || {};
+                const pkg = company.config?.package || 'performance';
+                
+                if (checkTabLocked(target, pkg)) {
+                    const moduleName = btn.textContent.trim();
+                    document.getElementById('lockedTabTitle').textContent = `Módulo "${moduleName}" Bloqueado no seu Plano`;
+                    target = 'tab-upgrade';
+                }
+            }
+            
             navBtns.forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             
             btn.classList.add('active');
-            const target = btn.getAttribute('data-target');
             document.getElementById(target).classList.add('active');
             
             let title = "Indicadores EFO";
+            if (target === 'tab-upgrade') title = "Upgrade de Plano Necessário";
             if (target === 'tab-dashboard') title = "Indicadores EFO";
             if (target === 'tab-dre') title = "Demonstrativo de Resultado (DRE)";
             if (target === 'tab-balanco') title = "Balanço Gerencial";
@@ -307,6 +349,7 @@ function initTabs() {
                 renderParecerEstrategico();
             }
             if (target === 'tab-alinhamento') title = "Alinhamento Estratégico";
+            if (target === 'tab-reuniao') title = "Reunião com Consultor";
             if (target === 'tab-conciliation') title = "Conciliação Bancária";
             if (target === 'tab-clients') {
                 title = "Clientes & Empresas";
@@ -2022,14 +2065,17 @@ function applyRoleUI() {
     
     loginScreen.style.display = 'none';
     userProfileName.textContent = EFO_Session.name;
-    userProfileRole.textContent = EFO_Session.role === 'admin' ? 'Administrador' : 'Cliente';
+    
+    const navReuniaoBtn = document.getElementById('navReuniaoBtn');
     
     if (EFO_Session.role === 'admin') {
+        userProfileRole.textContent = 'Administrador';
         adminCompanySelectorSection.style.display = 'block';
         navClientsBtn.style.display = 'block';
         navConciliationBtn.style.display = 'flex';
         if (importSection) importSection.style.display = 'block';
         if (sharingSection) sharingSection.style.display = 'block';
+        if (navReuniaoBtn) navReuniaoBtn.style.display = 'none';
         
         btnEditParams.style.display = 'inline-block';
         btnConfigEmpresa.style.display = 'inline-block';
@@ -2038,11 +2084,17 @@ function applyRoleUI() {
         navDashboardBtn.textContent = 'Indicadores EFO';
         renderCompanySelect();
     } else {
+        const company = EFO_Companies[EFO_Session.companyId] || {};
+        const pkg = company.config?.package || 'performance';
+        const pkgNames = { essential: 'Essential', performance: 'Performance', executive: 'Executive' };
+        userProfileRole.textContent = `Cliente • ${pkgNames[pkg] || 'Performance'}`;
+
         adminCompanySelectorSection.style.display = 'none';
         navClientsBtn.style.display = 'none';
         navConciliationBtn.style.display = 'none';
         if (importSection) importSection.style.display = 'none';
         if (sharingSection) sharingSection.style.display = 'none';
+        if (navReuniaoBtn) navReuniaoBtn.style.display = 'block';
         
         btnEditParams.style.display = 'none';
         btnConfigEmpresa.style.display = 'none';
@@ -2050,10 +2102,15 @@ function applyRoleUI() {
         
         navDashboardBtn.textContent = 'Indicadores EFO';
         
-        // If they are on a hidden tab, force select the dashboard
+        // If they are on a hidden tab, force select the DRE tab (since Essential client hides dashboard)
         const activeNav = document.querySelector('.nav-btn.active');
-        if (activeNav && (activeNav.getAttribute('data-target') === 'tab-conciliation' || activeNav.getAttribute('data-target') === 'tab-clients')) {
-            navDashboardBtn.click();
+        if (activeNav && (
+            activeNav.getAttribute('data-target') === 'tab-conciliation' || 
+            activeNav.getAttribute('data-target') === 'tab-clients' ||
+            (pkg === 'essential' && activeNav.getAttribute('data-target') === 'tab-dashboard')
+        )) {
+            // Click DRE tab
+            document.querySelector('.nav-btn[data-target="tab-dre"]').click();
         }
     }
 }
@@ -2091,6 +2148,11 @@ function renderClientsTable() {
             <td>${company.config?.cnpj || '-'}</td>
             <td>${company.config?.cnae_principal || '-'}</td>
             <td><span class="badge" style="background: var(--accent-primary); color: white; font-size: 11px; padding: 4px 8px;">${company.config?.regime_tributario || '-'}</span></td>
+            <td>
+                <span class="badge" style="background: ${company.config?.package === 'executive' ? 'var(--accent-secondary)' : (company.config?.package === 'essential' ? 'rgba(255,255,255,0.1)' : 'var(--accent-primary)')}; color: white; font-size: 11px; padding: 4px 8px; text-transform: uppercase;">
+                    ${company.config?.package || 'performance'}
+                </span>
+            </td>
             <td style="text-align:center; display:flex; gap:6px; justify-content:center;">
                 <button class="action-btn" onclick="openEditClient(${index})" title="Editar cliente"
                     style="background: rgba(99,102,241,0.15); border-color: var(--accent-primary); color: var(--accent-primary);">
@@ -2156,6 +2218,7 @@ window.openEditClient = (index) => {
     document.getElementById('edit_client_cnpj').value = cfg.cnpj || '';
     document.getElementById('edit_client_cnae').value = cfg.cnae_principal || '';
     document.getElementById('edit_client_regime').value = cfg.regime_tributario || 'Simples Nacional';
+    document.getElementById('edit_client_package').value = cfg.package || 'performance';
 
     document.getElementById('editClientModal').style.display = 'block';
 };
@@ -2176,6 +2239,7 @@ function saveEditClient(e) {
     const cnpj     = document.getElementById('edit_client_cnpj').value.trim();
     const cnae     = document.getElementById('edit_client_cnae').value.trim();
     const regime   = document.getElementById('edit_client_regime').value;
+    const packageVal = document.getElementById('edit_client_package').value;
 
     // Determine activity from CNAE
     let activity = 'Serviço';
@@ -2192,7 +2256,7 @@ function saveEditClient(e) {
     const company = EFO_Companies[user.companyId];
     if (company) {
         company.name = name;
-        company.config = { ...company.config, cnpj, cnae_principal: cnae, regime_tributario: regime, tipo_atividade: activity };
+        company.config = { ...company.config, cnpj, cnae_principal: cnae, regime_tributario: regime, tipo_atividade: activity, package: packageVal };
         EFO_Companies[user.companyId] = company;
         localStorage.setItem('EFO_Companies', JSON.stringify(EFO_Companies));
         db_upsertCompany(company).catch(() => {});
@@ -2275,6 +2339,7 @@ function handleCreateClient(e) {
     const cnpj = document.getElementById('client_cnpj').value.trim();
     const cnae = document.getElementById('client_cnae').value.trim();
     const regime = document.getElementById('client_regime').value;
+    const packageVal = document.getElementById('client_package').value;
     
     if (EFO_Users.some(u => u.email.toLowerCase() === email.toLowerCase())) {
         showToast('Erro', 'Este e-mail de acesso já está cadastrado.', 'danger');
@@ -2295,7 +2360,8 @@ function handleCreateClient(e) {
             cnpj: cnpj,
             cnae_principal: cnae,
             regime_tributario: regime,
-            tipo_atividade: activity
+            tipo_atividade: activity,
+            package: packageVal
         },
         parametros: JSON.parse(JSON.stringify(DEFAULT_PARAMETROS)),
         lancamentos: JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS)),
