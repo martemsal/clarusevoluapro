@@ -215,6 +215,10 @@ async function db_bootstrap() {
                     ? EFO_Companies[id].lancamentos
                     : JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS));
             }
+            // Preserve local OFX cache if it exists, so we don't clear it out
+            if (EFO_Companies[id] && EFO_Companies[id].ofx && EFO_Companies[id].ofx.length > 0) {
+                companies[id].ofx = EFO_Companies[id].ofx;
+            }
         });
         EFO_Companies = companies;
         localStorage.setItem('EFO_Companies', JSON.stringify(EFO_Companies));
@@ -228,7 +232,9 @@ async function db_bootstrap() {
     }
 
     // 3. Load OFX for active company
-    const compId = EFO_Active_Company_Id;
+    const compId = (typeof EFO_Session !== 'undefined' && EFO_Session)
+        ? (EFO_Session.role === 'admin' ? EFO_Active_Company_Id : EFO_Session.companyId)
+        : EFO_Active_Company_Id;
     if (compId) {
         const ofx = await db_loadOFX(compId);
         if (ofx && ofx.length > 0) {

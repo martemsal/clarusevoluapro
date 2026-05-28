@@ -108,6 +108,21 @@ function loadActiveCompanyData() {
     } else {
         EFO_Active_DRE_Year = new Date().getFullYear();
     }
+
+    // Background fetch latest OFX from Supabase if online
+    if (typeof DB_ONLINE !== 'undefined' && DB_ONLINE && compId) {
+        db_loadOFX(compId).then(ofx => {
+            if (ofx && ofx.length > 0) {
+                OFX_Raw_Import = ofx;
+                localStorage.setItem('OFX_Raw_Import_V2', JSON.stringify(OFX_Raw_Import));
+                if (EFO_Companies[compId]) {
+                    EFO_Companies[compId].ofx = OFX_Raw_Import;
+                    localStorage.setItem('EFO_Companies', JSON.stringify(EFO_Companies));
+                }
+                updateAllViews();
+            }
+        }).catch(e => console.warn('[Supabase] Error loading OFX in background:', e));
+    }
 }
 
 function saveActiveCompanyData() {
@@ -1838,11 +1853,6 @@ async function handleLogin(e) {
     }
 
     if (user) {
-        // After successful Supabase login, refresh all data from cloud
-        if (DB_ONLINE) {
-            await db_bootstrap();
-        }
-
         EFO_Session = user;
         sessionStorage.setItem('EFO_Session', JSON.stringify(EFO_Session));
 
@@ -1851,6 +1861,11 @@ async function handleLogin(e) {
                 EFO_Active_Company_Id = Object.keys(EFO_Companies)[0];
                 localStorage.setItem('EFO_Active_Company_Id', EFO_Active_Company_Id);
             }
+        }
+
+        // After successful Supabase login, refresh all data from cloud
+        if (DB_ONLINE) {
+            await db_bootstrap();
         }
 
         loadActiveCompanyData();
