@@ -59,7 +59,7 @@ async function db_loadUsers() {
         return data.map(u => ({
             name:      u.name,
             email:     u.email,
-            password:  u.password, -- Safe to return from cache/admin query, RLS handles visibility
+            password:  u.password, // Safe to return from cache/admin query, RLS handles visibility
             role:      u.role,
             companyId: u.company_id
         }));
