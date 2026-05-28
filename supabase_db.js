@@ -81,6 +81,7 @@ async function db_upsertUser(user) {
         if (error) throw error;
     } catch (e) {
         console.warn('[Supabase] db_upsertUser failed.', e.message);
+        throw e;
     }
 }
 
@@ -90,6 +91,7 @@ async function db_deleteUser(email) {
         if (error) throw error;
     } catch (e) {
         console.warn('[Supabase] db_deleteUser failed.', e.message);
+        throw e;
     }
 }
 
@@ -163,6 +165,7 @@ async function db_upsertCompany(company) {
         if (error) throw error;
     } catch (e) {
         console.warn('[Supabase] db_upsertCompany failed.', e.message);
+        throw e;
     }
 }
 
@@ -172,6 +175,7 @@ async function db_deleteCompany(companyId) {
         if (error) throw error;
     } catch (e) {
         console.warn('[Supabase] db_deleteCompany failed.', e.message);
+        throw e;
     }
 }
 
@@ -221,6 +225,7 @@ async function db_saveOFX(companyId, transactions) {
         }
     } catch (e) {
         console.warn('[Supabase] db_saveOFX failed.', e.message);
+        throw e;
     }
 }
 

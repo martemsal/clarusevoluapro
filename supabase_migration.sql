@@ -156,3 +156,12 @@ DROP POLICY IF EXISTS user_write_policy ON efo_users;
 CREATE POLICY user_write_policy ON efo_users
     FOR ALL
     USING (efo_is_admin());
+
+-- 8. SEED DEFAULT USERS (Resolve o deadlock inicial de RLS)
+INSERT INTO efo_users (email, password, name, role, company_id)
+VALUES 
+  ('admin@clarus.com.br', 'e4ad7e0fe6b5bf949f7c67f2381ca4bf8d152f6a3e471fa65779cc4a7f83831e', 'Administrador', 'admin', NULL),
+  ('cliente@clarus.com.br', '33e182a6b1c4796f6ff57edfd41af4f69e9e017122da7ef7180465f243ed6c1d', 'Cliente Teste', 'client', NULL)
+ON CONFLICT (email) DO UPDATE 
+SET password = EXCLUDED.password, name = EXCLUDED.name, role = EXCLUDED.role;
+
