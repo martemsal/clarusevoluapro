@@ -1819,7 +1819,31 @@ function renderConciliationTable() {
         const tr = document.createElement('tr');
         if (txn.status === 'Flagged') tr.classList.add('row-flagged');
         const formattedDate = txn.date ? txn.date.substring(0, 10) : '';
+        
+        // Find suggested account from history (excluding generic banking terms)
+        let suggestedAccount = null;
+        const rawDesc = txn.description || '';
+        const genericTerms = ['DEB PIX CHAVE', 'ENVIO PIX', 'PIX', 'TED', 'DOC', 'DEBITO', 'TRANSF', 'PAGTO', 'FOL PAGTO', 'PIX ENVIADO', 'COMPROVANTE'];
+        const isGeneric = genericTerms.some(g => rawDesc.toUpperCase().trim() === g);
+
+        if (!isGeneric) {
+            const normalizedDesc = rawDesc.toUpperCase().trim();
+            const histMatch = OFX_Raw_Import.find(t => 
+                t.description && 
+                t.description.toUpperCase().trim() === normalizedDesc && 
+                t.status === 'Categorizado' && 
+                t.assigned_account
+            );
+            if (histMatch) {
+                suggestedAccount = histMatch.assigned_account;
+            }
+        }
+
         let statusHtml = txn.status === 'Flagged' ? `<span class="status-badge flagged">⚠️ Conformidade</span>` : `<span class="status-badge pendente">Pendente</span>`;
+        if (suggestedAccount) {
+            statusHtml += ` <span class="status-badge" style="background: rgba(99, 102, 241, 0.2); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.4); margin-left: 6px;">💡 Sugerido</span>`;
+        }
+
         let reasonHtml = txn.flag_reason ? `<div style="font-size:11px; color:var(--danger); margin-top:4px;">${txn.flag_reason}</div>` : '';
 
         tr.innerHTML = `
@@ -1836,6 +1860,13 @@ function renderConciliationTable() {
             </td>
         `;
         tbody.appendChild(tr);
+
+        if (suggestedAccount) {
+            const selectEl = document.getElementById(`sel_${txn.transaction_id}`);
+            if (selectEl) {
+                selectEl.value = suggestedAccount;
+            }
+        }
     });
 }
 
