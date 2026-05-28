@@ -308,7 +308,7 @@ function checkTabLocked(tabId, packageCode) {
     }
     
     if (packageCode === 'essential') {
-        const lockedTabs = ['tab-dashboard', 'tab-parecer', 'tab-alinhamento', 'tab-reuniao'];
+        const lockedTabs = ['tab-dashboard', 'tab-parecer', 'tab-reuniao'];
         return lockedTabs.includes(tabId);
     }
     
@@ -348,8 +348,7 @@ function initTabs() {
                 title = "Parecer Estratégico";
                 renderParecerEstrategico();
             }
-            if (target === 'tab-alinhamento') title = "Alinhamento Estratégico";
-            if (target === 'tab-reuniao') title = "Reunião com Consultor";
+            if (target === 'tab-reuniao') title = "Alinhamento estratégico";
             if (target === 'tab-conciliation') title = "Conciliação Bancária";
             if (target === 'tab-clients') {
                 title = "Clientes & Empresas";
