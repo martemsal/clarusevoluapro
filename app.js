@@ -196,20 +196,32 @@ function migrateAndInitializeData() {
 function loadActiveCompanyData() {
     if (!EFO_Session) return;
     
+    // Auto-fallback if the active company ID is invalid or empty for admins (resolves deleted/stale company ID states)
+    if (EFO_Session.role === 'admin') {
+        if (!EFO_Active_Company_Id || !EFO_Companies[EFO_Active_Company_Id]) {
+            if (Object.keys(EFO_Companies).length > 0) {
+                EFO_Active_Company_Id = Object.keys(EFO_Companies)[0];
+                localStorage.setItem('EFO_Active_Company_Id', EFO_Active_Company_Id);
+            }
+        }
+    }
+    
     const compId = EFO_Session.role === 'admin' ? EFO_Active_Company_Id : EFO_Session.companyId;
     let company = EFO_Companies[compId];
     
     if (!company) {
         company = {
-            id: compId,
+            id: compId || 'comp_default',
             name: 'Nova Empresa',
             config: JSON.parse(JSON.stringify(DEFAULT_EMPRESA)),
             parametros: JSON.parse(JSON.stringify(DEFAULT_PARAMETROS)),
             lancamentos: JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS)),
             ofx: []
         };
-        EFO_Companies[compId] = company;
-        localStorage.setItem('EFO_Companies', JSON.stringify(EFO_Companies));
+        if (compId) {
+            EFO_Companies[compId] = company;
+            localStorage.setItem('EFO_Companies', JSON.stringify(EFO_Companies));
+        }
     }
     
     EFO_Parametros = company.parametros || DEFAULT_PARAMETROS;
@@ -395,6 +407,7 @@ document.addEventListener('DOMContentLoaded', () => {
     db_bootstrap().then(online => {
         updateCloudStatus(online ? 'online' : 'offline');
         if (EFO_Session) {
+            applyRoleUI(); // Re-evaluate and re-render dropdowns/elements with synced data
             loadActiveCompanyData();
             updateAllViews();
             renderParametros();
