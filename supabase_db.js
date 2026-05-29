@@ -264,7 +264,39 @@ async function db_bootstrap() {
         db_updateClientHeaders(sessionEmail, sessionHash);
     }
 
-    // 1. Load companies
+    // 1. Load users (restricted by role) to sync company mapping
+    const users = await db_loadUsers();
+    if (users && users.length > 0) {
+        if (EFO_Session.role === 'admin') {
+            EFO_Users = users;
+            localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
+        } else {
+            // Find current user profile
+            const myProfile = users.find(u => u.email === EFO_Session.email);
+            if (myProfile) {
+                // Keep session and sessionStorage in sync with DB company mapping (resolves old cached session mappings)
+                EFO_Session.companyId = myProfile.companyId;
+                EFO_Session.name = myProfile.name;
+                sessionStorage.setItem('EFO_Session', JSON.stringify(EFO_Session));
+                
+                EFO_Users = [myProfile];
+                localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
+            }
+        }
+    } else if (EFO_Session.role !== 'admin') {
+        // Fallback to cache if offline
+        EFO_Users = [
+            {
+                email: EFO_Session.email,
+                name: EFO_Session.name,
+                role: EFO_Session.role,
+                companyId: EFO_Session.companyId
+            }
+        ];
+        localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
+    }
+
+    // 2. Load companies
     const companies = await db_loadCompanies();
     if (companies && Object.keys(companies).length > 0) {
         // Merge: Supabase is authoritative, but keep lancamentos from memory if server returns null
@@ -283,26 +315,7 @@ async function db_bootstrap() {
         localStorage.setItem('EFO_Companies', JSON.stringify(EFO_Companies));
     }
 
-    // 2. Load users (restricted by role)
-    if (EFO_Session.role === 'admin') {
-        const users = await db_loadUsers();
-        if (users && users.length > 0) {
-            EFO_Users = users;
-            localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
-        }
-    } else {
-        // Client role: populate local state ONLY with current profile to prevent client enumeration
-        EFO_Users = [
-            {
-                email: EFO_Session.email,
-                name: EFO_Session.name,
-                role: EFO_Session.role,
-                companyId: EFO_Session.companyId
-            }
-        ];
-        localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
-    }
-    // 3. Load OFX for active company
+    // 3. Load OFX for active company (using updated companyId)
     const compId = EFO_Session.role === 'admin' ? EFO_Active_Company_Id : EFO_Session.companyId;
     if (compId) {
         const ofx = await db_loadOFX(compId);
@@ -311,6 +324,7 @@ async function db_bootstrap() {
             localStorage.setItem('OFX_Raw_Import_V2', JSON.stringify(OFX_Raw_Import));
             if (EFO_Companies[compId]) {
                 EFO_Companies[compId].ofx = OFX_Raw_Import;
+                localStorage.setItem('EFO_Companies', JSON.stringify(EFO_Companies));
             }
         }
     }

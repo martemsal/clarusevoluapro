@@ -227,7 +227,7 @@ function loadActiveCompanyData() {
     // Background fetch latest OFX from Supabase if online
     if (typeof DB_ONLINE !== 'undefined' && DB_ONLINE && compId) {
         db_loadOFX(compId).then(ofx => {
-            if (ofx && ofx.length > 0) {
+            if (ofx !== null) {
                 OFX_Raw_Import = ofx;
                 localStorage.setItem('OFX_Raw_Import_V2', JSON.stringify(OFX_Raw_Import));
                 if (EFO_Companies[compId]) {
