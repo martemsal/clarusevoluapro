@@ -268,8 +268,16 @@ function saveActiveCompanyData() {
 
 function saveState() {
     saveActiveCompanyData();
-    // Background sync to Supabase (non-blocking)
-    db_syncActiveCompany().catch(e => console.warn('Supabase sync error:', e));
+    // Background sync to Supabase with status bar integration
+    updateCloudStatus('syncing');
+    db_syncActiveCompany()
+        .then(() => {
+            updateCloudStatus('online');
+        })
+        .catch(err => {
+            console.warn('[Supabase] Sync failed:', err);
+            updateCloudStatus('offline');
+        });
 }
 
 migrateAndInitializeData();
@@ -2275,6 +2283,21 @@ function renderCompanySelect() {
     });
 }
 
+window.selectClientCompany = (compId) => {
+    if (!compId) return;
+    EFO_Active_Company_Id = compId;
+    localStorage.setItem('EFO_Active_Company_Id', EFO_Active_Company_Id);
+    loadActiveCompanyData();
+    updateAllViews();
+    renderParametros();
+    renderCompanySelect();
+    showToast('Troca de Empresa', `Gerenciando dados de: ${EFO_Companies[compId]?.name || compId}`, 'success');
+    
+    // Auto-switch to DRE tab so the admin sees the updated company data immediately
+    const dreBtn = document.querySelector('.nav-btn[data-target="tab-dre"]');
+    if (dreBtn) dreBtn.click();
+};
+
 function renderClientsTable() {
     const tbody = document.getElementById('clientsTbody');
     if (!tbody) return;
@@ -2298,6 +2321,10 @@ function renderClientsTable() {
                 </span>
             </td>
             <td style="text-align:center; display:flex; gap:6px; justify-content:center;">
+                <button class="action-btn" onclick="selectClientCompany('${user.companyId}')" title="Gerenciar dados desta empresa"
+                    style="background: rgba(16, 185, 129, 0.15); border-color: var(--success); color: var(--success);">
+                    🏢 Acessar
+                </button>
                 <button class="action-btn" onclick="openEditClient(${index})" title="Editar cliente"
                     style="background: rgba(99,102,241,0.15); border-color: var(--accent-primary); color: var(--accent-primary);">
                     &#9999;&#65039; Editar
