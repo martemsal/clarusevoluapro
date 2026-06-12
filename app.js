@@ -299,6 +299,7 @@ let gaugeChartInst = null;
 let pieChartInst = null;
 let currentDrillDownPath = null;
 let currentDrillDownTitle = null;
+let currentDrillDownMonth = null;
 
 // --- INIT ---
 document.addEventListener('DOMContentLoaded', () => {
@@ -368,6 +369,35 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Mask for manual amount (currency formatting pt-BR)
+    const manualAmountInput = document.getElementById('manual_amount');
+    if (manualAmountInput) {
+        manualAmountInput.addEventListener('input', (e) => {
+            let value = e.target.value;
+            let digits = value.replace(/\D/g, '');
+            // Remove leading zeros to allow deleting down to empty
+            digits = digits.replace(/^0+/, '');
+            
+            if (digits === '') {
+                e.target.value = '';
+                return;
+            }
+            
+            // Pad digits if necessary
+            if (digits.length === 1) {
+                digits = '00' + digits;
+            } else if (digits.length === 2) {
+                digits = '0' + digits;
+            }
+            
+            const integerPart = digits.slice(0, -2);
+            const decimalPart = digits.slice(-2);
+            
+            const formattedInt = new Intl.NumberFormat('pt-BR').format(parseInt(integerPart, 10));
+            e.target.value = 'R$ ' + formattedInt + ',' + decimalPart;
+        });
+    }
+
     const formManualImport = document.getElementById('formManualImport');
     if (formManualImport) {
         formManualImport.addEventListener('submit', (e) => {
@@ -376,13 +406,18 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const dateVal = document.getElementById('manual_date').value;
             const descVal = document.getElementById('manual_desc').value.trim();
-            const amountVal = parseFloat(document.getElementById('manual_amount').value);
+            
+            // Parse formatted currency amount back to float
+            let rawAmount = document.getElementById('manual_amount').value;
+            rawAmount = rawAmount.replace(/R\$\s?/, '').replace(/\./g, '').replace(',', '.');
+            const amountVal = parseFloat(rawAmount);
+            
             const typeVal = document.getElementById('manual_type').value;
             const statusVal = document.getElementById('manual_status').value;
             const accountVal = document.getElementById('manual_account').value;
             
-            if (!dateVal || !descVal || isNaN(amountVal)) {
-                showToast('Erro', 'Preencha todos os campos obrigatórios.', 'danger');
+            if (!dateVal || !descVal || isNaN(amountVal) || amountVal <= 0) {
+                showToast('Erro', 'Preencha todos os campos obrigatórios com valores válidos.', 'danger');
                 return;
             }
             
@@ -794,11 +829,17 @@ window.applyManualCategorization = (fitid) => {
 };
 
 // --- DRILL-DOWN & RECLASSIFICATION ---
-window.openDrillDown = (categoryPath, title) => {
+window.openDrillDown = (categoryPath, title, monthIndex = null) => {
     currentDrillDownPath = categoryPath;
     currentDrillDownTitle = title;
+    currentDrillDownMonth = monthIndex;
     
-    document.getElementById('drillDownTitle').textContent = `Detalhamento: ${title}`;
+    let monthLabel = '';
+    if (monthIndex !== null) {
+        const monthsNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+        monthLabel = ` - ${monthsNames[monthIndex]}`;
+    }
+    document.getElementById('drillDownTitle').textContent = `Detalhamento: ${title}${monthLabel}`;
     renderDrillDownTable();
     
     document.getElementById('drillDownModal').style.display = 'block';
@@ -814,7 +855,13 @@ function renderDrillDownTable() {
         if (!isMatch) return false;
         
         const dateObj = new Date(t.date);
-        return dateObj.getFullYear() === EFO_Active_DRE_Year;
+        const yearMatch = dateObj.getFullYear() === EFO_Active_DRE_Year;
+        if (!yearMatch) return false;
+        
+        if (currentDrillDownMonth !== null) {
+            return dateObj.getMonth() === currentDrillDownMonth;
+        }
+        return true;
     });
     
     if(relatedTxns.length === 0) {
@@ -1217,18 +1264,42 @@ function makeDreRowHTML(label, rowType, monthValues, isNegative = false, clickHa
 
     let rowClass = '';
     if (rowType === 'group') rowClass = 'row-group';
-    if (rowType === 'sub') rowClass = 'row-sub clickable-row';
+    if (rowType === 'sub') rowClass = 'row-sub';
     if (rowType === 'total') rowClass = 'row-total';
     if (isNegative && rowType === 'group') rowClass += ' text-danger';
     if (!isNegative && rowType === 'group' && label.includes('RECEITA')) rowClass += ' text-success';
 
-    let html = `<tr class="${rowClass}" ${clickHandler}>`;
-    html += `<td>${label}</td>`;
+    // Parse categoryPath and title from clickHandler if it contains openDrillDown
+    let categoryPath = null;
+    let title = null;
+    if (clickHandler) {
+        const match = clickHandler.match(/openDrillDown\('([^']*)',\s*'([^']*)'\)/);
+        if (match) {
+            categoryPath = match[1];
+            title = match[2];
+        }
+    }
+
+    const cellStyle = categoryPath ? 'cursor: pointer; transition: background 0.2s;' : '';
+    const hoverBg = categoryPath ? 'onmouseover="this.style.background=\'rgba(255,255,255,0.06)\'" onmouseout="this.style.background=\'\'"' : '';
+
+    let html = `<tr class="${rowClass}">`;
+    
+    // Label cell
+    if (categoryPath) {
+        html += `<td style="${cellStyle}" ${hoverBg} onclick="openDrillDown('${categoryPath}', '${title}', null)">${label}</td>`;
+    } else {
+        html += `<td>${label}</td>`;
+    }
 
     // Months
     for (let i = 0; i < 12; i++) {
         let val = monthValues[i];
-        html += `<td class="text-right">${val === 0 ? '-' : formatCurrency(val)}</td>`;
+        if (categoryPath) {
+            html += `<td class="text-right" style="${cellStyle}" ${hoverBg} onclick="openDrillDown('${categoryPath}', '${title}', ${i})">${val === 0 ? '-' : formatCurrency(val)}</td>`;
+        } else {
+            html += `<td class="text-right">${val === 0 ? '-' : formatCurrency(val)}</td>`;
+        }
     }
 
     // Media
@@ -1245,7 +1316,11 @@ function makeDreRowHTML(label, rowType, monthValues, isNegative = false, clickHa
     html += `<td class="text-right" style="background: rgba(241, 196, 15, 0.08); font-weight: bold; color: #f1c40f;">${media === 0 ? '-' : formatCurrency(media)}${mediaAV}</td>`;
 
     // Total
-    html += `<td class="text-right" style="background: rgba(99, 102, 241, 0.08); font-weight: bold; color: var(--accent-primary);">${total === 0 ? '-' : formatCurrency(total)}</td>`;
+    if (categoryPath) {
+        html += `<td class="text-right" style="background: rgba(99, 102, 241, 0.08); font-weight: bold; color: var(--accent-primary); ${cellStyle}" ${hoverBg} onclick="openDrillDown('${categoryPath}', '${title}', null)">${total === 0 ? '-' : formatCurrency(total)}</td>`;
+    } else {
+        html += `<td class="text-right" style="background: rgba(99, 102, 241, 0.08); font-weight: bold; color: var(--accent-primary);">${total === 0 ? '-' : formatCurrency(total)}</td>`;
+    }
 
     html += `</tr>`;
     return html;
