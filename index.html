@@ -52,14 +52,19 @@
                     Conciliação Bancária
                     <span class="badge nav-badge" id="navPendingCount">0</span>
                 </button>
+                <button class="nav-btn" data-target="tab-manual-conciliation" id="navManualConciliationBtn" style="display:none;">
+                    Conciliação Manual
+                    <span class="badge nav-badge" id="navManualPendingCount">0</span>
+                </button>
                 <button class="nav-btn" data-target="tab-clients" id="navClientsBtn" style="display:none;">Clientes & Empresas</button>
             </nav>
 
             <div class="parameters-section mt-auto" id="importSection">
                 <h3>Importação Bancária</h3>
-                <div class="form-group">
-                    <label for="ofxUpload" class="btn-secondary" style="display:block; text-align:center; padding:10px;">Upload de .OFX (Múltiplos)</label>
+                <div class="form-group" style="display: flex; flex-direction: column; gap: 8px;">
+                    <label for="ofxUpload" class="btn-secondary" style="display:block; text-align:center; padding:10px; cursor:pointer; margin-bottom:0;">Upload de .OFX (Múltiplos)</label>
                     <input type="file" id="ofxUpload" accept=".ofx" multiple style="display:none;">
+                    <button id="btnManualImport" class="btn-secondary" style="display:block; text-align:center; padding:10px; width:100%;">Importação manual</button>
                 </div>
             </div>
 
@@ -224,6 +229,32 @@
                             </thead>
                             <tbody id="conciliationTbody">
                                 <tr><td colspan="5" class="text-center">Nenhuma transação pendente.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: CONCILIAÇÃO MANUAL (ADMIN ONLY) -->
+            <div id="tab-manual-conciliation" class="tab-content">
+                <div class="glass-panel p-24">
+                    <div class="conciliation-header">
+                        <h2>Transações Pendentes (Manuais)</h2>
+                        <span class="badge" id="manualPendingCount">0 Pendentes</span>
+                    </div>
+                    <div class="table-container">
+                        <table id="manualConciliationTable" class="report-table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th style="min-width: 350px;">Descrição / Histórico</th>
+                                    <th>Valor</th>
+                                    <th>Status</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="manualConciliationTbody">
+                                <tr><td colspan="5" class="text-center">Nenhuma transação manual pendente.</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -534,6 +565,49 @@
                         style="flex:1; padding:10px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 8px; color:var(--text-secondary); cursor:pointer; font-size:13px;">Cancelar</button>
                     <button type="submit" class="btn-primary" style="flex:2; padding:10px;">Salvar Alterações</button>
                 </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Manual Import Modal -->
+    <div id="manualImportModal" class="modal">
+        <div class="modal-content glass-panel" style="width: 450px; padding: 30px;">
+            <span class="close-modal close-manual-import">&times;</span>
+            <h2>Importação Manual de Lançamento</h2>
+            <form id="formManualImport" style="margin-top: 15px;">
+                <div class="form-group mb-3">
+                    <label>Data</label>
+                    <input type="date" id="manual_date" required style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px; color: var(--text-primary); width: 100%;">
+                </div>
+                <div class="form-group mb-3">
+                    <label>Descrição</label>
+                    <input type="text" id="manual_desc" required placeholder="Ex: Pagamento de Fornecedor XPTO" style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px; color: var(--text-primary); width: 100%;">
+                </div>
+                <div class="form-group mb-3">
+                    <label>Valor (R$)</label>
+                    <input type="number" id="manual_amount" step="0.01" min="0.01" required placeholder="Ex: 1500.00" style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px; color: var(--text-primary); width: 100%;">
+                </div>
+                <div class="form-group mb-3">
+                    <label>Tipo de Lançamento</label>
+                    <select id="manual_type" class="efo-select w-100" style="max-width:none; padding:10px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--glass-border); border-radius: 8px;">
+                        <option value="saida" selected>Saída / Despesa (-)</option>
+                        <option value="entrada">Entrada / Receita (+)</option>
+                    </select>
+                </div>
+                <div class="form-group mb-3">
+                    <label>Status Inicial</label>
+                    <select id="manual_status" class="efo-select w-100" style="max-width:none; padding:10px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--glass-border); border-radius: 8px;">
+                        <option value="Pendente" selected>Pendente (Conciliação Manual)</option>
+                        <option value="Categorizado">Categorizado (Direto no DRE)</option>
+                    </select>
+                </div>
+                <div class="form-group mb-3">
+                    <label>Conta de Destino (DRE/Balanço)</label>
+                    <select id="manual_account" class="efo-select w-100" style="max-width:none; padding:10px; background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--glass-border); border-radius: 8px;">
+                        <!-- Injected by JS -->
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary w-100 mt-2">Adicionar Lançamento</button>
             </form>
         </div>
     </div>

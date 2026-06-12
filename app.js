@@ -343,6 +343,84 @@ document.addEventListener('DOMContentLoaded', () => {
         else document.getElementById('config_atividade').value = 'Serviço'; // Default
     });
 
+    // Manual Import Modal
+    const btnManualImport = document.getElementById('btnManualImport');
+    if (btnManualImport) {
+        btnManualImport.addEventListener('click', () => {
+            if (!EFO_Session || EFO_Session.role !== 'admin') {
+                showToast('Erro', 'Apenas administradores podem realizar importação manual.', 'danger');
+                return;
+            }
+            const accountSelect = document.getElementById('manual_account');
+            if (accountSelect) {
+                accountSelect.innerHTML = getOptGroupsHTML();
+            }
+            document.getElementById('formManualImport').reset();
+            document.getElementById('manual_date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('manualImportModal').style.display = 'block';
+        });
+    }
+
+    const closeManualImport = document.querySelector('.close-manual-import');
+    if (closeManualImport) {
+        closeManualImport.addEventListener('click', () => {
+            document.getElementById('manualImportModal').style.display = 'none';
+        });
+    }
+
+    const formManualImport = document.getElementById('formManualImport');
+    if (formManualImport) {
+        formManualImport.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (!EFO_Session || EFO_Session.role !== 'admin') return;
+            
+            const dateVal = document.getElementById('manual_date').value;
+            const descVal = document.getElementById('manual_desc').value.trim();
+            const amountVal = parseFloat(document.getElementById('manual_amount').value);
+            const typeVal = document.getElementById('manual_type').value;
+            const statusVal = document.getElementById('manual_status').value;
+            const accountVal = document.getElementById('manual_account').value;
+            
+            if (!dateVal || !descVal || isNaN(amountVal)) {
+                showToast('Erro', 'Preencha todos os campos obrigatórios.', 'danger');
+                return;
+            }
+            
+            if (statusVal === 'Categorizado' && !accountVal) {
+                showToast('Erro', 'Selecione a conta de destino para lançamentos categorizados.', 'danger');
+                return;
+            }
+            
+            const finalAmount = typeVal === 'saida' ? -Math.abs(amountVal) : Math.abs(amountVal);
+            
+            const newTxn = {
+                transaction_id: 'manual_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now(),
+                date: dateVal,
+                description: descVal,
+                amount: finalAmount,
+                status: statusVal,
+                assigned_account: accountVal || null,
+                flag_reason: '',
+                raw_data: { import_type: 'manual' }
+            };
+            
+            OFX_Raw_Import.push(newTxn);
+            
+            if (statusVal === 'Categorizado' && accountVal && accountVal !== 'ignore') {
+                const path = accountVal.split('.');
+                if (EFO_Lancamentos[path[0]] && EFO_Lancamentos[path[0]][path[1]] && EFO_Lancamentos[path[0]][path[1]][path[2]] !== undefined) {
+                    EFO_Lancamentos[path[0]][path[1]][path[2]] += Math.abs(finalAmount);
+                }
+            }
+            
+            saveState();
+            updateAllViews();
+            
+            document.getElementById('manualImportModal').style.display = 'none';
+            showToast('Sucesso', 'Lançamento manual registrado.', 'success');
+        });
+    }
+
     document.getElementById('btnExportPDF').addEventListener('click', exportPDF);
     
     // Backup & Sync
@@ -840,6 +918,7 @@ function updateAllViews() {
     renderDRE();
     renderBalanco();
     renderConciliationTable();
+    renderManualConciliationTable();
     if (document.getElementById('tab-parecer') && document.getElementById('tab-parecer').classList.contains('active')) {
         renderParecerEstrategico();
     }
@@ -1823,7 +1902,7 @@ function renderConciliationTable() {
     const navBadge = document.getElementById('navPendingCount');
     tbody.innerHTML = '';
 
-    const pendentes = OFX_Raw_Import.filter(t => t.status === 'Pendente' || t.status === 'Flagged');
+    const pendentes = OFX_Raw_Import.filter(t => (t.status === 'Pendente' || t.status === 'Flagged') && (!t.transaction_id || !t.transaction_id.startsWith('manual_')));
     badge.textContent = `${pendentes.length} Ações`;
     navBadge.textContent = pendentes.length;
     if(pendentes.length > 0) {
@@ -2214,6 +2293,7 @@ function applyRoleUI() {
     const adminCompanySelectorSection = document.getElementById('adminCompanySelectorSection');
     const navClientsBtn = document.getElementById('navClientsBtn');
     const navConciliationBtn = document.getElementById('navConciliationBtn');
+    const navManualConciliationBtn = document.getElementById('navManualConciliationBtn');
     const navDashboardBtn = document.getElementById('navDashboardBtn');
     
     const importSection = document.getElementById('importSection');
@@ -2238,6 +2318,7 @@ function applyRoleUI() {
         adminCompanySelectorSection.style.display = 'block';
         navClientsBtn.style.display = 'block';
         navConciliationBtn.style.display = 'flex';
+        if (navManualConciliationBtn) navManualConciliationBtn.style.display = 'flex';
         if (importSection) importSection.style.display = 'block';
         if (sharingSection) sharingSection.style.display = 'block';
         if (navReuniaoBtn) navReuniaoBtn.style.display = 'none';
@@ -2257,6 +2338,7 @@ function applyRoleUI() {
         adminCompanySelectorSection.style.display = 'none';
         navClientsBtn.style.display = 'none';
         navConciliationBtn.style.display = 'none';
+        if (navManualConciliationBtn) navManualConciliationBtn.style.display = 'none';
         if (importSection) importSection.style.display = 'none';
         if (sharingSection) sharingSection.style.display = 'none';
         if (navReuniaoBtn) navReuniaoBtn.style.display = 'block';
@@ -2678,4 +2760,57 @@ async function runMigration() {
         updateCloudStatus('offline');
         btns.style.display = 'flex';
     }
+}
+
+function renderManualConciliationTable() {
+    const tbody = document.getElementById('manualConciliationTbody');
+    const badge = document.getElementById('manualPendingCount');
+    const navBadge = document.getElementById('navManualPendingCount');
+    if (!tbody || !badge || !navBadge) return;
+    
+    tbody.innerHTML = '';
+    
+    const manualPendentes = OFX_Raw_Import.filter(t => (t.status === 'Pendente' || t.status === 'Flagged') && t.transaction_id && t.transaction_id.startsWith('manual_'));
+    
+    badge.textContent = `${manualPendentes.length} Pendentes`;
+    navBadge.textContent = manualPendentes.length;
+    if (manualPendentes.length > 0) {
+        navBadge.style.display = 'inline-block';
+    } else {
+        navBadge.style.display = 'none';
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center">Nenhuma transação manual pendente no momento.</td></tr>`;
+        return;
+    }
+    
+    const optgroups = getOptGroupsHTML();
+    
+    manualPendentes.forEach(txn => {
+        const tr = document.createElement('tr');
+        if (txn.status === 'Flagged') tr.classList.add('row-flagged');
+        const formattedDate = txn.date ? txn.date.substring(0, 10) : '';
+        
+        let statusHtml = txn.status === 'Flagged' ? `<span class="status-badge flagged">⚠️ Conformidade</span>` : `<span class="status-badge pendente">Pendente</span>`;
+        
+        tr.innerHTML = `
+            <td>
+                <input type="date" id="date_${txn.transaction_id}" value="${formattedDate}" 
+                       style="background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); padding: 6px; font-size: 12px; width: 120px;">
+            </td>
+            <td class="desc-cell"><strong>${txn.description}</strong></td>
+            <td style="color: ${txn.amount > 0 ? 'var(--success)' : 'var(--danger)'}">${formatCurrency(txn.amount)}</td>
+            <td>${statusHtml}</td>
+            <td style="display: flex; gap: 8px;">
+                <select class="efo-select" id="sel_${txn.transaction_id}">${optgroups}</select>
+                <button class="action-btn" onclick="applyManualCategorization('${txn.transaction_id}')">Aprovar</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+        
+        if (txn.assigned_account) {
+            const selectEl = document.getElementById(`sel_${txn.transaction_id}`);
+            if (selectEl) {
+                selectEl.value = txn.assigned_account;
+            }
+        }
+    });
 }
