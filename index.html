@@ -46,7 +46,18 @@
                 <button class="nav-btn active" data-target="tab-dre">DRE Gerencial</button>
                 <button class="nav-btn" data-target="tab-balanco">Balanço Gerencial</button>
                 <button class="nav-btn" data-target="tab-dashboard" id="navDashboardBtn">Indicadores EFO</button>
-                <button class="nav-btn" data-target="tab-parecer" id="navParecerBtn">Parecer Estratégico</button>
+                <button class="nav-btn" id="navParecerBtn" style="width: 100%; display: flex; justify-content: space-between; align-items: center;">
+                    <span>Parecer Estratégico</span>
+                    <span id="parecerSubarrow" style="font-size: 10px; transition: transform 0.2s;">▼</span>
+                </button>
+                <div id="parecerSubmenu" style="display: none; flex-direction: column; gap: 4px; padding-left: 15px; margin-bottom: 4px;">
+                    <button class="nav-btn" data-target="tab-parecer-mensal" id="navParecerMensalBtn" style="padding: 8px 12px; font-size: 13.5px; justify-content: flex-start; gap: 8px; width: 100%;">
+                        <span>📅</span> Parecer Mensal
+                    </button>
+                    <button class="nav-btn" data-target="tab-parecer-anual" id="navParecerAnualBtn" style="padding: 8px 12px; font-size: 13.5px; justify-content: flex-start; gap: 8px; width: 100%;">
+                        <span>📊</span> Parecer Anual
+                    </button>
+                </div>
                 <button class="nav-btn" data-target="tab-reuniao" id="navReuniaoBtn">Alinhamento estratégico</button>
                 <button class="nav-btn" data-target="tab-conciliation" id="navConciliationBtn">
                     Conciliação Bancária
@@ -204,10 +215,50 @@
                 </div>
             </div>
 
-            <!-- TAB: PARECER ESTRATÉGICO -->
-            <div id="tab-parecer" class="tab-content">
-                <div id="parecerContainer">
-                    <!-- Populated dynamically by renderParecerEstrategico() -->
+            <!-- TAB: PARECER MENSAL -->
+            <div id="tab-parecer-mensal" class="tab-content">
+                <div style="display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-bottom: 20px; max-width: 1000px; margin-left: auto; margin-right: auto; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label for="parecerMensalMonthSelect" style="color: var(--text-secondary); font-size: 13.5px; font-weight: 500; margin-bottom: 0;">Mês:</label>
+                        <select id="parecerMensalMonthSelect" class="efo-select" style="padding: 6px 12px; background: rgba(0,0,0,0.3); border-color: var(--glass-border); border-radius: 8px; color: var(--text-primary);">
+                            <option value="0">Janeiro</option>
+                            <option value="1">Fevereiro</option>
+                            <option value="2">Março</option>
+                            <option value="3">Abril</option>
+                            <option value="4">Maio</option>
+                            <option value="5">Junho</option>
+                            <option value="6">Julho</option>
+                            <option value="7">Agosto</option>
+                            <option value="8">Setembro</option>
+                            <option value="9">Outubro</option>
+                            <option value="10">Novembro</option>
+                            <option value="11">Dezembro</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label for="parecerMensalYearSelect" style="color: var(--text-secondary); font-size: 13.5px; font-weight: 500; margin-bottom: 0;">Ano:</label>
+                        <select id="parecerMensalYearSelect" class="efo-select" style="padding: 6px 12px; background: rgba(0,0,0,0.3); border-color: var(--glass-border); border-radius: 8px; color: var(--text-primary);">
+                            <!-- Injected by JS -->
+                        </select>
+                    </div>
+                </div>
+                <div id="parecerMensalContainer">
+                    <!-- Populated dynamically by renderParecerMensal() -->
+                </div>
+            </div>
+
+            <!-- TAB: PARECER ANUAL -->
+            <div id="tab-parecer-anual" class="tab-content">
+                <div style="display: flex; justify-content: flex-end; align-items: center; gap: 12px; margin-bottom: 20px; max-width: 1000px; margin-left: auto; margin-right: auto; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label for="parecerAnualYearSelect" style="color: var(--text-secondary); font-size: 13.5px; font-weight: 500; margin-bottom: 0;">Ano:</label>
+                        <select id="parecerAnualYearSelect" class="efo-select" style="padding: 6px 12px; background: rgba(0,0,0,0.3); border-color: var(--glass-border); border-radius: 8px; color: var(--text-primary);">
+                            <!-- Injected by JS -->
+                        </select>
+                    </div>
+                </div>
+                <div id="parecerAnualContainer">
+                    <!-- Populated dynamically by renderParecerAnual() -->
                 </div>
             </div>
 
