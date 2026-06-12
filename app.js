@@ -2646,10 +2646,17 @@ function applyRoleUI() {
 
     // Toggle Planos button visibility only for the demo user
     const DEMO_EMAIL = 'teste@clarus.com.br';
-    const isDemo = EFO_Session && EFO_Session.email && EFO_Session.email.toLowerCase().trim() === DEMO_EMAIL;
+    const isDemo = EFO_Session && (
+        (EFO_Session.email && EFO_Session.email.toLowerCase().trim() === DEMO_EMAIL) ||
+        (EFO_Session.companyId && EFO_Session.companyId === 'comp_demo')
+    );
+    console.log('[applyRoleUI] session=', EFO_Session?.email, '| companyId=', EFO_Session?.companyId, '| isDemo=', isDemo);
     const navPlanosBtn = document.getElementById('navPlanosBtn');
     if (navPlanosBtn) {
         navPlanosBtn.style.display = isDemo ? 'flex' : 'none';
+        console.log('[applyRoleUI] navPlanosBtn display set to:', navPlanosBtn.style.display);
+    } else {
+        console.warn('[applyRoleUI] navPlanosBtn element NOT FOUND in DOM');
     }
     
     // Safety check: if non-demo user lands on tab-planos, redirect to tab-dre
@@ -2890,6 +2897,8 @@ async function handleLogin(e) {
             // After successful Supabase login, refresh all data from cloud
             if (DB_ONLINE) {
                 await db_bootstrap();
+                // Re-apply UI after bootstrap so session data (companyId etc) is fully synced
+                applyRoleUI();
             }
 
             loadActiveCompanyData();
