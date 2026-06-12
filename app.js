@@ -436,7 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 status: statusVal,
                 assigned_account: accountVal || null,
                 flag_reason: '',
-                raw_data: { import_type: 'manual' }
+                raw_data: { import_type: 'manual', type: typeVal }
             };
             
             OFX_Raw_Import.push(newTxn);
