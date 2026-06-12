@@ -1259,7 +1259,7 @@ function renderIndicadores() {
     html += indRow('% Impostos', impostosPerc, true);
     html += indRow('EBITDA Gerencial', EBITDA, false, 2, true);
     html += indRow('Margem EBITDA', margemOp, true, 2, true);
-    html += indRow('Lucro Líquido', L_LIQ, false, 2, true);
+    html += indRow('Resultado Líquido', L_LIQ, false, 2, true);
 
     tbody.innerHTML = html;
 }
@@ -1594,12 +1594,166 @@ function renderDRE() {
     bodyHtml += makeDreRowHTML('Tarifas e Juros', 'sub', dFinTarifas, true, `onclick="openDrillDown('dre.despesas_financeiras.tarifas', 'Tarifas e Juros')"`, R_BRUTA);
 
     bodyHtml += makeDreRowHTML('(=) EBITDA GERENCIAL', 'total', EBITDA, false, '', R_BRUTA);
-    bodyHtml += makeDreRowHTML('(=) LUCRO LÍQUIDO', 'total', L_LIQUIDO, false, '', R_BRUTA);
+    bodyHtml += makeDreRowHTML('(=) RESULTADO LÍQUIDO', 'total', L_LIQUIDO, false, '', R_BRUTA);
 
     tbody.innerHTML = bodyHtml;
+
+    // Render the evolution line chart below the table
+    renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQUIDO);
+}
+
+// Persistent Chart.js instance reference to allow clean re-render
+let _dreLineChartInstance = null;
+
+function renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQUIDO) {
+    const canvas = document.getElementById('dreLineChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    const monthsShort = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const isDark = !document.body.classList.contains('light-mode');
+
+    const gridColor  = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
+    const labelColor = isDark ? '#94a3b8' : '#64748b';
+    const tooltipBg  = isDark ? 'rgba(15,17,26,0.92)' : 'rgba(255,255,255,0.95)';
+    const tooltipText = isDark ? '#f8fafc' : '#1e293b';
+
+    // Destroy existing instance before re-render
+    if (_dreLineChartInstance) {
+        _dreLineChartInstance.destroy();
+        _dreLineChartInstance = null;
+    }
+
+    const datasets = [
+        {
+            label: 'Receita Operacional Bruta',
+            data: R_BRUTA,
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99,102,241,0.08)',
+            borderWidth: 2.5,
+            pointRadius: 4,
+            pointHoverRadius: 7,
+            tension: 0.35,
+            fill: false,
+        },
+        {
+            label: '(-) Deduções da Receita',
+            data: DEDUCOES.map(v => -Math.abs(v)),
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239,68,68,0.06)',
+            borderWidth: 2,
+            pointRadius: 3,
+            pointHoverRadius: 6,
+            tension: 0.35,
+            fill: false,
+            borderDash: [5, 3],
+        },
+        {
+            label: '(-) Custo dos Produtos/Serviços',
+            data: CUSTOS.map(v => -Math.abs(v)),
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245,158,11,0.06)',
+            borderWidth: 2,
+            pointRadius: 3,
+            pointHoverRadius: 6,
+            tension: 0.35,
+            fill: false,
+            borderDash: [5, 3],
+        },
+        {
+            label: '(-) Despesas Operacionais',
+            data: D_OPERACIONAIS.map(v => -Math.abs(v)),
+            borderColor: '#f97316',
+            backgroundColor: 'rgba(249,115,22,0.06)',
+            borderWidth: 2,
+            pointRadius: 3,
+            pointHoverRadius: 6,
+            tension: 0.35,
+            fill: false,
+            borderDash: [4, 4],
+        },
+        {
+            label: '(+) Receitas Financeiras',
+            data: R_FIN,
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16,185,129,0.08)',
+            borderWidth: 2,
+            pointRadius: 3,
+            pointHoverRadius: 6,
+            tension: 0.35,
+            fill: false,
+        },
+        {
+            label: '(=) Resultado Líquido',
+            data: L_LIQUIDO,
+            borderColor: '#a855f7',
+            backgroundColor: 'rgba(168,85,247,0.10)',
+            borderWidth: 3,
+            pointRadius: 5,
+            pointHoverRadius: 8,
+            tension: 0.35,
+            fill: true,
+        },
+    ];
+
+    _dreLineChartInstance = new Chart(canvas, {
+        type: 'line',
+        data: { labels: monthsShort, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        color: labelColor,
+                        font: { family: "'Inter', sans-serif", size: 12 },
+                        boxWidth: 14,
+                        padding: 20,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                    }
+                },
+                tooltip: {
+                    backgroundColor: tooltipBg,
+                    titleColor: tooltipText,
+                    bodyColor: tooltipText,
+                    borderColor: 'rgba(99,102,241,0.3)',
+                    borderWidth: 1,
+                    padding: 12,
+                    callbacks: {
+                        label: (ctx) => {
+                            const val = ctx.parsed.y;
+                            const formatted = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+                            return `  ${ctx.dataset.label}: ${formatted}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: gridColor },
+                    ticks: { color: labelColor, font: { family: "'Inter', sans-serif", size: 12 } }
+                },
+                y: {
+                    grid: { color: gridColor },
+                    ticks: {
+                        color: labelColor,
+                        font: { family: "'Inter', sans-serif", size: 11 },
+                        callback: (val) => {
+                            if (Math.abs(val) >= 1000) return 'R$ ' + (val / 1000).toFixed(0) + 'k';
+                            return 'R$ ' + val.toFixed(0);
+                        }
+                    }
+                }
+            }
+        }
+    });
 }
 
 function calculateBalancoData(year) {
+
     const balancoKeys = {
         'balanco.ativo_circulante.caixa_bancos': new Array(12).fill(0),
         'balanco.ativo_circulante.aplicacoes': new Array(12).fill(0),
