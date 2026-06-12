@@ -33,6 +33,23 @@ let EFO_Users = JSON.parse(localStorage.getItem('EFO_Users')) || [];
 let EFO_Active_Company_Id = localStorage.getItem('EFO_Active_Company_Id') || '';
 let EFO_Session = JSON.parse(sessionStorage.getItem('EFO_Session')) || null;
 
+// Guarantee demo user exists at startup (self-healing even with stale localStorage)
+(function _ensureDemoUser() {
+    const DEMO_EMAIL = 'teste@clarus.com.br';
+    const DEMO_HASH  = 'ae22816fbe794fbf09055c386592fa69d745d9b62dcedb5f4a7e9d4df55f3148';
+    if (!EFO_Users.some(u => u.email.toLowerCase() === DEMO_EMAIL)) {
+        EFO_Users.push({
+            email: DEMO_EMAIL,
+            password: DEMO_HASH,
+            role: 'client',
+            name: 'Usuário Teste (Vendas)',
+            companyId: 'comp_demo'
+        });
+        localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
+    }
+})();
+
+
 // Pure JS SHA-256 fallback for non-secure contexts (HTTP)
 function sha256_fallback(ascii) {
     function rightRotate(value, amount) {
