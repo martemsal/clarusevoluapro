@@ -958,10 +958,33 @@ function getOptGroupsHTML() {
             <option value="dre.despesas_veiculos.combustivel">Combustível/Veículos</option>
             <option value="dre.despesas_financeiras.tarifas">Tarifas/Juros Bancários</option>
         </optgroup>
-        <optgroup label="Contas de Balanço">
-            <option value="balanco.ativo_circulante.caixa_bancos">Caixa/Banco (Aporte)</option>
-            <option value="balanco.ativo_nao_circulante.imobilizado">Imobilizado (Máquinas/Veículos)</option>
-            <option value="balanco.passivo_circulante.emprestimos_cp">Pagamento Empréstimo</option>
+        <optgroup label="Balanço: Ativo Circulante">
+            <option value="balanco.ativo_circulante.caixa_bancos">Caixa e Bancos</option>
+            <option value="balanco.ativo_circulante.aplicacoes">Aplicações Financeiras</option>
+            <option value="balanco.ativo_circulante.clientes_receber">Clientes a Receber</option>
+            <option value="balanco.ativo_circulante.estoques">Estoques</option>
+            <option value="balanco.ativo_circulante.adiantamentos">Adiantamentos</option>
+            <option value="balanco.ativo_circulante.tributos_recuperar">Tributos a Recuperar</option>
+        </optgroup>
+        <optgroup label="Balanço: Ativo Não Circulante">
+            <option value="balanco.ativo_nao_circulante.imobilizado">Imobilizado</option>
+            <option value="balanco.ativo_nao_circulante.intangivel">Intangível</option>
+        </optgroup>
+        <optgroup label="Balanço: Passivo Circulante">
+            <option value="balanco.passivo_circulante.fornecedores">Fornecedores</option>
+            <option value="balanco.passivo_circulante.emprestimos_cp">Empréstimos Curto Prazo</option>
+            <option value="balanco.passivo_circulante.obrigacoes_trab">Obrigações Trabalhistas</option>
+            <option value="balanco.passivo_circulante.obrigacoes_trib">Obrigações Tributárias</option>
+            <option value="balanco.passivo_circulante.outras">Outras Obrigações</option>
+        </optgroup>
+        <optgroup label="Balanço: Passivo Não Circulante">
+            <option value="balanco.passivo_nao_circulante.emprestimos_lp">Empréstimos Longo Prazo</option>
+            <option value="balanco.passivo_nao_circulante.parcelamentos">Parcelamentos</option>
+        </optgroup>
+        <optgroup label="Balanço: Patrimônio Líquido">
+            <option value="balanco.patrimonio_liquido.capital_social">Capital Social</option>
+            <option value="balanco.patrimonio_liquido.reservas">Reservas</option>
+            <option value="balanco.patrimonio_liquido.lucros_acumulados">Lucros Acumulados</option>
         </optgroup>
         <option value="ignore">Ignorar/Não Contabilizar</option>
     `;
