@@ -2599,10 +2599,10 @@ function applyRoleUI() {
         navDashboardBtn.textContent = 'Indicadores EFO';
         
         // If admin is on a client-only tab, force select the DRE tab
-        const activeNav = document.querySelector('.nav-btn.active');
-        if (activeNav && (
-            activeNav.getAttribute('data-target') === 'tab-client-files' || 
-            activeNav.getAttribute('data-target') === 'tab-reuniao'
+        const activeNavAdmin = document.querySelector('.nav-btn.active');
+        if (activeNavAdmin && (
+            activeNavAdmin.getAttribute('data-target') === 'tab-client-files' || 
+            activeNavAdmin.getAttribute('data-target') === 'tab-reuniao'
         )) {
             const dreBtn = document.querySelector('.nav-btn[data-target="tab-dre"]');
             if (dreBtn) dreBtn.click();
@@ -2632,12 +2632,12 @@ function applyRoleUI() {
         navDashboardBtn.textContent = 'Indicadores EFO';
         
         // If they are on a hidden tab, force select the DRE tab (since Essential client hides dashboard)
-        const activeNav = document.querySelector('.nav-btn.active');
-        if (activeNav && (
-            activeNav.getAttribute('data-target') === 'tab-conciliation' || 
-            activeNav.getAttribute('data-target') === 'tab-clients' ||
-            activeNav.getAttribute('data-target') === 'tab-admin-files' ||
-            (pkg === 'essential' && activeNav.getAttribute('data-target') === 'tab-dashboard')
+        const activeNavClient = document.querySelector('.nav-btn.active');
+        if (activeNavClient && (
+            activeNavClient.getAttribute('data-target') === 'tab-conciliation' || 
+            activeNavClient.getAttribute('data-target') === 'tab-clients' ||
+            activeNavClient.getAttribute('data-target') === 'tab-admin-files' ||
+            (pkg === 'essential' && activeNavClient.getAttribute('data-target') === 'tab-dashboard')
         )) {
             // Click DRE tab
             document.querySelector('.nav-btn[data-target="tab-dre"]').click();
@@ -2645,22 +2645,18 @@ function applyRoleUI() {
     }
 
     // Toggle Planos button visibility only for the demo user
+    const DEMO_EMAIL = 'teste@clarus.com.br';
+    const isDemo = EFO_Session && EFO_Session.email && EFO_Session.email.toLowerCase().trim() === DEMO_EMAIL;
     const navPlanosBtn = document.getElementById('navPlanosBtn');
     if (navPlanosBtn) {
-        if (EFO_Session && EFO_Session.email === 'teste@clarus.com.br') {
-            navPlanosBtn.style.display = 'flex';
-        } else {
-            navPlanosBtn.style.display = 'none';
-        }
+        navPlanosBtn.style.display = isDemo ? 'flex' : 'none';
     }
     
-    // Safety check: if they are on tab-planos but are not the test user, redirect to tab-dre
-    const activeNav = document.querySelector('.nav-btn.active');
-    if (activeNav && activeNav.getAttribute('data-target') === 'tab-planos') {
-        if (!EFO_Session || EFO_Session.email !== 'teste@clarus.com.br') {
-            const dreBtn = document.querySelector('.nav-btn[data-target="tab-dre"]');
-            if (dreBtn) dreBtn.click();
-        }
+    // Safety check: if non-demo user lands on tab-planos, redirect to tab-dre
+    const activeNavPlanos = document.querySelector('.nav-btn.active');
+    if (activeNavPlanos && activeNavPlanos.getAttribute('data-target') === 'tab-planos' && !isDemo) {
+        const dreBtn = document.querySelector('.nav-btn[data-target="tab-dre"]');
+        if (dreBtn) dreBtn.click();
     }
 }
 
