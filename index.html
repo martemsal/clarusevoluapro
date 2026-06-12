@@ -70,6 +70,9 @@
                 <button class="nav-btn" data-target="tab-clients" id="navClientsBtn" style="display:none;">Clientes & Empresas</button>
                 <button class="nav-btn" data-target="tab-admin-files" id="navAdminFilesBtn" style="display:none;">Arquivos dos Clientes</button>
                 <button class="nav-btn" data-target="tab-client-files" id="navClientFilesBtn" style="display:none;">Envio de Documentos</button>
+                <button class="nav-btn" data-target="tab-planos" id="navPlanosBtn" style="display:none; justify-content: flex-start; gap: 8px; width: 100%;">
+                    <span>💎</span> Planos
+                </button>
             </nav>
 
             <div class="parameters-section mt-auto" id="importSection">
@@ -520,6 +523,73 @@
                     <a href="https://wa.me/5511999999999" target="_blank" class="btn-primary" style="display: inline-block; padding: 12px 24px; text-decoration: none; font-size: 14px; border-radius: 8px;">
                         💬 Solicitar Upgrade do Plano
                     </a>
+                </div>
+            </div>
+
+            <!-- TAB: PLANOS (TEST USER ONLY) -->
+            <div id="tab-planos" class="tab-content">
+                <div class="glass-panel p-24">
+                    <div class="conciliation-header" style="margin-bottom: 20px; text-align: center;">
+                        <h2 style="font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">Nossos Planos</h2>
+                        <p style="color: var(--text-secondary); max-width: 600px; margin: 0 auto;">Escolha o plano ideal para a sua empresa. Todos os planos contam com nossa tecnologia de análise gerencial.</p>
+                    </div>
+                    
+                    <div class="pricing-grid">
+                        <!-- Essential -->
+                        <div class="pricing-card">
+                            <div style="width: 100%;">
+                                <div class="pricing-title">Essential</div>
+                                <div class="pricing-desc" style="font-size: 13px; margin-bottom: 15px; color: var(--text-secondary);">Organização básica para micro e pequenas empresas.</div>
+                                <div class="pricing-price">R$ 1.697<span style="font-size:14px; color:var(--text-secondary); font-weight:400;">/mês</span></div>
+                            </div>
+                            <ul class="pricing-features" style="margin-top: 20px;">
+                                <li><span style="color: var(--success); font-weight: bold;">✓</span> DRE Gerencial Completa</li>
+                                <li><span style="color: var(--success); font-weight: bold;">✓</span> Balanço Gerencial</li>
+                                <li><span style="color: var(--success); font-weight: bold;">✓</span> Conciliação Bancária OFX</li>
+                                <li class="disabled"><span style="color: var(--danger); font-weight: bold;">✗</span> Indicadores EFO Avançados</li>
+                                <li class="disabled"><span style="color: var(--danger); font-weight: bold;">✗</span> Parecer Estratégico</li>
+                                <li class="disabled"><span style="color: var(--danger); font-weight: bold;">✗</span> Alinhamento estratégico</li>
+                            </ul>
+                            <button class="pricing-btn secondary" onclick="showToast('Upgrade', 'Entre em contato com nossa equipe para alterar seu plano.', 'info')">Mudar para Essential</button>
+                        </div>
+                        
+                        <!-- Performance -->
+                        <div class="pricing-card">
+                            <div style="width: 100%;">
+                                <div class="pricing-title">Performance ⭐</div>
+                                <div class="pricing-desc" style="font-size: 13px; margin-bottom: 15px; color: var(--text-secondary);">Indicadores avançados e pareceres estratégicos para acelerar seu crescimento.</div>
+                                <div class="pricing-price">R$ 2.997<span style="font-size:14px; color:var(--text-secondary); font-weight:400;">/mês</span></div>
+                            </div>
+                            <ul class="pricing-features" style="margin-top: 20px;">
+                                <li><span style="color: var(--success); font-weight: bold;">✓</span> DRE Gerencial Completa</li>
+                                <li><span style="color: var(--success); font-weight: bold;">✓</span> Balanço Gerencial</li>
+                                <li><span style="color: var(--success); font-weight: bold;">✓</span> Conciliação Bancária OFX</li>
+                                <li><span style="color: var(--success); font-weight: bold;">✓</span> Indicadores EFO Avançados</li>
+                                <li><span style="color: var(--success); font-weight: bold;">✓</span> Parecer Estratégico</li>
+                                <li class="disabled"><span style="color: var(--danger); font-weight: bold;">✗</span> Alinhamento estratégico</li>
+                            </ul>
+                            <button class="pricing-btn secondary" onclick="showToast('Upgrade', 'Entre em contato com nossa equipe para alterar seu plano.', 'info')">Mudar para Performance</button>
+                        </div>
+                        
+                        <!-- Executive -->
+                        <div class="pricing-card active-plan">
+                            <div class="pricing-badge">💎 SEU PLANO ATIVO</div>
+                            <div style="width: 100%;">
+                                <div class="pricing-title" style="margin-top: 10px;">Executive</div>
+                                <div class="pricing-desc" style="font-size: 13px; margin-bottom: 15px; color: var(--text-secondary);">Assessoria completa com reuniões de alinhamento com seu consultor dedicado.</div>
+                                <div class="pricing-price">R$ 4.697<span style="font-size:14px; color:var(--text-secondary); font-weight:400;">/mês</span></div>
+                            </div>
+                            <ul class="pricing-features" style="margin-top: 20px;">
+                                <li><span style="color: var(--success); font-weight: bold;">✓</span> DRE Gerencial Completa</li>
+                                <li><span style="color: var(--success); font-weight: bold;">✓</span> Balanço Gerencial</li>
+                                <li><span style="color: var(--success); font-weight: bold;">✓</span> Conciliação Bancária OFX</li>
+                                <li><span style="color: var(--success); font-weight: bold;">✓</span> Indicadores EFO Avançados</li>
+                                <li><span style="color: var(--success); font-weight: bold;">✓</span> Parecer Estratégico</li>
+                                <li><span style="color: var(--success); font-weight: bold;">✓</span> Alinhamento estratégico</li>
+                            </ul>
+                            <button class="pricing-btn active-btn">Seu Plano Ativo</button>
+                        </div>
+                    </div>
                 </div>
             </div>
 

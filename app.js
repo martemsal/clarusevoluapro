@@ -192,6 +192,19 @@ function migrateAndInitializeData() {
         ];
         localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
     }
+
+    // Ensure our demo user is present in EFO_Users
+    const hasDemoUser = EFO_Users.some(u => u.email.toLowerCase() === 'teste@clarus.com.br');
+    if (!hasDemoUser) {
+        EFO_Users.push({
+            email: 'teste@clarus.com.br',
+            password: 'ae22816fbe794fbf09055c386592fa69d745d9b62dcedb5f4a7e9d4df55f3148',
+            role: 'client',
+            name: 'Usuário Teste (Vendas)',
+            companyId: 'comp_demo'
+        });
+        localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
+    }
 }
 
 function loadActiveCompanyData() {
@@ -211,16 +224,32 @@ function loadActiveCompanyData() {
     let company = EFO_Companies[compId];
     
     if (!company) {
+        let baseCompany = null;
+        if (compId === 'comp_demo') {
+            const otherCompIds = Object.keys(EFO_Companies).filter(id => id !== 'comp_demo');
+            if (otherCompIds.length > 0) {
+                baseCompany = EFO_Companies[otherCompIds[0]];
+            }
+        }
         company = {
             id: compId || 'comp_default',
-            name: 'Nova Empresa',
-            config: JSON.parse(JSON.stringify(DEFAULT_EMPRESA)),
-            parametros: JSON.parse(JSON.stringify(DEFAULT_PARAMETROS)),
-            lancamentos: JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS)),
-            ofx: []
+            name: compId === 'comp_demo' ? 'Clarus Executive Demo' : 'Nova Empresa',
+            config: baseCompany ? JSON.parse(JSON.stringify(baseCompany.config)) : JSON.parse(JSON.stringify(DEFAULT_EMPRESA)),
+            parametros: baseCompany ? JSON.parse(JSON.stringify(baseCompany.parametros)) : JSON.parse(JSON.stringify(DEFAULT_PARAMETROS)),
+            lancamentos: baseCompany ? JSON.parse(JSON.stringify(baseCompany.lancamentos)) : JSON.parse(JSON.stringify(DEFAULT_LANCAMENTOS)),
+            ofx: baseCompany ? JSON.parse(JSON.stringify(baseCompany.ofx)) : []
         };
+        if (compId === 'comp_demo') {
+            company.config.package = 'executive';
+        }
         if (compId) {
             EFO_Companies[compId] = company;
+            localStorage.setItem('EFO_Companies', JSON.stringify(EFO_Companies));
+        }
+    } else if (compId === 'comp_demo') {
+        if (!company.config) company.config = {};
+        if (company.config.package !== 'executive') {
+            company.config.package = 'executive';
             localStorage.setItem('EFO_Companies', JSON.stringify(EFO_Companies));
         }
     }
@@ -621,6 +650,9 @@ function initTabs() {
             if (target === 'tab-admin-files') {
                 title = "Arquivos dos Clientes";
                 initAdminFilesView();
+            }
+            if (target === 'tab-planos') {
+                title = "Nossos Planos";
             }
             document.getElementById('pageTitle').textContent = title;
         });
@@ -2592,6 +2624,25 @@ function applyRoleUI() {
         )) {
             // Click DRE tab
             document.querySelector('.nav-btn[data-target="tab-dre"]').click();
+        }
+    }
+
+    // Toggle Planos button visibility only for the demo user
+    const navPlanosBtn = document.getElementById('navPlanosBtn');
+    if (navPlanosBtn) {
+        if (EFO_Session && EFO_Session.email === 'teste@clarus.com.br') {
+            navPlanosBtn.style.display = 'flex';
+        } else {
+            navPlanosBtn.style.display = 'none';
+        }
+    }
+    
+    // Safety check: if they are on tab-planos but are not the test user, redirect to tab-dre
+    const activeNav = document.querySelector('.nav-btn.active');
+    if (activeNav && activeNav.getAttribute('data-target') === 'tab-planos') {
+        if (!EFO_Session || EFO_Session.email !== 'teste@clarus.com.br') {
+            const dreBtn = document.querySelector('.nav-btn[data-target="tab-dre"]');
+            if (dreBtn) dreBtn.click();
         }
     }
 }
