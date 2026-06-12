@@ -57,6 +57,8 @@
                     <span class="badge nav-badge" id="navManualPendingCount">0</span>
                 </button>
                 <button class="nav-btn" data-target="tab-clients" id="navClientsBtn" style="display:none;">Clientes & Empresas</button>
+                <button class="nav-btn" data-target="tab-admin-files" id="navAdminFilesBtn" style="display:none;">Arquivos dos Clientes</button>
+                <button class="nav-btn" data-target="tab-client-files" id="navClientFilesBtn" style="display:none;">Envio de Documentos</button>
             </nav>
 
             <div class="parameters-section mt-auto" id="importSection">
@@ -290,6 +292,106 @@
                 </div>
             </div>
             
+            <!-- TAB: ENVIO DE ARQUIVOS (CLIENT ONLY) -->
+            <div id="tab-client-files" class="tab-content" style="display:none;">
+                <div class="glass-panel p-24">
+                    <div class="conciliation-header" style="margin-bottom: 20px;">
+                        <h2>Envio de Documentos (EFO Drive)</h2>
+                    </div>
+                    
+                    <div style="background: rgba(0,0,0,0.15); border: 1px solid var(--glass-border); padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+                        <div class="form-group mb-0" style="max-width: 300px;">
+                            <label for="clientFileMonthSelect" style="display: block; margin-bottom: 8px; font-weight: 600;">Mês de Referência</label>
+                            <select id="clientFileMonthSelect" style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px; color: var(--text-primary); width: 100%;">
+                                <!-- Injected by JS -->
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- File Drag & Drop Dropzone -->
+                    <div id="clientFileDropzone" style="border: 2px dashed rgba(255,255,255,0.2); border-radius: 12px; background: rgba(255,255,255,0.02); padding: 40px; text-align: center; cursor: pointer; transition: all 0.3s; margin-bottom: 24px;" 
+                         onmouseover="this.style.borderColor='var(--accent-primary)'; this.style.background='rgba(255,255,255,0.04)';" 
+                         onmouseout="this.style.borderColor='rgba(255,255,255,0.2)'; this.style.background='rgba(255,255,255,0.02)';">
+                        <div style="font-size: 40px; margin-bottom: 12px; color: var(--accent-primary);">📂</div>
+                        <h4 style="margin-bottom: 8px;">Arraste múltiplos arquivos aqui ou clique para selecionar</h4>
+                        <p style="color: var(--text-secondary); font-size: 12px; margin-bottom: 0;">Você pode enviar comprovantes, relatórios, extratos e arquivos OFX.</p>
+                        <input type="file" id="clientFileInput" multiple style="display:none;">
+                    </div>
+                    
+                    <!-- Selected Files Pending Upload -->
+                    <div id="clientSelectedFilesSection" style="display:none; background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                        <h3 style="font-size: 15px; margin-bottom: 15px; color: var(--text-primary);">Arquivos selecionados para upload:</h3>
+                        <div id="clientSelectedFilesList" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;"></div>
+                        <button id="btnUploadClientFiles" class="btn-primary" style="padding: 10px 20px;">📤 Enviar Arquivos selecionados</button>
+                    </div>
+
+                    <!-- Uploaded Files List -->
+                    <div>
+                        <h3 style="font-size: 16px; margin-bottom: 15px; color: var(--text-primary);">Arquivos enviados na pasta deste mês</h3>
+                        <div class="table-container">
+                            <table class="report-table" style="width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th>Nome do Arquivo</th>
+                                        <th>Tamanho</th>
+                                        <th>Data de Upload</th>
+                                        <th style="width:120px; text-align:center;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="clientUploadedFilesTbody">
+                                    <!-- Injected by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: CONSULTA DE ARQUIVOS DOS CLIENTES (ADMIN ONLY) -->
+            <div id="tab-admin-files" class="tab-content" style="display:none;">
+                <div class="glass-panel p-24">
+                    <div class="conciliation-header" style="margin-bottom: 20px;">
+                        <h2>Arquivos Carregados pelos Clientes (EFO Drive)</h2>
+                    </div>
+                    
+                    <!-- Filters Grid -->
+                    <div style="background: rgba(0,0,0,0.15); border: 1px solid var(--glass-border); padding: 20px; border-radius: 12px; margin-bottom: 24px; display: flex; gap: 16px; flex-wrap: wrap;">
+                        <div class="form-group mb-0" style="flex: 1; min-width: 200px;">
+                            <label for="adminFileMonthSelect" style="display: block; margin-bottom: 8px; font-weight: 600;">Mês de Referência</label>
+                            <select id="adminFileMonthSelect" style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px; color: var(--text-primary); width: 100%;">
+                                <!-- Injected by JS -->
+                            </select>
+                        </div>
+                        <div class="form-group mb-0" style="flex: 1; min-width: 250px;">
+                            <label for="adminFileClientFilter" style="display: block; margin-bottom: 8px; font-weight: 600;">Filtrar por Cliente</label>
+                            <select id="adminFileClientFilter" style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; padding: 10px; color: var(--text-primary); width: 100%;">
+                                <option value="all">Todos os Clientes</option>
+                                <!-- Injected by JS -->
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Files Table (Central View) -->
+                    <div class="table-container">
+                        <table class="report-table" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Cliente / Empresa</th>
+                                    <th>Pasta Virtual (Drive)</th>
+                                    <th>Nome do Arquivo</th>
+                                    <th>Tamanho</th>
+                                    <th>Data de Upload</th>
+                                    <th style="width:250px; text-align:center;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminUploadedFilesTbody">
+                                <!-- Injected by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <!-- TAB: ALINHAMENTO ESTRATÉGICO -->
             <div id="tab-reuniao" class="tab-content">
                 <div class="glass-panel p-24" style="max-width: 800px; margin: 0 auto; padding: 40px; text-align: center;">
@@ -630,6 +732,17 @@
                 <button onclick="document.getElementById('migrateModal').style.display='none'" 
                     style="flex:1; padding:10px; background:rgba(255,255,255,0.05); border:1px solid var(--glass-border); border-radius:8px; color:var(--text-secondary); cursor:pointer; font-size:13px;">Cancelar</button>
                 <button id="btnConfirmMigrate" class="btn-primary" style="flex:2; padding:10px;">&#9989; Confirmar Migração</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Preview Modal -->
+    <div id="filePreviewModal" class="modal">
+        <div class="modal-content glass-panel" style="width: 900px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column; padding: 30px; border-radius: 12px; position: relative;">
+            <span class="close-modal close-file-preview" onclick="document.getElementById('filePreviewModal').style.display='none'" style="position: absolute; right: 20px; top: 15px; font-size: 28px; font-weight: bold; cursor: pointer; color: var(--text-primary);">&times;</span>
+            <h3 id="filePreviewTitle" class="mb-3" style="color: var(--text-primary); padding-right: 40px; word-break: break-all; margin-top: 0;">Visualizar Arquivo</h3>
+            <div id="filePreviewBody" style="flex: 1; overflow: auto; min-height: 500px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 15px; width: 100%; box-sizing: border-box;">
+                <!-- Content loaded dynamically: img, iframe, or pre/code -->
             </div>
         </div>
     </div>

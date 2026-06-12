@@ -359,3 +359,73 @@ async function db_migrateLocalStorageToSupabase(onProgress) {
 
     return done;
 }
+
+// ──────────────────────────────────────────────────────────────
+//  CLIENT FILES (EFO Drive)
+// ──────────────────────────────────────────────────────────────
+
+async function db_uploadClientFile(file) {
+    try {
+        const { error } = await _supa.from('efo_client_files').insert({
+            company_id:      file.companyId,
+            client_name:     file.clientName,
+            client_email:    file.clientEmail,
+            file_name:       file.fileName,
+            file_type:       file.fileType,
+            file_size:       file.fileSize,
+            file_data:       file.fileData,
+            folder_path:     file.folderPath,
+            reference_month: file.referenceMonth
+        });
+        if (error) throw error;
+        DB_ONLINE = true;
+    } catch (e) {
+        console.warn('[Supabase] db_uploadClientFile failed.', e.message);
+        throw e;
+    }
+}
+
+async function db_loadClientFiles(companyId = null, referenceMonth = null) {
+    try {
+        let query = _supa.from('efo_client_files').select('*');
+        
+        if (companyId && companyId !== 'all') {
+            query = query.eq('company_id', companyId);
+        }
+        if (referenceMonth) {
+            query = query.eq('reference_month', referenceMonth);
+        }
+        
+        const { data, error } = await query.order('created_at', { ascending: false });
+        if (error) throw error;
+        DB_ONLINE = true;
+        
+        return data.map(f => ({
+            id:             f.id,
+            companyId:      f.company_id,
+            clientName:     f.client_name,
+            clientEmail:    f.client_email,
+            fileName:       f.file_name,
+            fileType:       f.file_type,
+            fileSize:       f.file_size,
+            fileData:       f.file_data,
+            folderPath:     f.folder_path,
+            referenceMonth: f.reference_month,
+            createdAt:      f.created_at
+        }));
+    } catch (e) {
+        console.warn('[Supabase] db_loadClientFiles failed.', e.message);
+        return null;
+    }
+}
+
+async function db_deleteClientFile(fileId) {
+    try {
+        const { error } = await _supa.from('efo_client_files').delete().eq('id', fileId);
+        if (error) throw error;
+        DB_ONLINE = true;
+    } catch (e) {
+        console.warn('[Supabase] db_deleteClientFile failed.', e.message);
+        throw e;
+    }
+}

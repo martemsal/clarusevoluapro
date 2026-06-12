@@ -180,3 +180,31 @@ VALUES
 ON CONFLICT (email) DO UPDATE 
 SET password = EXCLUDED.password, name = EXCLUDED.name, role = EXCLUDED.role;
 
+-- 9. CLIENT FILES (EFO Drive)
+CREATE TABLE IF NOT EXISTS efo_client_files (
+    id              UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    company_id      TEXT REFERENCES efo_companies(id) ON DELETE CASCADE,
+    client_name     TEXT NOT NULL,
+    client_email    TEXT NOT NULL,
+    file_name       TEXT NOT NULL,
+    file_type       TEXT,
+    file_size       INTEGER,
+    file_data       TEXT NOT NULL, -- Base64 encoded file data
+    folder_path     TEXT NOT NULL, -- e.g. "Cliente Red, Junho de 2026"
+    reference_month TEXT NOT NULL, -- e.g. "Junho de 2026"
+    created_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index for performance
+CREATE INDEX IF NOT EXISTS idx_efo_client_files_company ON efo_client_files(company_id);
+
+-- Enable RLS
+ALTER TABLE efo_client_files ENABLE ROW LEVEL SECURITY;
+
+-- Policy (Client has access to own files; Admin has access to all)
+DROP POLICY IF EXISTS client_files_policy ON efo_client_files;
+CREATE POLICY client_files_policy ON efo_client_files
+    FOR ALL
+    USING (efo_has_company_access(company_id));
+
+

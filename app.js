@@ -590,6 +590,14 @@ function initTabs() {
                 title = "Clientes & Empresas";
                 renderClientsTable();
             }
+            if (target === 'tab-client-files') {
+                title = "Envio de Documentos";
+                initClientFilesView();
+            }
+            if (target === 'tab-admin-files') {
+                title = "Arquivos dos Clientes";
+                initAdminFilesView();
+            }
             document.getElementById('pageTitle').textContent = title;
         });
     });
@@ -2370,6 +2378,8 @@ function applyRoleUI() {
     const navConciliationBtn = document.getElementById('navConciliationBtn');
     const navManualConciliationBtn = document.getElementById('navManualConciliationBtn');
     const navDashboardBtn = document.getElementById('navDashboardBtn');
+    const navAdminFilesBtn = document.getElementById('navAdminFilesBtn');
+    const navClientFilesBtn = document.getElementById('navClientFilesBtn');
     
     const importSection = document.getElementById('importSection');
     const sharingSection = document.getElementById('sharingSection');
@@ -2392,6 +2402,8 @@ function applyRoleUI() {
         userProfileRole.textContent = 'Administrador';
         adminCompanySelectorSection.style.display = 'block';
         navClientsBtn.style.display = 'block';
+        if (navAdminFilesBtn) navAdminFilesBtn.style.display = 'block';
+        if (navClientFilesBtn) navClientFilesBtn.style.display = 'none';
         navConciliationBtn.style.display = 'flex';
         if (navManualConciliationBtn) navManualConciliationBtn.style.display = 'flex';
         if (importSection) importSection.style.display = 'block';
@@ -2412,6 +2424,8 @@ function applyRoleUI() {
 
         adminCompanySelectorSection.style.display = 'none';
         navClientsBtn.style.display = 'none';
+        if (navAdminFilesBtn) navAdminFilesBtn.style.display = 'none';
+        if (navClientFilesBtn) navClientFilesBtn.style.display = 'block';
         navConciliationBtn.style.display = 'none';
         if (navManualConciliationBtn) navManualConciliationBtn.style.display = 'none';
         if (importSection) importSection.style.display = 'none';
@@ -2429,6 +2443,7 @@ function applyRoleUI() {
         if (activeNav && (
             activeNav.getAttribute('data-target') === 'tab-conciliation' || 
             activeNav.getAttribute('data-target') === 'tab-clients' ||
+            activeNav.getAttribute('data-target') === 'tab-admin-files' ||
             (pkg === 'essential' && activeNav.getAttribute('data-target') === 'tab-dashboard')
         )) {
             // Click DRE tab
@@ -2889,3 +2904,463 @@ function renderManualConciliationTable() {
         }
     });
 }
+
+// ──────────────────────────────────────────────────────────────
+//  EFO DRIVE (CLIENT & ADMIN FILE SHARING)
+// ──────────────────────────────────────────────────────────────
+
+let clientSelectedFiles = [];
+let EFO_Loaded_Files = [];
+
+const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+};
+
+window.initClientFilesView = function() {
+    clientSelectedFiles = [];
+    const selectedSection = document.getElementById('clientSelectedFilesSection');
+    if (selectedSection) selectedSection.style.display = 'none';
+    const selectedList = document.getElementById('clientSelectedFilesList');
+    if (selectedList) selectedList.innerHTML = '';
+    
+    // Fill Month Select
+    const select = document.getElementById('clientFileMonthSelect');
+    if (select) {
+        select.innerHTML = '';
+        const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+        const year = EFO_Active_DRE_Year;
+        months.forEach((m) => {
+            const opt = document.createElement('option');
+            opt.value = `${m} de ${year}`;
+            opt.textContent = `${m} de ${year}`;
+            select.appendChild(opt);
+        });
+        
+        // Auto-select current month if available
+        const currentMonthName = months[new Date().getMonth()];
+        select.value = `${currentMonthName} de ${year}`;
+        
+        select.onchange = () => {
+            renderClientUploadedFiles();
+        };
+    }
+    
+    // Setup Dropzone
+    const dropzone = document.getElementById('clientFileDropzone');
+    const fileInput = document.getElementById('clientFileInput');
+    
+    if (dropzone && fileInput) {
+        // Drag over
+        dropzone.ondragover = (e) => {
+            e.preventDefault();
+            dropzone.style.borderColor = 'var(--accent-primary)';
+            dropzone.style.background = 'rgba(255,255,255,0.06)';
+        };
+        
+        // Drag leave
+        dropzone.ondragleave = (e) => {
+            e.preventDefault();
+            dropzone.style.borderColor = 'rgba(255,255,255,0.2)';
+            dropzone.style.background = 'rgba(255,255,255,0.02)';
+        };
+        
+        // Drop
+        dropzone.ondrop = (e) => {
+            e.preventDefault();
+            dropzone.style.borderColor = 'rgba(255,255,255,0.2)';
+            dropzone.style.background = 'rgba(255,255,255,0.02)';
+            handleSelectedFiles(e.dataTransfer.files);
+        };
+        
+        // Click dropzone to open browser dialog
+        dropzone.onclick = () => {
+            fileInput.click();
+        };
+        
+        fileInput.onchange = (e) => {
+            handleSelectedFiles(e.target.files);
+        };
+    }
+    
+    const uploadBtn = document.getElementById('btnUploadClientFiles');
+    if (uploadBtn) {
+        uploadBtn.onclick = () => {
+            uploadClientFiles();
+        };
+    }
+    
+    renderClientUploadedFiles();
+};
+
+function handleSelectedFiles(filesList) {
+    if (!filesList || filesList.length === 0) return;
+    
+    for (let i = 0; i < filesList.length; i++) {
+        const file = filesList[i];
+        
+        // Limit file size to 10MB
+        if (file.size > 10 * 1024 * 1024) {
+            showToast('Erro', `O arquivo "${file.name}" ultrapassa o limite de 10MB.`, 'danger');
+            continue;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const base64Data = event.target.result.split(',')[1];
+            clientSelectedFiles.push({
+                name: file.name,
+                size: file.size,
+                type: file.type || 'application/octet-stream',
+                data: base64Data
+            });
+            renderSelectedFilesList();
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function renderSelectedFilesList() {
+    const section = document.getElementById('clientSelectedFilesSection');
+    const list = document.getElementById('clientSelectedFilesList');
+    if (!section || !list) return;
+    
+    if (clientSelectedFiles.length === 0) {
+        section.style.display = 'none';
+        return;
+    }
+    
+    section.style.display = 'block';
+    list.innerHTML = '';
+    
+    clientSelectedFiles.forEach((file, index) => {
+        const item = document.createElement('div');
+        item.style.display = 'flex';
+        item.style.justifyContent = 'space-between';
+        item.style.alignItems = 'center';
+        item.style.padding = '8px 12px';
+        item.style.background = 'rgba(255,255,255,0.03)';
+        item.style.borderRadius = '6px';
+        item.style.border = '1px solid rgba(255,255,255,0.05)';
+        
+        item.innerHTML = `
+            <div>
+                <span style="font-weight: 500; font-size: 13px;">${file.name}</span>
+                <span style="color: var(--text-secondary); font-size: 11px; margin-left: 8px;">(${formatFileSize(file.size)})</span>
+            </div>
+            <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-bottom: 0;" onclick="removeSelectedFile(${index})">Remover</button>
+        `;
+        list.appendChild(item);
+    });
+}
+
+window.removeSelectedFile = (index) => {
+    clientSelectedFiles.splice(index, 1);
+    renderSelectedFilesList();
+};
+
+async function uploadClientFiles() {
+    if (clientSelectedFiles.length === 0) return;
+    if (!EFO_Session || !EFO_Session.companyId) {
+        showToast('Erro', 'Sessão inválida ou sem empresa associada.', 'danger');
+        return;
+    }
+    
+    const company = EFO_Companies[EFO_Session.companyId] || { name: 'Cliente' };
+    const clientName = company.name || EFO_Session.name || 'Cliente';
+    const clientEmail = EFO_Session.email;
+    const refMonth = document.getElementById('clientFileMonthSelect').value;
+    
+    // Naming folder: "Cliente [Nome do Cliente], [Mês] de [Ano]"
+    const folderPath = `Cliente ${clientName}, ${refMonth}`;
+    
+    showToast('Aviso', `Iniciando upload de ${clientSelectedFiles.length} arquivos...`, 'info');
+    
+    let uploadedCount = 0;
+    try {
+        for (const file of clientSelectedFiles) {
+            await db_uploadClientFile({
+                companyId: EFO_Session.companyId,
+                clientName: clientName,
+                clientEmail: clientEmail,
+                fileName: file.name,
+                fileType: file.type,
+                fileSize: file.size,
+                fileData: file.data,
+                folderPath: folderPath,
+                referenceMonth: refMonth
+            });
+            uploadedCount++;
+        }
+        
+        showToast('Sucesso', `${uploadedCount} arquivos enviados com sucesso para a pasta "${folderPath}"!`, 'success');
+        clientSelectedFiles = [];
+        renderSelectedFilesList();
+        renderClientUploadedFiles();
+    } catch (e) {
+        console.error(e);
+        showToast('Erro', `Erro durante o upload. Enviados: ${uploadedCount}/${clientSelectedFiles.length}.`, 'danger');
+    }
+}
+
+async function renderClientUploadedFiles() {
+    const tbody = document.getElementById('clientUploadedFilesTbody');
+    if (!tbody) return;
+    
+    const refMonth = document.getElementById('clientFileMonthSelect').value;
+    if (!EFO_Session || !EFO_Session.companyId) return;
+    
+    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Carregando arquivos...</td></tr>`;
+    
+    const files = await db_loadClientFiles(EFO_Session.companyId, refMonth);
+    
+    if (!files) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Erro ao carregar arquivos da nuvem.</td></tr>`;
+        return;
+    }
+    
+    EFO_Loaded_Files = files;
+    
+    if (files.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Nenhum arquivo enviado para este mês.</td></tr>`;
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    files.forEach(file => {
+        const tr = document.createElement('tr');
+        const uploadDate = new Date(file.createdAt).toLocaleString('pt-BR');
+        
+        tr.innerHTML = `
+            <td><strong>${file.fileName}</strong></td>
+            <td>${formatFileSize(file.fileSize)}</td>
+            <td>${uploadDate}</td>
+            <td style="text-align: center; display: flex; gap: 8px; justify-content: center;">
+                <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-bottom: 0;" onclick="viewFilePreview('${file.id}')">Visualizar</button>
+                <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-bottom: 0;" onclick="downloadFile('${file.id}')">Download</button>
+                <button class="btn-secondary text-danger" style="padding: 4px 8px; font-size: 11px; margin-bottom: 0;" onclick="deleteClientFile('${file.id}')">Excluir</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+window.deleteClientFile = async (fileId) => {
+    if (!confirm('Deseja realmente excluir este arquivo da nuvem?')) return;
+    try {
+        await db_deleteClientFile(fileId);
+        showToast('Sucesso', 'Arquivo excluído com sucesso.', 'success');
+        renderClientUploadedFiles();
+    } catch (e) {
+        showToast('Erro', 'Falha ao excluir arquivo.', 'danger');
+    }
+};
+
+window.initAdminFilesView = async function() {
+    // Fill Month Select
+    const select = document.getElementById('adminFileMonthSelect');
+    if (select) {
+        select.innerHTML = '';
+        const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+        const year = EFO_Active_DRE_Year;
+        months.forEach((m) => {
+            const opt = document.createElement('option');
+            opt.value = `${m} de ${year}`;
+            opt.textContent = `${m} de ${year}`;
+            select.appendChild(opt);
+        });
+        
+        const currentMonthName = months[new Date().getMonth()];
+        select.value = `${currentMonthName} de ${year}`;
+        
+        select.onchange = () => {
+            renderAdminUploadedFiles();
+        };
+    }
+    
+    // Fill Client Filter select
+    const clientFilter = document.getElementById('adminFileClientFilter');
+    if (clientFilter) {
+        clientFilter.innerHTML = '<option value="all">Todos os Clientes</option>';
+        Object.keys(EFO_Companies).forEach(id => {
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.textContent = EFO_Companies[id].name || id;
+            clientFilter.appendChild(opt);
+        });
+        
+        clientFilter.onchange = () => {
+            renderAdminUploadedFiles();
+        };
+    }
+    
+    renderAdminUploadedFiles();
+};
+
+window.renderAdminUploadedFiles = async function() {
+    const tbody = document.getElementById('adminUploadedFilesTbody');
+    if (!tbody) return;
+    
+    const refMonth = document.getElementById('adminFileMonthSelect').value;
+    const clientFilter = document.getElementById('adminFileClientFilter').value;
+    
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Carregando arquivos...</td></tr>`;
+    
+    const files = await db_loadClientFiles(clientFilter, refMonth);
+    
+    if (!files) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Nenhum arquivo encontrado ou erro na nuvem.</td></tr>`;
+        return;
+    }
+    
+    EFO_Loaded_Files = files;
+    
+    if (files.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Nenhum arquivo carregado no mês selecionado.</td></tr>`;
+        return;
+    }
+    
+    tbody.innerHTML = '';
+    files.forEach(file => {
+        const tr = document.createElement('tr');
+        const uploadDate = new Date(file.createdAt).toLocaleString('pt-BR');
+        
+        tr.innerHTML = `
+            <td><strong>${file.clientName}</strong></td>
+            <td><code>${file.folderPath}</code></td>
+            <td><strong>${file.fileName}</strong></td>
+            <td>${formatFileSize(file.fileSize)}</td>
+            <td>${uploadDate}</td>
+            <td style="text-align: center; display: flex; gap: 8px; justify-content: center;">
+                <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-bottom: 0;" onclick="viewFilePreview('${file.id}')">Visualizar</button>
+                <button class="btn-secondary" style="padding: 4px 8px; font-size: 11px; margin-bottom: 0;" onclick="downloadFile('${file.id}')">Download</button>
+                <button class="btn-secondary text-danger" style="padding: 4px 8px; font-size: 11px; margin-bottom: 0;" onclick="deleteAdminFile('${file.id}')">Excluir</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+};
+
+window.deleteAdminFile = async (fileId) => {
+    if (!confirm('Deseja realmente excluir este arquivo da nuvem?')) return;
+    try {
+        await db_deleteClientFile(fileId);
+        showToast('Sucesso', 'Arquivo excluído com sucesso.', 'success');
+        renderAdminUploadedFiles();
+    } catch (e) {
+        showToast('Erro', 'Falha ao excluir arquivo.', 'danger');
+    }
+};
+
+window.downloadFile = (fileId) => {
+    const file = EFO_Loaded_Files.find(f => f.id === fileId);
+    if (!file) {
+        showToast('Erro', 'Arquivo não encontrado.', 'danger');
+        return;
+    }
+    
+    try {
+        const byteCharacters = atob(file.fileData);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: file.fileType });
+        
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (e) {
+        console.error(e);
+        showToast('Erro', 'Falha ao baixar arquivo.', 'danger');
+    }
+};
+
+window.viewFilePreview = (fileId) => {
+    const file = EFO_Loaded_Files.find(f => f.id === fileId);
+    if (!file) {
+        showToast('Erro', 'Arquivo não encontrado.', 'danger');
+        return;
+    }
+    
+    const titleEl = document.getElementById('filePreviewTitle');
+    const bodyEl = document.getElementById('filePreviewBody');
+    const modal = document.getElementById('filePreviewModal');
+    
+    if (!titleEl || !bodyEl || !modal) return;
+    
+    titleEl.textContent = `Visualizar: ${file.fileName}`;
+    bodyEl.innerHTML = '';
+    
+    const type = file.fileType ? file.fileType.toLowerCase() : '';
+    const name = file.fileName.toLowerCase();
+    
+    if (type.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.src = `data:${file.fileType};base64,${file.fileData}`;
+        img.style.maxWidth = '100%';
+        img.style.maxHeight = '70vh';
+        img.style.objectFit = 'contain';
+        img.style.borderRadius = '8px';
+        bodyEl.appendChild(img);
+    } 
+    else if (type === 'application/pdf') {
+        const iframe = document.createElement('iframe');
+        iframe.src = `data:${file.fileType};base64,${file.fileData}`;
+        iframe.style.width = '100%';
+        iframe.style.height = '70vh';
+        iframe.style.border = 'none';
+        iframe.style.borderRadius = '8px';
+        bodyEl.appendChild(iframe);
+    } 
+    else if (
+        type.includes('text/') || 
+        name.endsWith('.ofx') || 
+        name.endsWith('.json') || 
+        name.endsWith('.txt') || 
+        name.endsWith('.csv')
+    ) {
+        try {
+            const textContent = atob(file.fileData);
+            const pre = document.createElement('pre');
+            pre.textContent = textContent;
+            pre.style.whiteSpace = 'pre-wrap';
+            pre.style.fontFamily = 'monospace';
+            pre.style.color = 'var(--text-primary)';
+            pre.style.width = '100%';
+            pre.style.textAlign = 'left';
+            pre.style.fontSize = '12px';
+            pre.style.margin = '0';
+            bodyEl.appendChild(pre);
+        } catch (e) {
+            bodyEl.innerHTML = `<p class="text-muted">Não foi possível decodificar o arquivo como texto.</p>`;
+        }
+    } 
+    else {
+        bodyEl.innerHTML = `
+            <div class="text-center p-4">
+                <div style="font-size: 48px; margin-bottom: 15px;">📦</div>
+                <p style="color: var(--text-primary); font-weight: 500;">Visualização indisponível para este formato de arquivo (${file.fileType || 'Desconhecido'}).</p>
+                <button class="btn-primary mt-2" onclick="downloadFile('${file.id}')">📥 Baixar Arquivo</button>
+            </div>
+        `;
+    }
+    
+    modal.style.display = 'flex';
+};
+
+window.addEventListener('click', (e) => {
+    const previewModal = document.getElementById('filePreviewModal');
+    if (e.target === previewModal) {
+        previewModal.style.display = 'none';
+    }
+});
