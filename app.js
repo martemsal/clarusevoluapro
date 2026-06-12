@@ -981,10 +981,6 @@ function updateAllViews() {
         if (typeof renderClientUploadedFiles === 'function') renderClientUploadedFiles();
     }
     if (document.getElementById('tab-admin-files') && document.getElementById('tab-admin-files').classList.contains('active')) {
-        const clientFilter = document.getElementById('adminFileClientFilter');
-        if (clientFilter && EFO_Active_Company_Id) {
-            clientFilter.value = EFO_Active_Company_Id;
-        }
         if (typeof renderAdminUploadedFiles === 'function') renderAdminUploadedFiles();
     }
 }
@@ -3202,25 +3198,6 @@ window.initAdminFilesView = async function() {
         };
     }
     
-    // Fill Client Filter select
-    const clientFilter = document.getElementById('adminFileClientFilter');
-    if (clientFilter) {
-        clientFilter.innerHTML = '<option value="all">Todos os Clientes</option>';
-        Object.keys(EFO_Companies).forEach(id => {
-            const opt = document.createElement('option');
-            opt.value = id;
-            opt.textContent = EFO_Companies[id].name || id;
-            if (id === EFO_Active_Company_Id) {
-                opt.selected = true;
-            }
-            clientFilter.appendChild(opt);
-        });
-        
-        clientFilter.onchange = () => {
-            renderAdminUploadedFiles();
-        };
-    }
-    
     renderAdminUploadedFiles();
 };
 
@@ -3229,11 +3206,16 @@ window.renderAdminUploadedFiles = async function() {
     if (!tbody) return;
     
     const refMonth = document.getElementById('adminFileMonthSelect').value;
-    const clientFilter = document.getElementById('adminFileClientFilter').value;
+    const activeCompanyId = EFO_Active_Company_Id;
     
     tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Carregando arquivos...</td></tr>`;
     
-    const files = await db_loadClientFiles(clientFilter, refMonth);
+    if (!activeCompanyId) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Selecione uma Empresa Ativa no menu lateral.</td></tr>`;
+        return;
+    }
+    
+    const files = await db_loadClientFiles(activeCompanyId, refMonth);
     
     if (!files) {
         tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Nenhum arquivo encontrado ou erro na nuvem.</td></tr>`;
