@@ -3334,19 +3334,23 @@ window.viewFilePreview = (fileId) => {
     const name = file.fileName.toLowerCase();
     
     if (type.startsWith('image/')) {
+        bodyEl.style.alignItems = 'center';
+        bodyEl.style.justifyContent = 'center';
         const img = document.createElement('img');
         img.src = `data:${file.fileType};base64,${file.fileData}`;
         img.style.maxWidth = '100%';
-        img.style.maxHeight = '70vh';
+        img.style.maxHeight = '100%';
         img.style.objectFit = 'contain';
         img.style.borderRadius = '8px';
         bodyEl.appendChild(img);
     } 
     else if (type === 'application/pdf') {
+        bodyEl.style.alignItems = 'stretch';
+        bodyEl.style.justifyContent = 'stretch';
         const iframe = document.createElement('iframe');
         iframe.src = `data:${file.fileType};base64,${file.fileData}`;
         iframe.style.width = '100%';
-        iframe.style.height = '70vh';
+        iframe.style.height = 'calc(94vh - 120px)';
         iframe.style.border = 'none';
         iframe.style.borderRadius = '8px';
         bodyEl.appendChild(iframe);
@@ -3358,6 +3362,8 @@ window.viewFilePreview = (fileId) => {
         name.endsWith('.txt') || 
         name.endsWith('.csv')
     ) {
+        bodyEl.style.alignItems = 'stretch';
+        bodyEl.style.justifyContent = 'flex-start';
         try {
             const textContent = atob(file.fileData);
             const pre = document.createElement('pre');

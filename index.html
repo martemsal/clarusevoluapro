@@ -731,11 +731,11 @@
     </div>
 
     <!-- File Preview Modal -->
-    <div id="filePreviewModal" class="modal">
-        <div class="modal-content glass-panel" style="width: 900px; max-width: 95%; max-height: 90vh; display: flex; flex-direction: column; padding: 30px; border-radius: 12px; position: relative;">
+    <div id="filePreviewModal" class="modal" style="display: none; align-items: center; justify-content: center;">
+        <div class="modal-content glass-panel" style="width: 96vw; max-width: 96vw; height: 94vh; max-height: 94vh; display: flex; flex-direction: column; padding: 25px; border-radius: 12px; position: relative; margin: 0; box-sizing: border-box;">
             <span class="close-modal close-file-preview" onclick="document.getElementById('filePreviewModal').style.display='none'" style="position: absolute; right: 20px; top: 15px; font-size: 28px; font-weight: bold; cursor: pointer; color: var(--text-primary);">&times;</span>
             <h3 id="filePreviewTitle" class="mb-3" style="color: var(--text-primary); padding-right: 40px; word-break: break-all; margin-top: 0;">Visualizar Arquivo</h3>
-            <div id="filePreviewBody" style="flex: 1; overflow: auto; min-height: 500px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 15px; width: 100%; box-sizing: border-box;">
+            <div id="filePreviewBody" style="flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 15px; width: 100%; box-sizing: border-box;">
                 <!-- Content loaded dynamically: img, iframe, or pre/code -->
             </div>
         </div>
