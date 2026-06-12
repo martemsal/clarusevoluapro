@@ -977,6 +977,16 @@ function updateAllViews() {
     if (document.getElementById('tab-parecer') && document.getElementById('tab-parecer').classList.contains('active')) {
         renderParecerEstrategico();
     }
+    if (document.getElementById('tab-client-files') && document.getElementById('tab-client-files').classList.contains('active')) {
+        if (typeof renderClientUploadedFiles === 'function') renderClientUploadedFiles();
+    }
+    if (document.getElementById('tab-admin-files') && document.getElementById('tab-admin-files').classList.contains('active')) {
+        const clientFilter = document.getElementById('adminFileClientFilter');
+        if (clientFilter && EFO_Active_Company_Id) {
+            clientFilter.value = EFO_Active_Company_Id;
+        }
+        if (typeof renderAdminUploadedFiles === 'function') renderAdminUploadedFiles();
+    }
 }
 
 function renderIndicadores() {
@@ -2415,6 +2425,17 @@ function applyRoleUI() {
         btnResetData.style.display = 'block';
         
         navDashboardBtn.textContent = 'Indicadores EFO';
+        
+        // If admin is on a client-only tab, force select the DRE tab
+        const activeNav = document.querySelector('.nav-btn.active');
+        if (activeNav && (
+            activeNav.getAttribute('data-target') === 'tab-client-files' || 
+            activeNav.getAttribute('data-target') === 'tab-reuniao'
+        )) {
+            const dreBtn = document.querySelector('.nav-btn[data-target="tab-dre"]');
+            if (dreBtn) dreBtn.click();
+        }
+        
         renderCompanySelect();
     } else {
         const company = EFO_Companies[EFO_Session.companyId] || {};
@@ -3189,6 +3210,9 @@ window.initAdminFilesView = async function() {
             const opt = document.createElement('option');
             opt.value = id;
             opt.textContent = EFO_Companies[id].name || id;
+            if (id === EFO_Active_Company_Id) {
+                opt.selected = true;
+            }
             clientFilter.appendChild(opt);
         });
         
