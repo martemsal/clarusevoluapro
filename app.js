@@ -1600,6 +1600,7 @@ function renderDRE() {
 
     // Render the evolution line chart below the table
     renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQUIDO);
+    renderDRECompositionChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQUIDO);
 }
 
 // Persistent Chart.js instance reference to allow clean re-render
@@ -1623,9 +1624,19 @@ function renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQU
         _dreLineChartInstance = null;
     }
 
+    const dreSeriesOrder = [
+        "Receita Operacional Bruta",
+        "Deduções da Receita",
+        "Custo dos Produtos/Serviços",
+        "Despesas Operacionais",
+        "Receitas Operacionais",
+        "Resultado Líquido"
+    ];
+
     const datasets = [
         {
-            label: 'Receita Operacional Bruta',
+            key: 'Receita Operacional Bruta',
+            label: '(+) Receita Operacional Bruta',
             data: R_BRUTA,
             borderColor: '#6366f1',
             backgroundColor: 'rgba(99,102,241,0.08)',
@@ -1636,6 +1647,7 @@ function renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQU
             fill: false,
         },
         {
+            key: 'Deduções da Receita',
             label: '(-) Deduções da Receita',
             data: DEDUCOES.map(v => -Math.abs(v)),
             borderColor: '#ef4444',
@@ -1648,6 +1660,7 @@ function renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQU
             borderDash: [5, 3],
         },
         {
+            key: 'Custo dos Produtos/Serviços',
             label: '(-) Custo dos Produtos/Serviços',
             data: CUSTOS.map(v => -Math.abs(v)),
             borderColor: '#f59e0b',
@@ -1660,6 +1673,7 @@ function renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQU
             borderDash: [5, 3],
         },
         {
+            key: 'Despesas Operacionais',
             label: '(-) Despesas Operacionais',
             data: D_OPERACIONAIS.map(v => -Math.abs(v)),
             borderColor: '#f97316',
@@ -1672,7 +1686,8 @@ function renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQU
             borderDash: [4, 4],
         },
         {
-            label: '(+) Receitas Financeiras',
+            key: 'Receitas Operacionais',
+            label: '(-) Receitas Operacionais',
             data: R_FIN,
             borderColor: '#10b981',
             backgroundColor: 'rgba(16,185,129,0.08)',
@@ -1683,6 +1698,7 @@ function renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQU
             fill: false,
         },
         {
+            key: 'Resultado Líquido',
             label: '(=) Resultado Líquido',
             data: L_LIQUIDO,
             borderColor: '#a855f7',
@@ -1694,6 +1710,8 @@ function renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQU
             fill: true,
         },
     ];
+
+    datasets.sort((a, b) => dreSeriesOrder.indexOf(a.key) - dreSeriesOrder.indexOf(b.key));
 
     _dreLineChartInstance = new Chart(canvas, {
         type: 'line',
@@ -1745,6 +1763,227 @@ function renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQU
                             if (Math.abs(val) >= 1000) return 'R$ ' + (val / 1000).toFixed(0) + 'k';
                             return 'R$ ' + val.toFixed(0);
                         }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Persistent Chart.js instance reference for composition chart
+let _dreCompositionChartInstance = null;
+
+function renderDRECompositionChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQUIDO) {
+    const canvas = document.getElementById('dreCompositionChart');
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    const monthsShort = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const isDark = !document.body.classList.contains('light-mode');
+
+    const gridColor  = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
+    const labelColor = isDark ? '#94a3b8' : '#64748b';
+    const tooltipBg  = isDark ? 'rgba(15,17,26,0.92)' : 'rgba(255,255,255,0.95)';
+    const tooltipText = isDark ? '#f8fafc' : '#1e293b';
+
+    // Destroy existing instance before re-render
+    if (_dreCompositionChartInstance) {
+        _dreCompositionChartInstance.destroy();
+        _dreCompositionChartInstance = null;
+    }
+
+    const dreCompositionOrder = [
+        "Receita Operacional Bruta",
+        "Deduções da Receita",
+        "Custo dos Produtos/Serviços",
+        "Despesas Operacionais",
+        "Receitas Operacionais",
+        "Resultado Líquido"
+    ];
+
+    const pctBruta = [];
+    const pctDeducoes = [];
+    const pctCustos = [];
+    const pctDespesas = [];
+    const pctReceitas = [];
+    const pctLiquido = [];
+
+    const rawBruta = [];
+    const rawDeducoes = [];
+    const rawCustos = [];
+    const rawDespesas = [];
+    const rawReceitas = [];
+    const rawLiquido = [];
+
+    for (let i = 0; i < 12; i++) {
+        const rb = R_BRUTA[i];
+        if (rb === 0) {
+            pctBruta.push(0);
+            pctDeducoes.push(0);
+            pctCustos.push(0);
+            pctDespesas.push(0);
+            pctReceitas.push(0);
+            pctLiquido.push(0);
+
+            rawBruta.push(0);
+            rawDeducoes.push(0);
+            rawCustos.push(0);
+            rawDespesas.push(0);
+            rawReceitas.push(0);
+            rawLiquido.push(0);
+        } else {
+            const ded = -Math.abs(DEDUCOES[i]);
+            const cus = -Math.abs(CUSTOS[i]);
+            const desp = -Math.abs(D_OPERACIONAIS[i]);
+            const rec = R_FIN[i];
+            const liq = L_LIQUIDO[i];
+
+            pctBruta.push(100);
+            pctDeducoes.push((ded / rb) * 100);
+            pctCustos.push((cus / rb) * 100);
+            pctDespesas.push((desp / rb) * 100);
+            pctReceitas.push((rec / rb) * 100);
+            pctLiquido.push((liq / rb) * 100);
+
+            rawBruta.push(rb);
+            rawDeducoes.push(ded);
+            rawCustos.push(cus);
+            rawDespesas.push(desp);
+            rawReceitas.push(rec);
+            rawLiquido.push(liq);
+        }
+    }
+
+    const datasets = [
+        {
+            key: 'Receita Operacional Bruta',
+            label: '(+) Receita Operacional Bruta',
+            type: 'line',
+            data: pctBruta,
+            rawValues: rawBruta,
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99,102,241,0.08)',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            pointRadius: 0,
+            fill: false,
+            stacked: false
+        },
+        {
+            key: 'Deduções da Receita',
+            label: '(-) Deduções da Receita',
+            type: 'bar',
+            data: pctDeducoes,
+            rawValues: rawDeducoes,
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239,68,68,0.75)',
+            borderWidth: 1,
+            stack: 'composition'
+        },
+        {
+            key: 'Custo dos Produtos/Serviços',
+            label: '(-) Custo dos Produtos/Serviços',
+            type: 'bar',
+            data: pctCustos,
+            rawValues: rawCustos,
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245,158,11,0.75)',
+            borderWidth: 1,
+            stack: 'composition'
+        },
+        {
+            key: 'Despesas Operacionais',
+            label: '(-) Despesas Operacionais',
+            type: 'bar',
+            data: pctDespesas,
+            rawValues: rawDespesas,
+            borderColor: '#f97316',
+            backgroundColor: 'rgba(249,115,22,0.75)',
+            borderWidth: 1,
+            stack: 'composition'
+        },
+        {
+            key: 'Receitas Operacionais',
+            label: '(-) Receitas Operacionais',
+            type: 'bar',
+            data: pctReceitas,
+            rawValues: rawReceitas,
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16,185,129,0.75)',
+            borderWidth: 1,
+            stack: 'composition'
+        },
+        {
+            key: 'Resultado Líquido',
+            label: '(=) Resultado Líquido',
+            type: 'line',
+            data: pctLiquido,
+            rawValues: rawLiquido,
+            borderColor: '#a855f7',
+            backgroundColor: 'rgba(168,85,247,0.15)',
+            borderWidth: 3,
+            pointRadius: 5,
+            pointHoverRadius: 8,
+            fill: false,
+            stacked: false
+        }
+    ];
+
+    // Sort datasets strictly based on dreCompositionOrder
+    datasets.sort((a, b) => dreCompositionOrder.indexOf(a.key) - dreCompositionOrder.indexOf(b.key));
+
+    _dreCompositionChartInstance = new Chart(canvas, {
+        type: 'bar',
+        data: { labels: monthsShort, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        color: labelColor,
+                        font: { family: "'Inter', sans-serif", size: 12 },
+                        boxWidth: 14,
+                        padding: 20,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                    }
+                },
+                tooltip: {
+                    backgroundColor: tooltipBg,
+                    titleColor: tooltipText,
+                    bodyColor: tooltipText,
+                    borderColor: 'rgba(99,102,241,0.3)',
+                    borderWidth: 1,
+                    padding: 12,
+                    callbacks: {
+                        label: (ctx) => {
+                            const pctVal = ctx.parsed.y;
+                            const rawVal = ctx.dataset.rawValues[ctx.dataIndex];
+                            
+                            const formattedPct = pctVal.toFixed(1).replace('.', ',') + '%';
+                            const formattedRaw = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(rawVal);
+                            
+                            return `  ${ctx.dataset.label}: ${formattedPct} (${formattedRaw})`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    grid: { color: gridColor },
+                    ticks: { color: labelColor, font: { family: "'Inter', sans-serif", size: 12 } }
+                },
+                y: {
+                    stacked: true,
+                    grid: { color: gridColor },
+                    ticks: {
+                        color: labelColor,
+                        font: { family: "'Inter', sans-serif", size: 11 },
+                        callback: (val) => val.toFixed(0) + '%'
                     }
                 }
             }
