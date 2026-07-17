@@ -1719,13 +1719,12 @@ function renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQU
                         ctx.translate(x, y);
                         ctx.rotate(-Math.PI / 2);
                         ctx.textBaseline = 'middle';
+                        ctx.fillStyle = isDark ? '#e2e8f0' : '#334155';
                         if (isNegative) {
-                            ctx.textAlign = 'left';
-                            ctx.fillStyle = isDark ? '#ffffff' : '#1e293b';
-                            ctx.fillText(formattedPct, padding, 0);
+                            ctx.textAlign = 'right';
+                            ctx.fillText(formattedPct, -padding, 0);
                         } else {
                             ctx.textAlign = 'left';
-                            ctx.fillStyle = isDark ? '#e2e8f0' : '#334155';
                             ctx.fillText(formattedPct, padding, 0);
                         }
                         ctx.restore();
@@ -1770,10 +1769,14 @@ function renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQU
             scales: {
                 x: {
                     grid: { color: gridColor },
-                    ticks: { color: labelColor, font: { family: "'Inter', sans-serif", size: 12 } }
+                    ticks: {
+                        color: labelColor,
+                        font: { family: "'Inter', sans-serif", size: 12 },
+                        padding: 15
+                    }
                 },
                 y: {
-                    grace: '20%',
+                    grace: '45%',
                     grid: { color: gridColor },
                     ticks: {
                         color: labelColor,
