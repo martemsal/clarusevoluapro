@@ -1695,8 +1695,6 @@ function renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQU
                 ctx.save();
                 ctx.fillStyle = isDark ? '#e2e8f0' : '#334155';
                 ctx.font = "bold 9px 'Inter', sans-serif";
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'bottom';
 
                 chart.data.datasets.forEach((dataset, datasetIndex) => {
                     const meta = chart.getDatasetMeta(datasetIndex);
@@ -1713,11 +1711,22 @@ function renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQU
                         const formattedPct = pct.toFixed(1).replace('.', ',') + '%';
 
                         const isNegative = val < 0;
-                        const padding = 4;
+                        const padding = 6;
                         const x = bar.x;
-                        const y = isNegative ? bar.y + padding + 8 : bar.y - padding;
+                        const y = bar.y;
 
-                        ctx.fillText(formattedPct, x, y);
+                        ctx.save();
+                        ctx.translate(x, y);
+                        ctx.rotate(-Math.PI / 2);
+                        ctx.textBaseline = 'middle';
+                        if (isNegative) {
+                            ctx.textAlign = 'right';
+                            ctx.fillText(formattedPct, -padding, 0);
+                        } else {
+                            ctx.textAlign = 'left';
+                            ctx.fillText(formattedPct, padding, 0);
+                        }
+                        ctx.restore();
                     });
                 });
                 ctx.restore();
