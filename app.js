@@ -1600,7 +1600,6 @@ function renderDRE() {
 
     // Render the evolution line chart below the table
     renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQUIDO);
-    renderDRECompositionChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQUIDO);
 }
 
 // Persistent Chart.js instance reference to allow clean re-render
@@ -1689,6 +1688,41 @@ function renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQU
     _dreLineChartInstance = new Chart(canvas, {
         type: 'bar',
         data: { labels: monthsShort, datasets },
+        plugins: [{
+            id: 'barLabels',
+            afterDatasetsDraw: (chart) => {
+                const ctx = chart.ctx;
+                ctx.save();
+                ctx.fillStyle = isDark ? '#e2e8f0' : '#334155';
+                ctx.font = "bold 9px 'Inter', sans-serif";
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'bottom';
+
+                chart.data.datasets.forEach((dataset, datasetIndex) => {
+                    const meta = chart.getDatasetMeta(datasetIndex);
+                    if (meta.hidden) return;
+
+                    meta.data.forEach((bar, index) => {
+                        const val = dataset.data[index];
+                        if (val === 0 || Math.abs(val) < 0.01) return;
+
+                        const rb = R_BRUTA[index];
+                        if (rb === 0) return;
+
+                        const pct = (val / rb) * 100;
+                        const formattedPct = pct.toFixed(1).replace('.', ',') + '%';
+
+                        const isNegative = val < 0;
+                        const padding = 4;
+                        const x = bar.x;
+                        const y = isNegative ? bar.y + padding + 8 : bar.y - padding;
+
+                        ctx.fillText(formattedPct, x, y);
+                    });
+                });
+                ctx.restore();
+            }
+        }],
         options: {
             responsive: true,
             maintainAspectRatio: false,
@@ -1743,241 +1777,6 @@ function renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQU
     });
 }
 
-// Persistent Chart.js instance reference for composition chart
-let _dreCompositionChartInstance = null;
-
-function renderDRECompositionChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQUIDO) {
-    const canvas = document.getElementById('dreCompositionChart');
-    if (!canvas || typeof Chart === 'undefined') return;
-
-    const monthsShort = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    const isDark = !document.body.classList.contains('light-mode');
-
-    const gridColor  = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
-    const labelColor = isDark ? '#94a3b8' : '#64748b';
-    const tooltipBg  = isDark ? 'rgba(15,17,26,0.92)' : 'rgba(255,255,255,0.95)';
-    const tooltipText = isDark ? '#f8fafc' : '#1e293b';
-
-    // Destroy existing instance before re-render
-    if (_dreCompositionChartInstance) {
-        _dreCompositionChartInstance.destroy();
-        _dreCompositionChartInstance = null;
-    }
-
-    const dreCompositionOrder = [
-        "Receita Operacional Bruta",
-        "Deduções da Receita",
-        "Custo dos Produtos/Serviços",
-        "Despesas Operacionais",
-        "Receitas Operacionais",
-        "Resultado Líquido"
-    ];
-
-    const pctBruta = [];
-    const pctDeducoes = [];
-    const pctCustos = [];
-    const pctDespesas = [];
-    const pctReceitas = [];
-    const pctLiquido = [];
-
-    const rawBruta = [];
-    const rawDeducoes = [];
-    const rawCustos = [];
-    const rawDespesas = [];
-    const rawReceitas = [];
-    const rawLiquido = [];
-
-    for (let i = 0; i < 12; i++) {
-        const rb = R_BRUTA[i];
-        if (rb === 0) {
-            pctBruta.push(0);
-            pctDeducoes.push(0);
-            pctCustos.push(0);
-            pctDespesas.push(0);
-            pctReceitas.push(0);
-            pctLiquido.push(0);
-
-            rawBruta.push(0);
-            rawDeducoes.push(0);
-            rawCustos.push(0);
-            rawDespesas.push(0);
-            rawReceitas.push(0);
-            rawLiquido.push(0);
-        } else {
-            const ded = -Math.abs(DEDUCOES[i]);
-            const cus = -Math.abs(CUSTOS[i]);
-            const desp = -Math.abs(D_OPERACIONAIS[i]);
-            const rec = R_FIN[i];
-            const liq = L_LIQUIDO[i];
-
-            pctBruta.push(100);
-            pctDeducoes.push((ded / rb) * 100);
-            pctCustos.push((cus / rb) * 100);
-            pctDespesas.push((desp / rb) * 100);
-            pctReceitas.push((rec / rb) * 100);
-            pctLiquido.push((liq / rb) * 100);
-
-            rawBruta.push(rb);
-            rawDeducoes.push(ded);
-            rawCustos.push(cus);
-            rawDespesas.push(desp);
-            rawReceitas.push(rec);
-            rawLiquido.push(liq);
-        }
-    }
-
-    const datasets = [
-        {
-            key: 'Receita Operacional Bruta',
-            label: '(+) Receita Operacional Bruta',
-            type: 'bar',
-            data: pctBruta,
-            rawValues: rawBruta,
-            borderColor: '#6366f1',
-            backgroundColor: 'rgba(99,102,241,0.75)',
-            borderWidth: 1,
-            stack: 'receita'
-        },
-        {
-            key: 'Deduções da Receita',
-            label: '(-) Deduções da Receita',
-            type: 'bar',
-            data: pctDeducoes,
-            rawValues: rawDeducoes,
-            borderColor: '#ef4444',
-            backgroundColor: 'rgba(239,68,68,0.75)',
-            borderWidth: 1,
-            stack: 'composition'
-        },
-        {
-            key: 'Custo dos Produtos/Serviços',
-            label: '(-) Custo dos Produtos/Serviços',
-            type: 'bar',
-            data: pctCustos,
-            rawValues: rawCustos,
-            borderColor: '#f59e0b',
-            backgroundColor: 'rgba(245,158,11,0.75)',
-            borderWidth: 1,
-            stack: 'composition'
-        },
-        {
-            key: 'Despesas Operacionais',
-            label: '(-) Despesas Operacionais',
-            type: 'bar',
-            data: pctDespesas,
-            rawValues: rawDespesas,
-            borderColor: '#f97316',
-            backgroundColor: 'rgba(249,115,22,0.75)',
-            borderWidth: 1,
-            stack: 'composition'
-        },
-        {
-            key: 'Receitas Operacionais',
-            label: '(-) Receitas Operacionais',
-            type: 'bar',
-            data: pctReceitas,
-            rawValues: rawReceitas,
-            borderColor: '#10b981',
-            backgroundColor: 'rgba(16,185,129,0.75)',
-            borderWidth: 1,
-            stack: 'composition'
-        },
-        {
-            key: 'Resultado Líquido',
-            label: '(=) Resultado Líquido',
-            type: 'bar',
-            data: pctLiquido,
-            rawValues: rawLiquido,
-            borderColor: '#a855f7',
-            backgroundColor: 'rgba(168,85,247,0.75)',
-            borderWidth: 1,
-            stack: 'resultado'
-        }
-    ];
-
-    // Sort datasets strictly based on dreCompositionOrder
-    datasets.sort((a, b) => dreCompositionOrder.indexOf(a.key) - dreCompositionOrder.indexOf(b.key));
-
-    _dreCompositionChartInstance = new Chart(canvas, {
-        type: 'bar',
-        data: { labels: monthsShort, datasets },
-        plugins: [{
-            id: 'horizontalLine',
-            afterDraw: (chart) => {
-                const ctx = chart.ctx;
-                const yVal = chart.scales.y.getPixelForValue(100);
-                ctx.save();
-                ctx.beginPath();
-                ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.45)';
-                ctx.lineWidth = 1.5;
-                ctx.setLineDash([5, 5]);
-                ctx.moveTo(chart.chartArea.left, yVal);
-                ctx.lineTo(chart.chartArea.right, yVal);
-                ctx.stroke();
-
-                // Text label for 100% line
-                ctx.fillStyle = isDark ? '#e2e8f0' : '#334155';
-                ctx.font = "11px 'Inter', sans-serif";
-                ctx.fillText("Receita Bruta (100%)", chart.chartArea.left + 8, yVal - 6);
-                ctx.restore();
-            }
-        }],
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'bottom',
-                    labels: {
-                        color: labelColor,
-                        font: { family: "'Inter', sans-serif", size: 12 },
-                        boxWidth: 14,
-                        padding: 20,
-                        usePointStyle: true,
-                        pointStyle: 'circle',
-                    }
-                },
-                tooltip: {
-                    backgroundColor: tooltipBg,
-                    titleColor: tooltipText,
-                    bodyColor: tooltipText,
-                    borderColor: 'rgba(99,102,241,0.3)',
-                    borderWidth: 1,
-                    padding: 12,
-                    callbacks: {
-                        label: (ctx) => {
-                            const pctVal = ctx.parsed.y;
-                            const rawVal = ctx.dataset.rawValues[ctx.dataIndex];
-                            
-                            const formattedPct = pctVal.toFixed(1).replace('.', ',') + '%';
-                            const formattedRaw = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(rawVal);
-                            
-                            return `  ${ctx.dataset.label}: ${formattedPct} (${formattedRaw})`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    stacked: true,
-                    grid: { color: gridColor },
-                    ticks: { color: labelColor, font: { family: "'Inter', sans-serif", size: 12 } }
-                },
-                y: {
-                    stacked: true,
-                    grid: { color: gridColor },
-                    ticks: {
-                        color: labelColor,
-                        font: { family: "'Inter', sans-serif", size: 11 },
-                        callback: (val) => val.toFixed(0) + '%'
-                    }
-                }
-            }
-        }
-    });
-}
 
 function calculateBalancoData(year) {
 
