@@ -1639,82 +1639,55 @@ function renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQU
             label: '(+) Receita Operacional Bruta',
             data: R_BRUTA,
             borderColor: '#6366f1',
-            backgroundColor: 'rgba(99,102,241,0.08)',
-            borderWidth: 2.5,
-            pointRadius: 4,
-            pointHoverRadius: 7,
-            tension: 0.35,
-            fill: false,
+            backgroundColor: 'rgba(99,102,241,0.75)',
+            borderWidth: 1,
         },
         {
             key: 'Deduções da Receita',
             label: '(-) Deduções da Receita',
             data: DEDUCOES.map(v => -Math.abs(v)),
             borderColor: '#ef4444',
-            backgroundColor: 'rgba(239,68,68,0.06)',
-            borderWidth: 2,
-            pointRadius: 3,
-            pointHoverRadius: 6,
-            tension: 0.35,
-            fill: false,
-            borderDash: [5, 3],
+            backgroundColor: 'rgba(239,68,68,0.75)',
+            borderWidth: 1,
         },
         {
             key: 'Custo dos Produtos/Serviços',
             label: '(-) Custo dos Produtos/Serviços',
             data: CUSTOS.map(v => -Math.abs(v)),
             borderColor: '#f59e0b',
-            backgroundColor: 'rgba(245,158,11,0.06)',
-            borderWidth: 2,
-            pointRadius: 3,
-            pointHoverRadius: 6,
-            tension: 0.35,
-            fill: false,
-            borderDash: [5, 3],
+            backgroundColor: 'rgba(245,158,11,0.75)',
+            borderWidth: 1,
         },
         {
             key: 'Despesas Operacionais',
             label: '(-) Despesas Operacionais',
             data: D_OPERACIONAIS.map(v => -Math.abs(v)),
             borderColor: '#f97316',
-            backgroundColor: 'rgba(249,115,22,0.06)',
-            borderWidth: 2,
-            pointRadius: 3,
-            pointHoverRadius: 6,
-            tension: 0.35,
-            fill: false,
-            borderDash: [4, 4],
+            backgroundColor: 'rgba(249,115,22,0.75)',
+            borderWidth: 1,
         },
         {
             key: 'Receitas Operacionais',
             label: '(-) Receitas Operacionais',
             data: R_FIN,
             borderColor: '#10b981',
-            backgroundColor: 'rgba(16,185,129,0.08)',
-            borderWidth: 2,
-            pointRadius: 3,
-            pointHoverRadius: 6,
-            tension: 0.35,
-            fill: false,
+            backgroundColor: 'rgba(16,185,129,0.75)',
+            borderWidth: 1,
         },
         {
             key: 'Resultado Líquido',
             label: '(=) Resultado Líquido',
             data: L_LIQUIDO,
             borderColor: '#a855f7',
-            backgroundColor: 'rgba(168,85,247,0.10)',
-            borderWidth: 3,
-            pointRadius: 5,
-            pointHoverRadius: 8,
-            tension: 0.35,
-            fill: true,
+            backgroundColor: 'rgba(168,85,247,0.75)',
+            borderWidth: 1,
         },
     ];
 
     datasets.sort((a, b) => dreSeriesOrder.indexOf(a.key) - dreSeriesOrder.indexOf(b.key));
 
     _dreLineChartInstance = new Chart(canvas, {
-        type: 'line',
+        type: 'bar',
         data: { labels: monthsShort, datasets },
         options: {
             responsive: true,
@@ -1857,16 +1830,13 @@ function renderDRECompositionChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_
         {
             key: 'Receita Operacional Bruta',
             label: '(+) Receita Operacional Bruta',
-            type: 'line',
+            type: 'bar',
             data: pctBruta,
             rawValues: rawBruta,
             borderColor: '#6366f1',
-            backgroundColor: 'rgba(99,102,241,0.08)',
-            borderWidth: 2,
-            borderDash: [5, 5],
-            pointRadius: 0,
-            fill: false,
-            stacked: false
+            backgroundColor: 'rgba(99,102,241,0.75)',
+            borderWidth: 1,
+            stack: 'receita'
         },
         {
             key: 'Deduções da Receita',
@@ -1915,16 +1885,13 @@ function renderDRECompositionChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_
         {
             key: 'Resultado Líquido',
             label: '(=) Resultado Líquido',
-            type: 'line',
+            type: 'bar',
             data: pctLiquido,
             rawValues: rawLiquido,
             borderColor: '#a855f7',
-            backgroundColor: 'rgba(168,85,247,0.15)',
-            borderWidth: 3,
-            pointRadius: 5,
-            pointHoverRadius: 8,
-            fill: false,
-            stacked: false
+            backgroundColor: 'rgba(168,85,247,0.75)',
+            borderWidth: 1,
+            stack: 'resultado'
         }
     ];
 
@@ -1934,6 +1901,27 @@ function renderDRECompositionChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_
     _dreCompositionChartInstance = new Chart(canvas, {
         type: 'bar',
         data: { labels: monthsShort, datasets },
+        plugins: [{
+            id: 'horizontalLine',
+            afterDraw: (chart) => {
+                const ctx = chart.ctx;
+                const yVal = chart.scales.y.getPixelForValue(100);
+                ctx.save();
+                ctx.beginPath();
+                ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.45)';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([5, 5]);
+                ctx.moveTo(chart.chartArea.left, yVal);
+                ctx.lineTo(chart.chartArea.right, yVal);
+                ctx.stroke();
+
+                // Text label for 100% line
+                ctx.fillStyle = isDark ? '#e2e8f0' : '#334155';
+                ctx.font = "11px 'Inter', sans-serif";
+                ctx.fillText("Receita Bruta (100%)", chart.chartArea.left + 8, yVal - 6);
+                ctx.restore();
+            }
+        }],
         options: {
             responsive: true,
             maintainAspectRatio: false,
