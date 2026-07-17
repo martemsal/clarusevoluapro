@@ -1711,7 +1711,7 @@ function renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQU
                         const formattedPct = pct.toFixed(1).replace('.', ',') + '%';
 
                         const isNegative = val < 0;
-                        const padding = 6;
+                        const padding = 8;
                         const x = bar.x;
                         const y = bar.y;
 
@@ -1771,6 +1771,7 @@ function renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQU
                     ticks: { color: labelColor, font: { family: "'Inter', sans-serif", size: 12 } }
                 },
                 y: {
+                    grace: '20%',
                     grid: { color: gridColor },
                     ticks: {
                         color: labelColor,
