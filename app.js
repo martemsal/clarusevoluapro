@@ -671,6 +671,9 @@ function initTabs() {
             if (target === 'tab-planos') {
                 title = "Nossos Planos";
             }
+            if (target === 'tab-lia') {
+                title = "Lia (IA Assistente)";
+            }
             document.getElementById('pageTitle').textContent = title;
         });
     });
@@ -3771,3 +3774,259 @@ window.addEventListener('click', (e) => {
         previewModal.style.display = 'none';
     }
 });
+
+// =============================================================
+//  LIA — IA ASSISTENTE DE SUPORTE E SUCESSO
+// =============================================================
+
+function getLiaFinancialSummary() {
+    // Dynamically calculate DRE data for the active year
+    const d = calculateDREData(EFO_Active_DRE_Year);
+    if (!d) return null;
+    
+    const sum = (arr) => arr.reduce((a, b) => a + b, 0);
+    const sumKeys = (keys) => {
+        let total = 0;
+        keys.forEach(k => {
+            if (d[k]) total += sum(d[k]);
+        });
+        return total;
+    };
+    
+    const rBruta = sumKeys(['dre.receita_bruta.produtos', 'dre.receita_bruta.servicos', 'dre.receita_bruta.outras']);
+    const deducoes = sumKeys(['dre.deducoes.impostos', 'dre.deducoes.devolucoes', 'dre.deducoes.descontos']);
+    const custos = sumKeys(['dre.custos.mercadorias', 'dre.custos.producao', 'dre.custos.servicos', 'dre.custos.operacionais']);
+    
+    const despesas = sumKeys([
+        'dre.despesas_comercial.marketing', 'dre.despesas_comercial.trafego', 'dre.despesas_comercial.comissao', 'dre.despesas_comercial.viagens', 'dre.despesas_comercial.transporte_logistica', 'dre.despesas_comercial.outras',
+        'dre.despesas_administrativas.pro_labore', 'dre.despesas_administrativas.salarios', 'dre.despesas_administrativas.encargos', 'dre.despesas_administrativas.aluguel', 'dre.despesas_administrativas.outras',
+        'dre.despesas_pessoal.salarios', 'dre.despesas_pessoal.inss', 'dre.despesas_pessoal.fgts', 'dre.despesas_pessoal.beneficios', 'dre.despesas_pessoal.rescisoes',
+        'dre.despesas_estrutura.manutencao', 'dre.despesas_estrutura.reparos', 'dre.despesas_estrutura.limpeza',
+        'dre.despesas_veiculos.combustivel', 'dre.despesas_veiculos.manutencao', 'dre.despesas_veiculos.seguro', 'dre.despesas_veiculos.ipva',
+        'dre.despesas_financeiras.tarifas', 'dre.despesas_financeiras.juros', 'dre.despesas_financeiras.iof'
+    ]);
+    
+    const rFin = sumKeys(['dre.receitas_financeiras.rendimentos', 'dre.receitas_financeiras.juros_recebidos']);
+    const rLiq = rBruta - deducoes;
+    const lBruto = rLiq - custos;
+    const lucroLiquido = lBruto - despesas + rFin;
+    
+    return {
+        year: EFO_Active_DRE_Year,
+        receitaBruta: rBruta,
+        deducoes: deducoes,
+        receitaLiquida: rLiq,
+        custos: custos,
+        lucroBruto: lBruto,
+        despesas: despesas,
+        receitasFinanceiras: rFin,
+        lucroLiquido: lucroLiquido
+    };
+}
+
+window.sendLiaQuickMessage = function(text) {
+    const input = document.getElementById('liaChatInput');
+    if (input) {
+        input.value = text;
+        window.sendLiaMessage();
+    }
+};
+
+window.handleLiaKeyPress = function(e) {
+    if (e.key === 'Enter') {
+        window.sendLiaMessage();
+    }
+};
+
+window.sendLiaMessage = function() {
+    const input = document.getElementById('liaChatInput');
+    const container = document.getElementById('liaChatMessages');
+    if (!input || !container) return;
+    
+    const text = input.value.trim();
+    if (!text) return;
+    
+    // Add user message
+    const userMsgHTML = `
+        <div style="display: flex; gap: 12px; max-width: 85%; align-self: flex-end; justify-content: flex-end;">
+            <div style="background: var(--accent-primary); border: 1px solid rgba(255,255,255,0.1); padding: 12px 16px; border-radius: 16px 16px 4px 16px; color: #ffffff; font-size: 14px; line-height: 1.5;">
+                ${text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}
+            </div>
+            <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; font-weight: bold; color: var(--text-primary);">
+                👤
+            </div>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', userMsgHTML);
+    input.value = '';
+    container.scrollTop = container.scrollHeight;
+    
+    // Add typing indicator
+    const typingId = 'lia-typing-indicator';
+    const typingHTML = `
+        <div id="${typingId}" style="display: flex; gap: 12px; max-width: 85%; align-self: flex-start;">
+            <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #818cf8, #6366f1); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; box-shadow: 0 2px 8px rgba(99,102,241,0.3);">
+                👩
+            </div>
+            <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); padding: 12px 16px; border-radius: 4px 16px 16px 16px; color: var(--text-secondary); font-size: 14px; font-style: italic; display: flex; align-items: center; gap: 6px;">
+                Lia está digitando
+                <span class="typing-dots" style="display: inline-flex; gap: 3px;">
+                    <span style="width: 4px; height: 4px; border-radius: 50%; background: var(--text-secondary); animation: blink 1.4s infinite both;"></span>
+                    <span style="width: 4px; height: 4px; border-radius: 50%; background: var(--text-secondary); animation: blink 1.4s infinite both 0.2s;"></span>
+                    <span style="width: 4px; height: 4px; border-radius: 50%; background: var(--text-secondary); animation: blink 1.4s infinite both 0.4s;"></span>
+                </span>
+            </div>
+        </div>
+        <style>
+            @keyframes blink {
+                0% { opacity: .2; }
+                20% { opacity: 1; }
+                100% { opacity: .2; }
+            }
+        </style>
+    `;
+    container.insertAdjacentHTML('beforeend', typingHTML);
+    container.scrollTop = container.scrollHeight;
+    
+    // Simulate typing delay
+    const delay = 800 + Math.random() * 800;
+    setTimeout(() => {
+        // Remove typing indicator
+        const indicator = document.getElementById(typingId);
+        if (indicator) indicator.remove();
+        
+        // Generate and render reply
+        const reply = generateLiaResponse(text);
+        const botMsgHTML = `
+            <div style="display: flex; gap: 12px; max-width: 85%; align-self: flex-start;">
+                <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #818cf8, #6366f1); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; box-shadow: 0 2px 8px rgba(99,102,241,0.3);">
+                    👩
+                </div>
+                <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); padding: 16px; border-radius: 4px 16px 16px 16px; color: var(--text-primary); font-size: 14px; line-height: 1.6; white-space: pre-line;">
+                    ${reply}
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', botMsgHTML);
+        container.scrollTop = container.scrollHeight;
+    }, delay);
+};
+
+function generateLiaResponse(input) {
+    const query = input.toLowerCase();
+    
+    // Check if user is logged in to personalize
+    const userName = EFO_Session ? EFO_Session.name.split(' ')[0] : 'amigo(a)';
+    let planName = 'Essential';
+    if (EFO_Session && EFO_Session.companyId && EFO_Companies[EFO_Session.companyId]) {
+        const company = EFO_Companies[EFO_Session.companyId];
+        const pkg = company.config?.package || 'essential';
+        planName = pkg.charAt(0).toUpperCase() + pkg.slice(1);
+    }
+
+    // 1. FINANCIAL ANALYSIS DYNAMIC RESPONSE
+    if (query.includes('finança') || query.includes('financa') || query.includes('analis') || query.includes('como está') || query.includes('como esta') || query.includes('meu negócio') || query.includes('meu negocio') || query.includes('saúde') || query.includes('saude') || query.includes('meu resultado') || query.includes('meu lucro') || query.includes('minhas finanças')) {
+        const summary = getLiaFinancialSummary();
+        if (summary && summary.receitaBruta > 0) {
+            const fmt = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+            const marginVal = ((summary.lucroLiquido / summary.receitaBruta) * 100).toFixed(1);
+            const margin = marginVal + '%';
+            
+            let msg = `Com certeza, **${userName}**! Olhando com muito carinho para o raio-x financeiro da sua empresa no ano de **${summary.year}**, preparei essa análise simplificada pra você:
+
+`;
+            msg += `1. 📈 **O que entrou (Faturamento):** Você teve uma Receita Operacional Bruta de **${fmt(summary.receitaBruta)}** este ano.
+`;
+            msg += `2. 💸 **Impostos e Deduções:** Retivemos **${fmt(summary.deducoes)}** em impostos e devoluções, nos deixando com uma Receita Líquida de **${fmt(summary.receitaLiquida)}**.
+`;
+            msg += `3. 🛠️ **Custo de Operação:** Para rodar seus produtos ou serviços, foram investidos **${fmt(summary.custos)}** (CMV, fornecedores, etc.), gerando um Lucro Bruto de **${fmt(summary.lucroBruto)}**.
+`;
+            msg += `4. 🏢 **Despesas Administrativas e Comerciais:** As despesas administrativas, de pessoal e de vendas somaram **${fmt(summary.despesas)}**.
+
+`;
+            msg += `👉 **O resultado final (Lucro Real):** O seu **Resultado Líquido** foi de **${fmt(summary.lucroLiquido)}**, o que significa uma margem líquida real de **${margin}** sobre o seu faturamento bruto.
+
+`;
+            
+            if (summary.lucroLiquido < 0) {
+                msg += `⚠️ **Atenção carinhosa:** Como o resultado líquido está negativo este ano, isso significa que a empresa operou no prejuízo. Vamos dar uma olhada juntos na lista de despesas operacionais ou nos custos diretos para ver onde podemos cortar desperdícios e trazer a empresa de volta para o azul?`;
+            } else if (parseFloat(marginVal) < 10) {
+                msg += `💡 **Dica da Lia:** A empresa está gerando lucro, mas a margem de lucro de **${margin}** está um pouquinho apertada (o ideal para a maioria dos setores gerenciais é ficar acima de 10% a 15%). Pode ser interessante analisar se as despesas comerciais ou taxas financeiras estão altas demais.`;
+            } else {
+                msg += `🎉 **Que excelente notícia!** Sua margem de lucro está em **${margin}** (excelente performance comercial e gerencial!). A operação da sua empresa está gerando um ótimo lucro líquido. Continue de olho na eficiência para manter esse crescimento sustentável!`;
+            }
+            return msg;
+        } else {
+            return `Oi, **${userName}**! Tentei rodar uma análise rápida das suas finanças deste ano, mas parece que ainda não temos transações classificadas ou dados suficientes no nosso Painel de Resultados.
+
+Que tal subir um arquivo de extrato bancário `.OFX` no **EFO Drive** ou fazer algumas classificações na **Área de Transações** para eu poder analisar tudinho pra você?`;
+        }
+    }
+
+    // 2. ONBOARDING
+    if (query.includes('começar') || query.includes('comeco') || query.includes('onboarding') || query.includes('como usar') || query.includes('primeiros passos') || query.includes('passo') || query.includes('início') || query.includes('inicio')) {
+        return `Dar os primeiros passos no painel da **Clarus Evolua** é super simples, **${userName}**! O segredo é seguir esse fluxo natural:
+
+1. 📂 **Alimente o Sistema:** Vá até o menu lateral e faça o upload dos seus arquivos de extrato bancário (formato `.OFX`) no **EFO Drive (Envio de Documentos)**. É o nosso cantinho seguro para guardar sua papelada financeira.
+2. 🏷️ **Classifique suas Transações:** Na **Área de Transações (Conciliação Bancária)**, você verá todas as entradas e saídas que vieram do extrato. Basta clicar em cada uma e escolher a categoria correta (como "Vendas", "Aluguel", "Salários", etc.).
+3. 📊 **Acompanhe o Resultado:** Pronto! Assim que classificar, o **Painel de Resultados (DRE)** e o **Balanço da Empresa** serão gerados automaticamente para você acompanhar os lucros mês a mês.
+
+Se precisar de ajuda para classificar ou subir arquivos, é só me chamar! Quer tentar subir um arquivo OFX agora?`;
+    }
+
+    // 3. DRE & BALANÇO
+    if (query.includes('dre') || query.includes('demonstrativo') || query.includes('resultado') || query.includes('lucro') || query.includes('balanço') || query.includes('balanco') || query.includes('ativo') || query.includes('passivo')) {
+        return `Ah! O **Painel de Resultados (DRE)** e o **Balanço da Empresa** são as duas lentes mais importantes para enxergar seu negócio. Deixa eu te explicar a diferença sem nenhuma complicação técnica:
+
+- 📈 **Painel de Resultados (DRE):** Funciona como o "filme" ou o raio-x da saúde financeira e do lucro da sua empresa em um período. Ele responde à pergunta: *\"Eu ganhei ou perdi dinheiro este mês?\"*, mostrando todas as suas receitas brutas, descontando impostos, custos, despesas, até chegar no Lucro Líquido Real.
+- 📸 **Balanço da Empresa:** Funciona como uma "foto instantânea" do patrimônio da sua empresa hoje. Ele responde à pergunta: *\"O que a empresa tem e o que ela deve?\"*. Ele é dividido em **Ativos** (tudo o que é seu por direito: saldo em conta, estoque, máquinas) e **Passivos** (tudo o que você deve a terceiros: fornecedores, salários a pagar, empréstimos).
+
+Ambos se complementam! O DRE te diz se a operação dá lucro, e o Balanço te mostra a solidez e a estrutura de capital acumulada. Ficou claro? 😊`;
+    }
+
+    // 4. INDICADORES EFO
+    if (query.includes('indicador') || query.includes('indicadores') || query.includes('efo') || query.includes('métrica') || query.includes('metrica')) {
+        return `Os **Indicadores EFO** são as nossas métricas exclusivas de eficiência! Elas mostram de forma bem visual se o seu negócio está navegando no caminho certo. 
+
+Eles analisam:
+- **Crescimento e Escala:** Se o seu faturamento comercial está subindo com saúde.
+- **Eficiência de Margem:** O quanto de cada venda realmente vira caixa livre.
+- **Retorno sobre Capital:** Se a sua empresa está gerando mais retorno do que outros investimentos de mercado.
+
+Lembrando que o painel detalhado de Indicadores EFO e o Parecer do consultor estão disponíveis a partir do plano **Performance**. Se você estiver no plano Essential e quiser liberar esse acompanhamento avançado para impulsionar seu crescimento, basta falar comigo para providenciarmos seu upgrade!`;
+    }
+
+    // 5. PLANS & UPGRADE
+    if (query.includes('plano') || query.includes('planos') || query.includes('preço') || query.includes('precos') || query.includes('upgrade') || query.includes('mensalidade') || query.includes('valores') || query.includes('essential') || query.includes('performance') || query.includes('executive')) {
+        return `Com certeza, **${userName}**! Nós estruturamos nossos planos para apoiar cada momento da jornada da sua empresa. Veja qual faz mais sentido para você:
+
+1. 🟢 **Essential (R$ 1.697/mês):** Acesso completo ao Painel de Resultados (DRE) Gerencial, Balanço Gerencial e importação de múltiplos arquivos OFX no EFO Drive. Perfeito para manter a base organizada!
+2. 🔵 **Performance (R$ 2.997/mês):** Tudo do Essential + os Indicadores EFO de eficiência e crescimento + um Parecer Estratégico mensal escrito pelo seu consultor dedicado para te dar insights preciosos.
+3. 🟣 **Executive (R$ 4.697/mês):** O pacote completo para acelerar o crescimento. Inclui tudo do Performance + o Alinhamento Estratégico Mensal (uma conversa ao vivo de 60 minutos com o seu consultor para traçar e revisar metas).
+
+Atualmente o seu plano ativo é o **${planName}**. Se você sentir que precisa de análises mais profundas ou de encontros ao vivo com o nosso time, clique na aba **Upgrade de Plano** no menu lateral ou me peça por aqui que eu peço para um especialista do suporte entrar em contato com você via WhatsApp! Quer que eu peça?`;
+    }
+
+    // 6. BANKING CONCILIATION & OFX DRIVE
+    if (query.includes('pix') || query.includes('concilia') || query.includes('conciliar') || query.includes('ofx') || query.includes('extrato') || query.includes('upload') || query.includes('drive') || query.includes('documento') || query.includes('transação') || query.includes('transacao') || query.includes('transações') || query.includes('transacoes') || query.includes('manual')) {
+        return `A alimentação de dados bancários e a classificação é o coração do painel! Funciona assim na nossa plataforma:
+
+- 📁 **EFO Drive (Envio de Documentos):** O cantinho digital seguro onde você arrasta e solta seus documentos, comprovantes e extratos bancários (como arquivos `.OFX`). Subir o extrato aqui é o que gera os lançamentos automaticamente.
+- 💳 **Área de Transações (Conciliação Bancária):** Onde os seus lançamentos do PIX ou transferências aguardam classificação. Você simplesmente clica em cada transação aberta e aponta a conta correspondente (como *CMV*, *Aluguel* ou *Receita de Serviços*). É super prático!
+- ✍️ **Importação Manual:** Se você não tiver o arquivo `.OFX`, pode clicar em \"Importação manual\" no menu lateral para adicionar lançamentos um a um na hora.
+
+Ao classificar tudo direitinho na **Área de Transações**, seus gráficos de DRE e Balanço são alimentados no mesmo instante!`;
+    }
+
+    // 7. DEFAULT FALLBACK
+    return `Puxa, **${userName}**, entendi sua dúvida! 😊 Como eu sou uma assistente focada em te apoiar com o suporte, onboarding e sucesso do cliente, o meu papel é descomplicar conceitos financeiros e o funcionamento da nossa plataforma para você.
+
+Você pode me perguntar algo como:
+- *\"Como começar a usar o painel da Clarus Evolua?\"*
+- *\"O que é o DRE e o Balanço?\"*
+- *\"Como estão as finanças da minha empresa este ano?\"* (vou rodar um diagnóstico real dos seus dados!)
+- *\"Quais são as diferenças e preços dos planos?\"*
+
+O que você prefere que a gente veja primeiro?`;
+}
+
