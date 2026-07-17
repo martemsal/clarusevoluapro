@@ -1720,10 +1720,12 @@ function renderDREChart(R_BRUTA, DEDUCOES, CUSTOS, D_OPERACIONAIS, R_FIN, L_LIQU
                         ctx.rotate(-Math.PI / 2);
                         ctx.textBaseline = 'middle';
                         if (isNegative) {
-                            ctx.textAlign = 'right';
-                            ctx.fillText(formattedPct, -padding, 0);
+                            ctx.textAlign = 'left';
+                            ctx.fillStyle = isDark ? '#ffffff' : '#1e293b';
+                            ctx.fillText(formattedPct, padding, 0);
                         } else {
                             ctx.textAlign = 'left';
+                            ctx.fillStyle = isDark ? '#e2e8f0' : '#334155';
                             ctx.fillText(formattedPct, padding, 0);
                         }
                         ctx.restore();
