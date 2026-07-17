@@ -671,9 +671,6 @@ function initTabs() {
             if (target === 'tab-planos') {
                 title = "Nossos Planos";
             }
-            if (target === 'tab-lia') {
-                title = "Lia (IA Assistente)";
-            }
             document.getElementById('pageTitle').textContent = title;
         });
     });
@@ -3778,6 +3775,84 @@ window.addEventListener('click', (e) => {
 // =============================================================
 //  LIA — IA ASSISTENTE DE SUPORTE E SUCESSO
 // =============================================================
+
+let recognition = null;
+let isRecording = false;
+
+window.toggleLiaWidget = function() {
+    const widget = document.getElementById('liaFloatingWidget');
+    if (!widget) return;
+    if (widget.style.display === 'none' || !widget.style.display) {
+        widget.style.display = 'flex';
+        const input = document.getElementById('liaChatInput');
+        if (input) input.focus();
+    } else {
+        widget.style.display = 'none';
+        if (isRecording && recognition) {
+            recognition.stop();
+        }
+    }
+};
+
+window.toggleLiaVoice = function() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        showToast('Suporte de Áudio', 'Seu navegador não suporta reconhecimento de fala nativo. Use o Google Chrome ou Edge!', 'warning');
+        return;
+    }
+
+    const micBtn = document.getElementById('btnLiaVoice');
+    if (!micBtn) return;
+
+    if (!recognition) {
+        recognition = new SpeechRecognition();
+        recognition.lang = 'pt-BR';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onstart = () => {
+            isRecording = true;
+            micBtn.innerHTML = '🛑';
+            micBtn.style.background = 'var(--danger)';
+            micBtn.style.color = '#ffffff';
+            micBtn.title = 'Parar gravação';
+            showToast('Microfone Ativo', 'Pode falar, estou te ouvindo...', 'info');
+        };
+
+        recognition.onresult = (event) => {
+            const speechToText = event.results[0][0].transcript;
+            const input = document.getElementById('liaChatInput');
+            if (input) {
+                input.value = speechToText;
+                window.sendLiaMessage();
+            }
+        };
+
+        recognition.onerror = (event) => {
+            console.error('[Lia Voice Error]', event.error);
+            showToast('Erro de Áudio', 'Não consegui entender a fala. Tente novamente!', 'error');
+            stopRecordingState();
+        };
+
+        recognition.onend = () => {
+            stopRecordingState();
+        };
+    }
+
+    if (isRecording) {
+        recognition.stop();
+    } else {
+        recognition.start();
+    }
+
+    function stopRecordingState() {
+        isRecording = false;
+        micBtn.innerHTML = '🎙️';
+        micBtn.style.background = 'rgba(99,102,241,0.05)';
+        micBtn.style.color = '';
+        micBtn.title = 'Falar por áudio';
+    }
+};
 
 function getLiaFinancialSummary() {
     // Dynamically calculate DRE data for the active year
