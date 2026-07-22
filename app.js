@@ -3854,25 +3854,31 @@ window.toggleLiaVoice = function() {
     }
 };
 
-function getLiaFinancialSummary() {
+function getLiaFinancialSummary(monthIdx = null) {
     // Dynamically calculate DRE data for the active year
     const d = calculateDREData(EFO_Active_DRE_Year);
     if (!d) return null;
     
     const sum = (arr) => arr.reduce((a, b) => a + b, 0);
-    const sumKeys = (keys) => {
+    const getValue = (keys) => {
         let total = 0;
         keys.forEach(k => {
-            if (d[k]) total += sum(d[k]);
+            if (d[k]) {
+                if (monthIdx !== null && monthIdx >= 0 && monthIdx < 12) {
+                    total += d[k][monthIdx] || 0;
+                } else {
+                    total += sum(d[k]);
+                }
+            }
         });
         return total;
     };
     
-    const rBruta = sumKeys(['dre.receita_bruta.produtos', 'dre.receita_bruta.servicos', 'dre.receita_bruta.outras']);
-    const deducoes = sumKeys(['dre.deducoes.impostos', 'dre.deducoes.devolucoes', 'dre.deducoes.descontos']);
-    const custos = sumKeys(['dre.custos.mercadorias', 'dre.custos.producao', 'dre.custos.servicos', 'dre.custos.operacionais']);
+    const rBruta = getValue(['dre.receita_bruta.produtos', 'dre.receita_bruta.servicos', 'dre.receita_bruta.outras']);
+    const deducoes = getValue(['dre.deducoes.impostos', 'dre.deducoes.devolucoes', 'dre.deducoes.descontos']);
+    const custos = getValue(['dre.custos.mercadorias', 'dre.custos.producao', 'dre.custos.servicos', 'dre.custos.operacionais']);
     
-    const despesas = sumKeys([
+    const despesas = getValue([
         'dre.despesas_comercial.marketing', 'dre.despesas_comercial.trafego', 'dre.despesas_comercial.comissao', 'dre.despesas_comercial.viagens', 'dre.despesas_comercial.transporte_logistica', 'dre.despesas_comercial.outras',
         'dre.despesas_administrativas.pro_labore', 'dre.despesas_administrativas.salarios', 'dre.despesas_administrativas.encargos', 'dre.despesas_administrativas.aluguel', 'dre.despesas_administrativas.outras',
         'dre.despesas_pessoal.salarios', 'dre.despesas_pessoal.inss', 'dre.despesas_pessoal.fgts', 'dre.despesas_pessoal.beneficios', 'dre.despesas_pessoal.rescisoes',
@@ -3881,13 +3887,14 @@ function getLiaFinancialSummary() {
         'dre.despesas_financeiras.tarifas', 'dre.despesas_financeiras.juros', 'dre.despesas_financeiras.iof'
     ]);
     
-    const rFin = sumKeys(['dre.receitas_financeiras.rendimentos', 'dre.receitas_financeiras.juros_recebidos']);
+    const rFin = getValue(['dre.receitas_financeiras.rendimentos', 'dre.receitas_financeiras.juros_recebidos']);
     const rLiq = rBruta - deducoes;
     const lBruto = rLiq - custos;
     const lucroLiquido = lBruto - despesas + rFin;
     
     return {
         year: EFO_Active_DRE_Year,
+        monthIdx: monthIdx,
         receitaBruta: rBruta,
         deducoes: deducoes,
         receitaLiquida: rLiq,
@@ -4097,7 +4104,8 @@ async function analyzeLiaProfitDrop() {
 }
 
 async function generateLiaResponse(input) {
-    const query = input.toLowerCase();
+    // Normalize input string (lowercase & remove accents/diacritics for robust matching)
+    const query = input.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     
     // Safety check: absolute isolation & authenticated session validation
     if (!EFO_Session || !EFO_Session.companyId) {
@@ -4112,14 +4120,14 @@ async function generateLiaResponse(input) {
     const planName = pkg.charAt(0).toUpperCase() + pkg.slice(1);
 
     // 1. PROFIT DROP ANALYSIS
-    if (query.includes('caiu') || query.includes('queda') || query.includes('redução') || query.includes('reducao') || query.includes('diminuiu') || query.includes('menor lucro') || query.includes('perda de lucro')) {
+    if (query.includes('caiu') || query.includes('queda') || query.includes('reducao') || query.includes('diminuiu') || query.includes('menor lucro') || query.includes('perda de lucro')) {
         if (query.includes('lucro') || query.includes('resultado') || query.includes('margem') || query.includes('dinheiro')) {
             return await analyzeLiaProfitDrop();
         }
     }
 
     // 2. CONCILIATION & PENDING TRANSACTIONS
-    if (query.includes('pendente') || query.includes('concilia') || query.includes('transação') || query.includes('transacao') || query.includes('lançamento') || query.includes('lancamento') || query.includes('travada') || query.includes('travado')) {
+    if (query.includes('pendente') || query.includes('concilia') || query.includes('transacao') || query.includes('lancamento') || query.includes('travada') || query.includes('travado') || query.includes('pix')) {
         const pendentes = OFX_Raw_Import.filter(t => (t.status === 'Pendente' || t.status === 'Flagged') && (!t.transaction_id || !t.transaction_id.startsWith('manual_')));
         const manualPendentes = OFX_Raw_Import.filter(t => (t.status === 'Pendente' || t.status === 'Flagged') && t.transaction_id && t.transaction_id.startsWith('manual_'));
         const total = pendentes.length + manualPendentes.length;
@@ -4156,7 +4164,7 @@ Para regularizar, basta acessar as abas **Conciliação Bancária** ou **Concili
 
 Para que nosso time possa validar suas contas e gerar o parecer estratégico com precisão, lembre-se de arrastar e soltar seus comprovantes na aba de **Envio de Documentos** no menu lateral.`;
         } else {
-            const listStr = files.map(f => `- 📄 \`\${f.fileName}\` (enviado em ${new Date(f.uploadedAt).toLocaleDateString('pt-BR')})`).join('\n');
+            const listStr = files.map(f => `- 📄 \`${f.fileName}\` (enviado em ${new Date(f.uploadedAt).toLocaleDateString('pt-BR')})`).join('\n');
             reply += `🎉 **Tudo certo!** Já identificamos **${files.length} arquivo(s)** enviados por você neste mês:
 
 ${listStr}
@@ -4166,32 +4174,45 @@ Caso tenha novos comprovantes, notas fiscais ou extratos adicionais, você pode 
         return reply;
     }
 
-    // 4. FINANCIAL ANALYSIS
-    if (query.includes('finança') || query.includes('financa') || query.includes('analis') || query.includes('como está') || query.includes('como esta') || query.includes('meu negócio') || query.includes('meu negocio') || query.includes('saúde') || query.includes('saude') || query.includes('meu resultado') || query.includes('meu lucro') || query.includes('minhas finanças')) {
-        const summary = getLiaFinancialSummary();
+    // 4. FINANCIAL ANALYSIS (ACCENTS NORMALIZED & MONTH DETECTED)
+    if (query.includes('financa') || query.includes('analis') || query.includes('como esta') || query.includes('meu negocio') || query.includes('saude') || query.includes('resultado') || query.includes('lucro')) {
+        // Check if a specific month was requested
+        const monthNamesList = ["janeiro", "fevereiro", "marco", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+        const monthNamesDisplay = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        
+        let detectedMonthIdx = null;
+        monthNamesList.forEach((mName, idx) => {
+            if (query.includes(mName) || (mName === "marco" && query.includes("março"))) {
+                detectedMonthIdx = idx;
+            }
+        });
+
+        const summary = getLiaFinancialSummary(detectedMonthIdx);
         if (summary && summary.receitaBruta > 0) {
             const fmt = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
             const marginVal = ((summary.lucroLiquido / summary.receitaBruta) * 100).toFixed(1);
             const margin = marginVal + '%';
             
-            let msg = `Com certeza, **${userName}**! Olhando com muito carinho para o raio-x financeiro da sua empresa no ano de **${summary.year}**, preparei essa análise simplificada pra você:
+            const periodText = detectedMonthIdx !== null ? `mês de **${monthNamesDisplay[detectedMonthIdx]} de ${summary.year}**` : `ano de **${summary.year}**`;
+            
+            let msg = `Com certeza, **${userName}**! Olhando com muito carinho para o raio-x financeiro da sua empresa no ${periodText}, preparei essa análise simplificada pra você:
 
 `;
-            msg += `1. 📈 **O que entrou (Faturamento):** Você teve uma Receita Operacional Bruta de **${fmt(summary.receitaBruta)}** este ano.
+            msg += `1. 📈 **O que entrou (Faturamento):** Você teve uma Receita Operacional Bruta de **${fmt(summary.receitaBruta)}**.
 `;
-            msg += `2. 💸 **Impostos e Deduções:** Retivemos **${fmt(summary.deducoes)}** em impostos e devoluções, nos deixando com uma Receita Líquida de **${fmt(summary.receitaLiquida)}**.
+            msg += `2. 💸 **Impostos e Deduções:** Tivemos **${fmt(summary.deducoes)}** em impostos e devoluções, gerando uma Receita Líquida de **${fmt(summary.receitaLiquida)}**.
 `;
             msg += `3. 🛠️ **Custo de Operação:** Para rodar seus produtos ou serviços, foram investidos **${fmt(summary.custos)}** (CMV, fornecedores, etc.), gerando um Lucro Bruto de **${fmt(summary.lucroBruto)}**.
 `;
             msg += `4. 🏢 **Despesas Administrativas e Comerciais:** As despesas administrativas, de pessoal e de vendas somaram **${fmt(summary.despesas)}**.
 
 `;
-            msg += `👉 **O resultado final (Lucro Real):** O seu **Resultado Líquido** foi de **${fmt(summary.lucroLiquido)}**, o que significa uma margem líquida real de **${margin}** sobre o seu faturamento bruto.
+            msg += `👉 **O resultado final (Lucro Real):** O seu **Resultado Líquido** foi de **${fmt(summary.lucroLiquido)}**, o que representa uma margem líquida real de **${margin}** sobre o seu faturamento bruto.
 
 `;
             
             if (summary.lucroLiquido < 0) {
-                msg += `⚠️ **Atenção carinhosa:** Como o resultado líquido está negativo este ano, isso significa que a empresa operou no prejuízo. Vamos dar uma olhada juntos na lista de despesas operacionais ou nos custos diretos para ver onde podemos cortar desperdícios e trazer a empresa de volta para o azul?`;
+                msg += `⚠️ **Atenção carinhosa:** Como o resultado líquido está negativo no período, isso significa que a empresa operou no prejuízo. Vamos dar uma olhada juntos na lista de despesas operacionais ou nos custos diretos para ver onde podemos cortar desperdícios e trazer a empresa de volta para o azul?`;
             } else if (parseFloat(marginVal) < 10) {
                 msg += `💡 **Dica da Lia:** A empresa está gerando lucro, mas a margem de lucro de **${margin}** está um pouquinho apertada (o ideal para a maioria dos setores gerenciais é ficar acima de 10% a 15%). Pode ser interessante analisar se as despesas comerciais ou taxas financeiras estão altas demais.`;
             } else {
@@ -4199,14 +4220,15 @@ Caso tenha novos comprovantes, notas fiscais ou extratos adicionais, você pode 
             }
             return msg;
         } else {
-            return `Oi, **${userName}**! Tentei rodar uma análise rápida das suas finanças deste ano, mas parece que ainda não temos transações classificadas ou dados suficientes no nosso Painel de Resultados.
+            const periodError = detectedMonthIdx !== null ? `no mês de ${monthNamesDisplay[detectedMonthIdx]}` : `deste ano`;
+            return `Oi, **${userName}**! Tentei rodar uma análise rápida das suas finanças ${periodError}, mas parece que ainda não temos transações classificadas ou dados suficientes no nosso Painel de Resultados.
 
 Que tal subir um arquivo de extrato bancário \`.OFX\` no **EFO Drive** ou fazer algumas classificações na **Área de Transações** para eu poder analisar tudinho pra você?`;
         }
     }
 
     // 5. ONBOARDING
-    if (query.includes('começar') || query.includes('comeco') || query.includes('onboarding') || query.includes('como usar') || query.includes('primeiros passos') || query.includes('passo') || query.includes('início') || query.includes('inicio')) {
+    if (query.includes('comecar') || query.includes('comeco') || query.includes('onboarding') || query.includes('como usar') || query.includes('primeiros passos') || query.includes('passo') || query.includes('inicio')) {
         return `Dar os primeiros passos no painel da **Clarus Evolua** é super simples, **${userName}**! O segredo é seguir esse fluxo natural:
 
 1. 📂 **Alimente o Sistema:** Vá até o menu lateral e faça o upload dos seus arquivos de extrato bancário (formato \`.OFX\`) no **EFO Drive (Envio de Documentos)**. É o nosso cantinho seguro para guardar sua papelada financeira.
@@ -4217,7 +4239,7 @@ Se precisar de ajuda para classificar ou subir arquivos, é só me chamar! Quer 
     }
 
     // 6. DRE & BALANÇO
-    if (query.includes('dre') || query.includes('demonstrativo') || query.includes('resultado') || query.includes('lucro') || query.includes('balanço') || query.includes('balanco') || query.includes('ativo') || query.includes('passivo')) {
+    if (query.includes('dre') || query.includes('demonstrativo') || query.includes('resultado') || query.includes('lucro') || query.includes('balanco') || query.includes('ativo') || query.includes('passivo')) {
         return `Ah! O **Painel de Resultados (DRE)** e o **Balanço da Empresa** são as duas lentes mais importantes para enxergar seu negócio. Deixa eu te explicar a diferença sem nenhuma complicação técnica:
 
 - 📈 **Painel de Resultados (DRE):** Funciona como o "filme" ou o raio-x da saúde financeira e do lucro da sua empresa em um período. Ele responde à pergunta: *"Eu ganhei ou perdi dinheiro este mês?"*, mostrando todas as suas receitas brutas, descontando impostos, custos, despesas, até chegar no Lucro Líquido Real.
@@ -4227,7 +4249,7 @@ Ambos se complementam! O DRE te diz se a operação dá lucro, e o Balanço te m
     }
 
     // 7. INDICADORES EFO
-    if (query.includes('indicador') || query.includes('indicadores') || query.includes('efo') || query.includes('métrica') || query.includes('metrica')) {
+    if (query.includes('indicador') || query.includes('indicadores') || query.includes('efo') || query.includes('metrica')) {
         return `Os **Indicadores EFO** são as nossas métricas exclusivas de eficiência! Elas mostram de forma bem visual se o seu negócio está navegando no caminho certo. 
 
 Eles analisam:
@@ -4239,7 +4261,7 @@ Lembrando que o painel detalhado de Indicadores EFO e o Parecer do consultor est
     }
 
     // 8. PLANS & UPGRADE
-    if (query.includes('plano') || query.includes('planos') || query.includes('preço') || query.includes('precos') || query.includes('upgrade') || query.includes('mensalidade') || query.includes('valores') || query.includes('essential') || query.includes('performance') || query.includes('executive')) {
+    if (query.includes('plano') || query.includes('planos') || query.includes('preco') || query.includes('precos') || query.includes('upgrade') || query.includes('mensalidade') || query.includes('valores') || query.includes('essential') || query.includes('performance') || query.includes('executive')) {
         return `Com certeza, **${userName}**! Nós estruturamos nossos planos para apoiar cada momento da jornada da sua empresa. Veja qual faz mais sentido para você:
 
 1. 🟢 **Essential (R$ 1.697/mês):** Acesso completo ao Painel de Resultados (DRE) Gerencial, Balanço Gerencial e importação de múltiplos arquivos OFX no EFO Drive. Perfeito para manter a base organizada!
