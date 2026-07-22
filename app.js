@@ -42,7 +42,7 @@ let EFO_Session = JSON.parse(sessionStorage.getItem('EFO_Session')) || null;
             email: DEMO_EMAIL,
             password: DEMO_HASH,
             role: 'client',
-            name: 'Usuário Teste (Vendas)',
+            name: 'Saldanha (Vendas)',
             companyId: 'comp_demo'
         });
         localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
@@ -205,7 +205,7 @@ function migrateAndInitializeData() {
     if (EFO_Users.length === 0) {
         EFO_Users = [
             { email: 'admin@clarus.com.br', password: 'e4ad7e0fe6b5bf949f7c67f2381ca4bf8d152f6a3e471fa65779cc4a7f83831e', role: 'admin', name: 'Administrador' },
-            { email: 'cliente@clarus.com.br', password: '33e182a6b1c4796f6ff57edfd41af4f69e9e017122da7ef7180465f243ed6c1d', role: 'client', name: 'Cliente Teste', companyId: EFO_Active_Company_Id }
+            { email: 'cliente@clarus.com.br', password: '33e182a6b1c4796f6ff57edfd41af4f69e9e017122da7ef7180465f243ed6c1d', role: 'client', name: 'Saldanha (Cliente)', companyId: EFO_Active_Company_Id }
         ];
         localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
     }
@@ -217,7 +217,7 @@ function migrateAndInitializeData() {
             email: 'teste@clarus.com.br',
             password: 'ae22816fbe794fbf09055c386592fa69d745d9b62dcedb5f4a7e9d4df55f3148',
             role: 'client',
-            name: 'Usuário Teste (Vendas)',
+            name: 'Saldanha (Vendas)',
             companyId: 'comp_demo'
         });
         localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
@@ -4114,7 +4114,10 @@ async function generateLiaResponse(input) {
         Se você já realizou o login e esta mensagem persistir, por favor, entre em contato imediatamente com o suporte técnico para validarmos suas credenciais de segurança.`;
     }
 
-    const userName = EFO_Session.name.split(' ')[0];
+    let userName = EFO_Session.name.split(' ')[0];
+    if (userName === 'Usuário' || userName === 'Cliente' || userName === 'Usuario' || userName === 'teste' || userName === 'cliente') {
+        userName = 'Saldanha';
+    }
     const company = EFO_Companies[EFO_Session.companyId] || {};
     const pkg = company.config?.package || 'essential';
     const planName = pkg.charAt(0).toUpperCase() + pkg.slice(1);
