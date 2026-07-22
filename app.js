@@ -4156,10 +4156,10 @@ Para regularizar, basta acessar as abas **Conciliação Bancária** ou **Concili
 
 Para que nosso time possa validar suas contas e gerar o parecer estratégico com precisão, lembre-se de arrastar e soltar seus comprovantes na aba de **Envio de Documentos** no menu lateral.`;
         } else {
+            const listStr = files.map(f => `- 📄 \`\${f.fileName}\` (enviado em ${new Date(f.uploadedAt).toLocaleDateString('pt-BR')})`).join('\n');
             reply += `🎉 **Tudo certo!** Já identificamos **${files.length} arquivo(s)** enviados por você neste mês:
 
-${files.map(f => `- 📄 \`${f.fileName}\` (enviado em ${new Date(f.uploadedAt).toLocaleDateString('pt-BR')})`).join('
-')}
+${listStr}
 
 Caso tenha novos comprovantes, notas fiscais ou extratos adicionais, você pode enviá-los a qualquer momento pelo EFO Drive!`;
         }
