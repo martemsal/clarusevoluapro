@@ -3965,13 +3965,13 @@ window.sendLiaMessage = function() {
     
     // Simulate typing delay
     const delay = 800 + Math.random() * 800;
-    setTimeout(() => {
+    setTimeout(async () => {
         // Remove typing indicator
         const indicator = document.getElementById(typingId);
         if (indicator) indicator.remove();
         
         // Generate and render reply
-        const reply = generateLiaResponse(text);
+        const reply = await generateLiaResponse(text);
         const botMsgHTML = `
             <div style="display: flex; gap: 12px; max-width: 85%; align-self: flex-start;">
                 <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #818cf8, #6366f1); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; box-shadow: 0 2px 8px rgba(99,102,241,0.3);">
@@ -3987,19 +3987,186 @@ window.sendLiaMessage = function() {
     }, delay);
 };
 
-function generateLiaResponse(input) {
+async function analyzeLiaProfitDrop() {
+    const d = calculateDREData(EFO_Active_DRE_Year);
+    if (!d) return null;
+    
+    const months = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    
+    // Arrays month-by-month
+    const rBruta = new Array(12).fill(0);
+    const deducoes = new Array(12).fill(0);
+    const custos = new Array(12).fill(0);
+    const despesas = new Array(12).fill(0);
+    const rFin = new Array(12).fill(0);
+    const lucroLiquido = new Array(12).fill(0);
+    
+    const rBrutaKeys = ['dre.receita_bruta.produtos', 'dre.receita_bruta.servicos', 'dre.receita_bruta.outras'];
+    const deducoesKeys = ['dre.deducoes.impostos', 'dre.deducoes.devolucoes', 'dre.deducoes.descontos'];
+    const custosKeys = ['dre.custos.mercadorias', 'dre.custos.producao', 'dre.custos.servicos', 'dre.custos.operacionais'];
+    const despesasKeys = [
+        'dre.despesas_comercial.marketing', 'dre.despesas_comercial.trafego', 'dre.despesas_comercial.comissao', 'dre.despesas_comercial.viagens', 'dre.despesas_comercial.transporte_logistica', 'dre.despesas_comercial.outras',
+        'dre.despesas_administrativas.pro_labore', 'dre.despesas_administrativas.salarios', 'dre.despesas_administrativas.encargos', 'dre.despesas_administrativas.aluguel', 'dre.despesas_administrativas.outras',
+        'dre.despesas_pessoal.salarios', 'dre.despesas_pessoal.inss', 'dre.despesas_pessoal.fgts', 'dre.despesas_pessoal.beneficios', 'dre.despesas_pessoal.rescisoes',
+        'dre.despesas_estrutura.manutencao', 'dre.despesas_estrutura.reparos', 'dre.despesas_estrutura.limpeza',
+        'dre.despesas_veiculos.combustivel', 'dre.despesas_veiculos.manutencao', 'dre.despesas_veiculos.seguro', 'dre.despesas_veiculos.ipva',
+        'dre.despesas_financeiras.tarifas', 'dre.despesas_financeiras.juros', 'dre.despesas_financeiras.iof'
+    ];
+    
+    for (let m = 0; m < 12; m++) {
+        let rb = 0, ded = 0, cst = 0, desp = 0, rf = 0;
+        rBrutaKeys.forEach(k => rb += d[k] ? d[k][m] : 0);
+        deducoesKeys.forEach(k => ded += d[k] ? d[k][m] : 0);
+        custosKeys.forEach(k => cst += d[k] ? d[k][m] : 0);
+        despesasKeys.forEach(k => desp += d[k] ? d[k][m] : 0);
+        ['dre.receitas_financeiras.rendimentos', 'dre.receitas_financeiras.juros_recebidos'].forEach(k => rf += d[k] ? d[k][m] : 0);
+        
+        rBruta[m] = rb;
+        deducoes[m] = ded;
+        custos[m] = cst;
+        despesas[m] = desp;
+        rFin[m] = rf;
+        lucroLiquido[m] = (rb - ded) - cst - desp + rf;
+    }
+    
+    // Find biggest MoM drop
+    let biggestDropIdx = -1;
+    let biggestDropVal = 0;
+    
+    for (let m = 1; m < 12; m++) {
+        if (rBruta[m-1] === 0 && rBruta[m] === 0) continue;
+        
+        const diff = lucroLiquido[m-1] - lucroLiquido[m];
+        if (diff > biggestDropVal) {
+            biggestDropVal = diff;
+            biggestDropIdx = m;
+        }
+    }
+    
+    if (biggestDropIdx === -1 || biggestDropVal <= 0.01) {
+        return `Analisando seu Painel de Resultados (${EFO_Active_DRE_Year}), não identifiquei nenhuma queda expressiva de lucro de um mês para o outro! Aparentemente, seu resultado líquido está estável ou em crescimento no período analisado. 🎉`;
+    }
+    
+    const m = biggestDropIdx;
+    const prevMonthName = months[m-1];
+    const currMonthName = months[m];
+    const prevProfit = lucroLiquido[m-1];
+    const currProfit = lucroLiquido[m];
+    
+    const rbDiff = rBruta[m] - rBruta[m-1];
+    const custosDiff = custos[m] - custos[m-1];
+    const despesasDiff = despesas[m] - despesas[m-1];
+    
+    const fmt = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+    
+    let analysisText = `Identifiquei que no ano de **${EFO_Active_DRE_Year}**, o mês com a maior queda de lucro foi **${currMonthName}** (em comparação a **${prevMonthName}**). 
+    
+    O seu Lucro Líquido caiu de **${fmt(prevProfit)}** para **${fmt(currProfit)}** (uma redução de **${fmt(biggestDropVal)}**).
+    
+    Deixa eu te explicar onde ocorreu a diferença:
+    `;
+    
+    if (rbDiff < 0) {
+        analysisText += `- 📉 **Queda de Faturamento:** Suas receitas brutas caíram em **${fmt(Math.abs(rbDiff))}** no período. Isso reduziu o fôlego de entrada da empresa.
+        `;
+    } else if (rbDiff > 0) {
+        analysisText += `- 📈 **Alta de Faturamento:** Suas receitas brutas subiram em **${fmt(rbDiff)}**, o que significa que o problema não foi venda.
+        `;
+    }
+    
+    if (custosDiff > 0) {
+        analysisText += `- 🛠️ **Aumento de Custos:** Seus custos diretos (CMV/serviços) subiram em **${fmt(custosDiff)}**. Talvez custos com fornecedores ou CMV tenham pressionado o lucro.
+        `;
+    } else if (custosDiff < 0) {
+        analysisText += `- ✂️ **Redução de Custos:** Seus custos diretos caíram em **${fmt(Math.abs(custosDiff))}**, ajudando a amortecer a queda.
+        `;
+    }
+    
+    if (despesasDiff > 0) {
+        analysisText += `- 🏢 **Aumento de Despesas:** Suas despesas operacionais (pessoal, administrativas, marketing) subiram em **${fmt(despesasDiff)}** nesse mês.
+        `;
+    } else if (despesasDiff < 0) {
+        analysisText += `- 📉 **Redução de Despesas:** Suas despesas operacionais caíram em **${fmt(Math.abs(despesasDiff))}**, o que foi positivo.
+        `;
+    }
+    
+    analysisText += `
+    💡 **Dica da Lia:** Para reverter essa situação, que tal focarmos em renegociar despesas ou revisar a precificação no mês de **${currMonthName}**? Se quiser, podemos agendar um bate-papo de alinhamento com seu consultor para traçar uma meta de equilíbrio de gastos!`;
+    
+    return analysisText;
+}
+
+async function generateLiaResponse(input) {
     const query = input.toLowerCase();
     
-    // Check if user is logged in to personalize
-    const userName = EFO_Session ? EFO_Session.name.split(' ')[0] : 'amigo(a)';
-    let planName = 'Essential';
-    if (EFO_Session && EFO_Session.companyId && EFO_Companies[EFO_Session.companyId]) {
-        const company = EFO_Companies[EFO_Session.companyId];
-        const pkg = company.config?.package || 'essential';
-        planName = pkg.charAt(0).toUpperCase() + pkg.slice(1);
+    // Safety check: absolute isolation & authenticated session validation
+    if (!EFO_Session || !EFO_Session.companyId) {
+        return `Olá! Por questões estritas de segurança, privacidade e isolamento de dados da Clarus Evolua, eu preciso que você esteja logado e autenticado para que eu possa exibir ou analisar qualquer informação financeira.
+        
+        Se você já realizou o login e esta mensagem persistir, por favor, entre em contato imediatamente com o suporte técnico para validarmos suas credenciais de segurança.`;
     }
 
-    // 1. FINANCIAL ANALYSIS DYNAMIC RESPONSE
+    const userName = EFO_Session.name.split(' ')[0];
+    const company = EFO_Companies[EFO_Session.companyId] || {};
+    const pkg = company.config?.package || 'essential';
+    const planName = pkg.charAt(0).toUpperCase() + pkg.slice(1);
+
+    // 1. PROFIT DROP ANALYSIS
+    if (query.includes('caiu') || query.includes('queda') || query.includes('redução') || query.includes('reducao') || query.includes('diminuiu') || query.includes('menor lucro') || query.includes('perda de lucro')) {
+        if (query.includes('lucro') || query.includes('resultado') || query.includes('margem') || query.includes('dinheiro')) {
+            return await analyzeLiaProfitDrop();
+        }
+    }
+
+    // 2. CONCILIATION & PENDING TRANSACTIONS
+    if (query.includes('pendente') || query.includes('concilia') || query.includes('transação') || query.includes('transacao') || query.includes('lançamento') || query.includes('lancamento') || query.includes('travada') || query.includes('travado')) {
+        const pendentes = OFX_Raw_Import.filter(t => (t.status === 'Pendente' || t.status === 'Flagged') && (!t.transaction_id || !t.transaction_id.startsWith('manual_')));
+        const manualPendentes = OFX_Raw_Import.filter(t => (t.status === 'Pendente' || t.status === 'Flagged') && t.transaction_id && t.transaction_id.startsWith('manual_'));
+        const total = pendentes.length + manualPendentes.length;
+        
+        let reply = `Com certeza, **${userName}**! Olhei no sistema e verifiquei o status de classificação das suas transações:
+
+`;
+        if (total === 0) {
+            reply += `🎉 **Excelente notícia!** Você não tem nenhuma transação pendente no momento. Suas conciliações bancárias e lançamentos manuais estão 100% em dia!`;
+        } else {
+            reply += `Temos atualmente **${total} transações pendentes** de classificação no seu painel:
+- 💳 **Conciliação Bancária (OFX/Extrato):** **${pendentes.length}** transações de extrato aguardando classificação.
+- ✍️ **Conciliação Manual:** **${manualPendentes.length}** lançamentos manuais pendentes de ajuste.
+
+Para regularizar, basta acessar as abas **Conciliação Bancária** ou **Conciliação Manual** no menu lateral e apontar a categoria correta para cada uma. Isso atualizará seus relatórios DRE e Balanço na mesma hora!`;
+        }
+        return reply;
+    }
+
+    // 3. EFO DRIVE & UPLOAD STATUS
+    if (query.includes('drive') || query.includes('enviado') || query.includes('documento') || query.includes('comprovante') || query.includes('enviar') || query.includes('ofx') || query.includes('extrato') || query.includes('arquivo')) {
+        const refMonth = document.getElementById('clientFileMonthSelect')?.value || (new Date().getFullYear() + '-' + String(new Date().getMonth() + 1).padStart(2, '0'));
+        const files = await db_loadClientFiles(EFO_Session.companyId, refMonth) || [];
+        
+        const [yearStr, monthStr] = refMonth.split('-');
+        const monthNames = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+        const refMonthFormatted = `${monthNames[parseInt(monthStr) - 1]} de ${yearStr}`;
+        
+        let reply = `Claro, **${userName}**! Dei uma olhadinha no seu **EFO Drive** para o mês de **${refMonthFormatted}**:
+
+`;
+        if (files.length === 0) {
+            reply += `⚠️ **Ainda não recebemos documentos:** Notei que ainda não foi enviado nenhum extrato bancário (como arquivo \`.OFX\`) ou comprovante de despesa para este período. 
+
+Para que nosso time possa validar suas contas e gerar o parecer estratégico com precisão, lembre-se de arrastar e soltar seus comprovantes na aba de **Envio de Documentos** no menu lateral.`;
+        } else {
+            reply += `🎉 **Tudo certo!** Já identificamos **${files.length} arquivo(s)** enviados por você neste mês:
+
+${files.map(f => `- 📄 \`${f.fileName}\` (enviado em ${new Date(f.uploadedAt).toLocaleDateString('pt-BR')})`).join('
+')}
+
+Caso tenha novos comprovantes, notas fiscais ou extratos adicionais, você pode enviá-los a qualquer momento pelo EFO Drive!`;
+        }
+        return reply;
+    }
+
+    // 4. FINANCIAL ANALYSIS
     if (query.includes('finança') || query.includes('financa') || query.includes('analis') || query.includes('como está') || query.includes('como esta') || query.includes('meu negócio') || query.includes('meu negocio') || query.includes('saúde') || query.includes('saude') || query.includes('meu resultado') || query.includes('meu lucro') || query.includes('minhas finanças')) {
         const summary = getLiaFinancialSummary();
         if (summary && summary.receitaBruta > 0) {
@@ -4034,32 +4201,32 @@ function generateLiaResponse(input) {
         } else {
             return `Oi, **${userName}**! Tentei rodar uma análise rápida das suas finanças deste ano, mas parece que ainda não temos transações classificadas ou dados suficientes no nosso Painel de Resultados.
 
-Que tal subir um arquivo de extrato bancário `.OFX` no **EFO Drive** ou fazer algumas classificações na **Área de Transações** para eu poder analisar tudinho pra você?`;
+Que tal subir um arquivo de extrato bancário \`.OFX\` no **EFO Drive** ou fazer algumas classificações na **Área de Transações** para eu poder analisar tudinho pra você?`;
         }
     }
 
-    // 2. ONBOARDING
+    // 5. ONBOARDING
     if (query.includes('começar') || query.includes('comeco') || query.includes('onboarding') || query.includes('como usar') || query.includes('primeiros passos') || query.includes('passo') || query.includes('início') || query.includes('inicio')) {
         return `Dar os primeiros passos no painel da **Clarus Evolua** é super simples, **${userName}**! O segredo é seguir esse fluxo natural:
 
-1. 📂 **Alimente o Sistema:** Vá até o menu lateral e faça o upload dos seus arquivos de extrato bancário (formato `.OFX`) no **EFO Drive (Envio de Documentos)**. É o nosso cantinho seguro para guardar sua papelada financeira.
+1. 📂 **Alimente o Sistema:** Vá até o menu lateral e faça o upload dos seus arquivos de extrato bancário (formato \`.OFX\`) no **EFO Drive (Envio de Documentos)**. É o nosso cantinho seguro para guardar sua papelada financeira.
 2. 🏷️ **Classifique suas Transações:** Na **Área de Transações (Conciliação Bancária)**, você verá todas as entradas e saídas que vieram do extrato. Basta clicar em cada uma e escolher a categoria correta (como "Vendas", "Aluguel", "Salários", etc.).
 3. 📊 **Acompanhe o Resultado:** Pronto! Assim que classificar, o **Painel de Resultados (DRE)** e o **Balanço da Empresa** serão gerados automaticamente para você acompanhar os lucros mês a mês.
 
 Se precisar de ajuda para classificar ou subir arquivos, é só me chamar! Quer tentar subir um arquivo OFX agora?`;
     }
 
-    // 3. DRE & BALANÇO
+    // 6. DRE & BALANÇO
     if (query.includes('dre') || query.includes('demonstrativo') || query.includes('resultado') || query.includes('lucro') || query.includes('balanço') || query.includes('balanco') || query.includes('ativo') || query.includes('passivo')) {
         return `Ah! O **Painel de Resultados (DRE)** e o **Balanço da Empresa** são as duas lentes mais importantes para enxergar seu negócio. Deixa eu te explicar a diferença sem nenhuma complicação técnica:
 
-- 📈 **Painel de Resultados (DRE):** Funciona como o "filme" ou o raio-x da saúde financeira e do lucro da sua empresa em um período. Ele responde à pergunta: *\"Eu ganhei ou perdi dinheiro este mês?\"*, mostrando todas as suas receitas brutas, descontando impostos, custos, despesas, até chegar no Lucro Líquido Real.
-- 📸 **Balanço da Empresa:** Funciona como uma "foto instantânea" do patrimônio da sua empresa hoje. Ele responde à pergunta: *\"O que a empresa tem e o que ela deve?\"*. Ele é dividido em **Ativos** (tudo o que é seu por direito: saldo em conta, estoque, máquinas) e **Passivos** (tudo o que você deve a terceiros: fornecedores, salários a pagar, empréstimos).
+- 📈 **Painel de Resultados (DRE):** Funciona como o "filme" ou o raio-x da saúde financeira e do lucro da sua empresa em um período. Ele responde à pergunta: *"Eu ganhei ou perdi dinheiro este mês?"*, mostrando todas as suas receitas brutas, descontando impostos, custos, despesas, até chegar no Lucro Líquido Real.
+- 📸 **Balanço da Empresa:** Funciona como uma "foto instantânea" do patrimônio da sua empresa hoje. Ele responde à pergunta: *"O que a empresa tem e o que ela deve?"*. Ele é dividido em **Ativos** (tudo o que é seu por direito: saldo em conta, estoque, máquinas) e **Passivos** (tudo o que você deve a terceiros: fornecedores, salários a pagar, empréstimos).
 
 Ambos se complementam! O DRE te diz se a operação dá lucro, e o Balanço te mostra a solidez e a estrutura de capital acumulada. Ficou claro? 😊`;
     }
 
-    // 4. INDICADORES EFO
+    // 7. INDICADORES EFO
     if (query.includes('indicador') || query.includes('indicadores') || query.includes('efo') || query.includes('métrica') || query.includes('metrica')) {
         return `Os **Indicadores EFO** são as nossas métricas exclusivas de eficiência! Elas mostram de forma bem visual se o seu negócio está navegando no caminho certo. 
 
@@ -4071,7 +4238,7 @@ Eles analisam:
 Lembrando que o painel detalhado de Indicadores EFO e o Parecer do consultor estão disponíveis a partir do plano **Performance**. Se você estiver no plano Essential e quiser liberar esse acompanhamento avançado para impulsionar seu crescimento, basta falar comigo para providenciarmos seu upgrade!`;
     }
 
-    // 5. PLANS & UPGRADE
+    // 8. PLANS & UPGRADE
     if (query.includes('plano') || query.includes('planos') || query.includes('preço') || query.includes('precos') || query.includes('upgrade') || query.includes('mensalidade') || query.includes('valores') || query.includes('essential') || query.includes('performance') || query.includes('executive')) {
         return `Com certeza, **${userName}**! Nós estruturamos nossos planos para apoiar cada momento da jornada da sua empresa. Veja qual faz mais sentido para você:
 
@@ -4079,29 +4246,19 @@ Lembrando que o painel detalhado de Indicadores EFO e o Parecer do consultor est
 2. 🔵 **Performance (R$ 2.997/mês):** Tudo do Essential + os Indicadores EFO de eficiência e crescimento + um Parecer Estratégico mensal escrito pelo seu consultor dedicado para te dar insights preciosos.
 3. 🟣 **Executive (R$ 4.697/mês):** O pacote completo para acelerar o crescimento. Inclui tudo do Performance + o Alinhamento Estratégico Mensal (uma conversa ao vivo de 60 minutos com o seu consultor para traçar e revisar metas).
 
-Atualmente o seu plano ativo é o **${planName}**. Se você sentir que precisa de análises mais profundas ou de encontros ao vivo com o nosso time, clique na aba **Upgrade de Plano** no menu lateral ou me peça por aqui que eu peço para um especialista do suporte entrar em contato com você via WhatsApp! Quer que eu peça?`;
+Atualmente o seu plano ativo é o **${planName}**. Se você sentir que precisa de encontros ao vivo com o nosso time, clique na aba **Upgrade de Plano** no menu lateral ou me peça por aqui que eu peço para um especialista do suporte entrar em contato com você via WhatsApp! Quer que eu peça?`;
     }
 
-    // 6. BANKING CONCILIATION & OFX DRIVE
-    if (query.includes('pix') || query.includes('concilia') || query.includes('conciliar') || query.includes('ofx') || query.includes('extrato') || query.includes('upload') || query.includes('drive') || query.includes('documento') || query.includes('transação') || query.includes('transacao') || query.includes('transações') || query.includes('transacoes') || query.includes('manual')) {
-        return `A alimentação de dados bancários e a classificação é o coração do painel! Funciona assim na nossa plataforma:
-
-- 📁 **EFO Drive (Envio de Documentos):** O cantinho digital seguro onde você arrasta e solta seus documentos, comprovantes e extratos bancários (como arquivos `.OFX`). Subir o extrato aqui é o que gera os lançamentos automaticamente.
-- 💳 **Área de Transações (Conciliação Bancária):** Onde os seus lançamentos do PIX ou transferências aguardam classificação. Você simplesmente clica em cada transação aberta e aponta a conta correspondente (como *CMV*, *Aluguel* ou *Receita de Serviços*). É super prático!
-- ✍️ **Importação Manual:** Se você não tiver o arquivo `.OFX`, pode clicar em \"Importação manual\" no menu lateral para adicionar lançamentos um a um na hora.
-
-Ao classificar tudo direitinho na **Área de Transações**, seus gráficos de DRE e Balanço são alimentados no mesmo instante!`;
-    }
-
-    // 7. DEFAULT FALLBACK
+    // 9. DEFAULT FALLBACK
     return `Puxa, **${userName}**, entendi sua dúvida! 😊 Como eu sou uma assistente focada em te apoiar com o suporte, onboarding e sucesso do cliente, o meu papel é descomplicar conceitos financeiros e o funcionamento da nossa plataforma para você.
 
 Você pode me perguntar algo como:
-- *\"Como começar a usar o painel da Clarus Evolua?\"*
-- *\"O que é o DRE e o Balanço?\"*
-- *\"Como estão as finanças da minha empresa este ano?\"* (vou rodar um diagnóstico real dos seus dados!)
-- *\"Quais são as diferenças e preços dos planos?\"*
+- *"Como começar a usar o painel da Clarus Evolua?"*
+- *"O que é o DRE e o Balanço?"*
+- *"Como estão as finanças da minha empresa este ano?"* (vou rodar um diagnóstico real dos seus dados!)
+- *"Por que meu lucro caiu?"* (vou analisar seus custos e despesas MoM!)
+- *"Quantas transações tenho pendentes?"* (vou puxar o status de conciliação bancária!)
+- *"Quais são as diferenças e preços dos planos?"*
 
 O que você prefere que a gente veja primeiro?`;
 }
-
