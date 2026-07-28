@@ -364,6 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isLight = document.body.classList.toggle('light-mode');
         themeToggle.textContent = isLight ? '☀️' : '🌙';
         localStorage.setItem('EFO_Theme', isLight ? 'light' : 'dark');
+        updateAllViews();
     });
 
     // OFX
@@ -2120,6 +2121,11 @@ function initParecerRadarChart(canvasId, scores) {
         existingChart.destroy();
     }
     
+    const isLight = document.body.classList.contains('light-mode');
+    const gridColor = isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)';
+    const labelColor = isLight ? 'rgba(30, 41, 59, 0.8)' : 'rgba(255, 255, 255, 0.7)';
+    const tickColor = isLight ? 'rgba(30, 41, 59, 0.5)' : 'rgba(255, 255, 255, 0.4)';
+    
     new Chart(canvas, {
         type: 'radar',
         data: {
@@ -2127,7 +2133,7 @@ function initParecerRadarChart(canvasId, scores) {
             datasets: [{
                 label: 'Score Estratégico (0-10)',
                 data: scores,
-                backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                backgroundColor: isLight ? 'rgba(99, 102, 241, 0.12)' : 'rgba(99, 102, 241, 0.2)',
                 borderColor: 'rgb(99, 102, 241)',
                 pointBackgroundColor: 'rgb(99, 102, 241)',
                 pointBorderColor: '#fff',
@@ -2140,14 +2146,14 @@ function initParecerRadarChart(canvasId, scores) {
             maintainAspectRatio: false,
             scales: {
                 r: {
-                    angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                    angleLines: { color: gridColor },
+                    grid: { color: gridColor },
                     pointLabels: {
-                        color: 'rgba(255, 255, 255, 0.7)',
+                        color: labelColor,
                         font: { family: 'Outfit', size: 10, weight: '500' }
                     },
                     ticks: {
-                        color: 'rgba(255, 255, 255, 0.4)',
+                        color: tickColor,
                         backdropColor: 'transparent',
                         beginAtZero: true,
                         max: 10,
@@ -2652,7 +2658,7 @@ function buildStrategicReport(compId, yr, m) {
         lastHS = mHS;
 
         evolutionRowsHtml += `
-            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--text-secondary);">
+            <tr style="border-bottom: 1px solid var(--glass-border); color: var(--text-secondary);">
                 <td style="padding: 10px; font-weight: 500; color: var(--text-primary);">${monthsShort[monthIdx]}</td>
                 <td style="padding: 10px;">${formatCurrency(mRev)}</td>
                 <td style="padding: 10px;">${formatCurrency(mEbitda)}</td>
@@ -2722,19 +2728,19 @@ function buildStrategicReport(compId, yr, m) {
             </div>
 
             <!-- 1. DIAGNÓSTICO EXECUTIVO -->
-            <div style="margin-bottom: 40px; background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.03); border-radius: 10px; padding: 24px;">
+            <div style="margin-bottom: 40px; background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 10px; padding: 24px; box-shadow: var(--shadow-sm);">
                 <h3 style="font-size: 18px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 8px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.5px;">1. Diagnóstico Executivo</h3>
                 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 24px;">
                     <!-- HEALTH SCORE CARD -->
-                    <div class="glass-panel" style="padding: 20px; text-align: center; background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.05); display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                    <div class="glass-panel" style="padding: 20px; text-align: center; background: var(--bg-primary); border-color: var(--glass-border); display: flex; flex-direction: column; justify-content: center; align-items: center;">
                         <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Saúde Empresarial</div>
                         <div style="width: 80px; height: 80px; border-radius: 50%; border: 4px solid ${healthColor}; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; color: var(--text-primary); background: ${healthBadgeBg};">${healthScore}</div>
                         <div style="font-weight: 600; font-size: 14px; margin-top: 8px; color: ${healthColor};">${healthClass}</div>
                     </div>
                     
                     <!-- TREND & RISK CARD -->
-                    <div class="glass-panel" style="padding: 20px; background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.05); display: flex; flex-direction: column; justify-content: space-between;">
+                    <div class="glass-panel" style="padding: 20px; background: var(--bg-primary); border-color: var(--glass-border); display: flex; flex-direction: column; justify-content: space-between;">
                         <div>
                             <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Tendência Operacional</div>
                             <div style="font-size: 16px; font-weight: 600; color: ${metrics.trend === 'Regressão' ? '#ef4444' : (metrics.trend === 'Crescimento' ? '#10b981' : 'var(--text-secondary)')}; margin-top: 4px;">
@@ -2748,7 +2754,7 @@ function buildStrategicReport(compId, yr, m) {
                     </div>
 
                     <!-- DETAILED DIAGNOSTICS CARD -->
-                    <div class="glass-panel" style="padding: 20px; grid-column: span 2; background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.05); font-size: 13px; line-height: 1.5; color: var(--text-secondary);">
+                    <div class="glass-panel" style="padding: 20px; grid-column: span 2; background: var(--bg-primary); border-color: var(--glass-border); font-size: 13px; line-height: 1.5; color: var(--text-secondary);">
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                             <div>🔌 **Geração de Caixa:** <span style="font-weight: 600; color: var(--text-primary);">${capCaixa}</span></div>
                             <div>💼 **Capital de Giro:** <span style="font-weight: 600; color: var(--text-primary);">${sitGiro}</span></div>
@@ -2780,7 +2786,7 @@ function buildStrategicReport(compId, yr, m) {
                 <h3 style="font-size: 18px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 8px; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">3. Principais Alertas Gerenciais</h3>
                 <div style="display: grid; grid-template-columns: 1fr; gap: 16px;">
                     ${alerts.map(a => `
-                        <div style="background: ${a.bg}; border: 1px solid rgba(255,255,255,0.03); border-left: 4px solid ${a.color}; padding: 18px; border-radius: 8px; transition: transform 0.2s;">
+                        <div style="background: ${a.bg}; border: 1px solid var(--glass-border); border-left: 4px solid ${a.color}; padding: 18px; border-radius: 8px; transition: transform 0.2s;">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
                                 <h4 style="color: var(--text-primary); font-size: 15px; font-weight: 600; margin: 0;">${a.icon} ${a.title}</h4>
                                 <span class="badge" style="background: ${a.color}; color: #fff; font-size: 10px; font-weight: 600; padding: 4px 8px; border-radius: 4px; text-transform: uppercase;">Prioridade: ${a.priority}</span>
@@ -2803,7 +2809,7 @@ function buildStrategicReport(compId, yr, m) {
                 <h3 style="font-size: 18px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 8px; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">4. Matriz de Oportunidades</h3>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
                     ${opportunities.map(o => `
-                        <div class="glass-panel" style="padding: 18px; border-color: rgba(255,255,255,0.05); display: flex; flex-direction: column; justify-content: space-between;">
+                        <div class="glass-panel" style="padding: 18px; border-color: var(--glass-border); display: flex; flex-direction: column; justify-content: space-between;">
                             <div>
                                 <h4 style="font-size: 14.5px; font-weight: 600; color: var(--accent-primary); margin-top: 0; margin-bottom: 8px;">💡 ${o.title}</h4>
                                 <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">${o.desc}</p>
@@ -2824,8 +2830,8 @@ function buildStrategicReport(compId, yr, m) {
                 <h3 style="font-size: 18px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 8px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.5px;">5. Análise Gerencial e Interpretação de KPIs</h3>
                 <div style="display: grid; grid-template-columns: 1fr; gap: 20px;">
                     ${gerencialData.map(g => `
-                        <div class="glass-panel" style="padding: 20px; border-color: rgba(255,255,255,0.05); background: rgba(0,0,0,0.15);">
-                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 12px;">
+                        <div class="glass-panel" style="padding: 20px; border-color: var(--glass-border); background: rgba(0,0,0,0.15);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px; margin-bottom: 12px;">
                                 <strong style="font-size: 15px; color: var(--text-primary);">${g.name}</strong>
                                 <div style="display: flex; align-items: center; gap: 10px;">
                                     <span style="font-size: 18px; font-weight: 700; color: var(--accent-primary);">${g.value}</span>
@@ -2856,7 +2862,7 @@ function buildStrategicReport(compId, yr, m) {
                 <h3 style="font-size: 18px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 8px; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">6. Perguntas que Todo Empresário Faria (Respondidas pela IA)</h3>
                 <div style="display: flex; flex-direction: column; gap: 12px;">
                     ${faqs.map((f, idx) => `
-                        <div class="glass-panel" style="padding: 16px; border-color: rgba(255,255,255,0.04); background: rgba(0,0,0,0.15);">
+                        <div class="glass-panel" style="padding: 16px; border-color: var(--glass-border); background: var(--bg-secondary);">
                             <div style="font-weight: 600; color: var(--text-primary); font-size: 14px; margin-bottom: 6px; display: flex; gap: 8px; align-items: center;">
                                 <span style="background: var(--accent-primary); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px;">Q</span>
                                 ${f.q}
@@ -2872,7 +2878,7 @@ function buildStrategicReport(compId, yr, m) {
             <!-- 7. PLANO DE AÇÃO ESTRATÉGICO -->
             <div style="margin-bottom: 40px;">
                 <h3 style="font-size: 18px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 8px; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">7. Plano de Ação Estratégico</h3>
-                <div style="overflow-x: auto; background: rgba(0,0,0,0.15); border: 1px solid var(--glass-border); border-radius: 8px;">
+                <div style="overflow-x: auto; background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 8px;">
                     <table class="report-table" style="width: 100%; border-collapse: collapse; font-size: 12px;">
                         <thead>
                             <tr style="background: rgba(99,102,241,0.15); color: var(--text-primary); text-align: left;">
@@ -2911,7 +2917,7 @@ function buildStrategicReport(compId, yr, m) {
                 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
                     ${cards.map(c => `
-                        <div class="glass-panel" style="padding: 18px; border-color: rgba(255,255,255,0.05); background: rgba(15, 23, 42, 0.4); display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid ${c.priority.includes('Crítico') ? '#ef4444' : (c.priority.includes('Alto') ? '#f59e0b' : '#3b82f6')};">
+                        <div class="glass-panel" style="padding: 18px; border-color: var(--glass-border); background: rgba(15, 23, 42, 0.4); display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid ${c.priority.includes('Crítico') ? '#ef4444' : (c.priority.includes('Alto') ? '#f59e0b' : '#3b82f6')};">
                             <div>
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                                     <span style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; color: var(--accent-primary);">${c.category}</span>
@@ -2920,7 +2926,7 @@ function buildStrategicReport(compId, yr, m) {
                                 <h4 style="font-size: 14.5px; font-weight: 600; color: var(--text-primary); margin: 0 0 6px 0;">${c.title}</h4>
                                 <p style="font-size: 12px; color: var(--text-secondary); line-height: 1.4; margin: 0 0 10px 0;">${c.description}</p>
                                 <div style="font-size: 11px; color: var(--text-secondary); background: rgba(0,0,0,0.15); padding: 8px; border-radius: 4px; margin-bottom: 12px;">
-                                    🎯 **Objetivo:** ${c.objective}
+                                    🎯 <strong>Objetivo:</strong> ${c.objective}
                                 </div>
                             </div>
                             <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
@@ -2929,7 +2935,7 @@ function buildStrategicReport(compId, yr, m) {
                                 </div>
                                 <div style="display: flex; align-items: center; gap: 6px;">
                                     <label style="font-size: 11px; color: var(--text-secondary); margin-bottom: 0;">Status:</label>
-                                    <select onchange="updateStrategicCardStatus('${compId}', ${yr}, ${m !== null ? m : 'null'}, '${c.id}', this.value)" style="padding: 4px 8px; font-size: 11px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 4px; color: var(--text-primary);">
+                                    <select onchange="updateStrategicCardStatus('${compId}', ${yr}, ${m !== null ? m : 'null'}, '${c.id}', this.value)" style="padding: 4px 8px; font-size: 11px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 4px; color: var(--text-primary);">
                                         <option value="Não iniciado" ${c.status === 'Não iniciado' ? 'selected' : ''}>Não iniciado</option>
                                         <option value="Em andamento" ${c.status === 'Em andamento' ? 'selected' : ''}>Em andamento</option>
                                         <option value="Concluído" ${c.status === 'Concluído' ? 'selected' : ''}>Concluído</option>
@@ -2945,7 +2951,7 @@ function buildStrategicReport(compId, yr, m) {
             <!-- 9. EVOLUÇÃO HISTÓRICA -->
             <div style="margin-bottom: 40px;">
                 <h3 style="font-size: 18px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 8px; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">9. Evolução Histórica Comparativa</h3>
-                <div style="overflow-x: auto; background: rgba(0,0,0,0.15); border: 1px solid var(--glass-border); border-radius: 8px;">
+                <div style="overflow-x: auto; background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 8px;">
                     <table class="report-table" style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left;">
                         <thead>
                             <tr style="background: rgba(255,255,255,0.03); color: var(--text-primary);">
@@ -2971,15 +2977,15 @@ function buildStrategicReport(compId, yr, m) {
                 
                 <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 24px; flex-wrap: wrap;">
                     <!-- RADAR CANVAS -->
-                    <div class="glass-panel" style="padding: 16px; border-color: rgba(255,255,255,0.04); background: rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; height: 350px;">
+                    <div class="glass-panel" style="padding: 16px; border-color: var(--glass-border); background: var(--bg-secondary); display: flex; align-items: center; justify-content: center; height: 350px;">
                         <canvas id="parecerRadarChart_${m !== null ? 'mensal' : 'anual'}" style="max-height: 320px;"></canvas>
                     </div>
 
                     <!-- JUSTIFICATIONS -->
-                    <div style="max-height: 350px; overflow-y: auto; background: rgba(0,0,0,0.15); border: 1px solid var(--glass-border); border-radius: 8px; padding: 12px 16px;">
+                    <div style="max-height: 350px; overflow-y: auto; background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 8px; padding: 12px 16px;">
                         <table style="width: 100%; border-collapse: collapse; font-size: 11.5px; text-align: left;">
                             <thead>
-                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.06); color: var(--text-primary); font-weight: 600;">
+                                <tr style="border-bottom: 1px solid var(--glass-border); color: var(--text-primary); font-weight: 600;">
                                     <th style="padding: 8px 4px;">Dimensão</th>
                                     <th style="padding: 8px 4px; text-align: center;">Nota</th>
                                     <th style="padding: 8px 4px;">Justificativa Operacional</th>
@@ -2987,7 +2993,7 @@ function buildStrategicReport(compId, yr, m) {
                             </thead>
                             <tbody>
                                 ${radarJustifications.map(j => `
-                                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text-secondary);">
+                                    <tr style="border-bottom: 1px solid var(--glass-border); color: var(--text-secondary);">
                                         <td style="padding: 8px 4px; font-weight: 600; color: var(--text-primary);">${j.name}</td>
                                         <td style="padding: 8px 4px; text-align: center; font-weight: 700; color: var(--accent-primary);">${j.score}/10</td>
                                         <td style="padding: 8px 4px; line-height: 1.4;">${j.note}</td>
@@ -3007,7 +3013,7 @@ function buildStrategicReport(compId, yr, m) {
                     <p style="margin-bottom: 12px;">Prezado conselho de administração e diretoria executiva,</p>
                     <p style="margin-bottom: 12px;">Com base na auditoria consolidada dos dados do período, a empresa demonstra excelente resiliência comercial. No entanto, o **risco de liquidez** associado ao capital de giro negativo exige intervenção cirúrgica imediata da gerência para alongar prazos de curto prazo.</p>
                     
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05); padding: 12px 0;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid var(--glass-border); padding: 12px 0;">
                         <div>
                             <strong>Principais Ameaças:</strong><br>
                             <span style="color: var(--text-secondary); font-size: 12.5px;">${parecerRiscosText}</span>
@@ -3176,7 +3182,7 @@ function renderConciliationTable() {
         tr.innerHTML = `
             <td>
                 <input type="date" id="date_${txn.transaction_id}" value="${formattedDate}" 
-                       style="background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); padding: 6px; font-size: 12px; width: 120px;">
+                       style="background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); padding: 6px; font-size: 12px; width: 120px;">
             </td>
             <td class="desc-cell"><strong>${txn.description}</strong>${reasonHtml}</td>
             <td style="color: ${txn.amount > 0 ? 'var(--success)' : 'var(--danger)'}">${formatCurrency(txn.amount)}</td>
@@ -4051,7 +4057,7 @@ function renderManualConciliationTable() {
         tr.innerHTML = `
             <td>
                 <input type="date" id="date_${txn.transaction_id}" value="${formattedDate}" 
-                       style="background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); padding: 6px; font-size: 12px; width: 120px;">
+                       style="background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); padding: 6px; font-size: 12px; width: 120px;">
             </td>
             <td class="desc-cell"><strong>${txn.description}</strong></td>
             <td style="color: ${txn.amount > 0 ? 'var(--success)' : 'var(--danger)'}">${formatCurrency(txn.amount)}</td>
