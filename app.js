@@ -391,23 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else document.getElementById('config_atividade').value = 'Serviço'; // Default
     });
 
-    // Submenu Parecer Estratégico Toggle
-    const navParecerBtn = document.getElementById('navParecerBtn');
-    const parecerSubmenu = document.getElementById('parecerSubmenu');
-    const parecerSubarrow = document.getElementById('parecerSubarrow');
-    if (navParecerBtn && parecerSubmenu) {
-        navParecerBtn.addEventListener('click', () => {
-            const isVisible = parecerSubmenu.style.display === 'flex';
-            parecerSubmenu.style.display = isVisible ? 'none' : 'flex';
-            if (parecerSubarrow) {
-                parecerSubarrow.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(180deg)';
-            }
-            if (!isVisible) {
-                const mensalBtn = document.getElementById('navParecerMensalBtn');
-                if (mensalBtn) mensalBtn.click();
-            }
-        });
-    }
+
 
     // Manual Import Modal
     const btnManualImport = document.getElementById('btnManualImport');
@@ -647,13 +631,10 @@ function initTabs() {
             if (target === 'tab-dre') title = "Demonstrativo de Resultado (DRE)";
             if (target === 'tab-balanco') title = "Balanço Gerencial";
             if (target === 'tab-parecer-mensal') {
-                title = "Parecer Estratégico Mensal";
+                title = "Parecer Estratégico";
                 renderParecerMensal();
             }
-            if (target === 'tab-parecer-anual') {
-                title = "Parecer Estratégico Anual";
-                renderParecerAnual();
-            }
+
             if (target === 'tab-reuniao') title = "Alinhamento estratégico";
             if (target === 'tab-conciliation') title = "Conciliação Bancária";
             if (target === 'tab-clients') {
@@ -1073,9 +1054,7 @@ function updateAllViews() {
     if (document.getElementById('tab-parecer-mensal') && document.getElementById('tab-parecer-mensal').classList.contains('active')) {
         renderParecerMensal();
     }
-    if (document.getElementById('tab-parecer-anual') && document.getElementById('tab-parecer-anual').classList.contains('active')) {
-        renderParecerAnual();
-    }
+
     if (document.getElementById('tab-client-files') && document.getElementById('tab-client-files').classList.contains('active')) {
         if (typeof renderClientUploadedFiles === 'function') renderClientUploadedFiles();
     }
@@ -3132,71 +3111,6 @@ function renderParecerMensal() {
     }, 100);
 }
 
-function renderParecerAnual() {
-    const container = document.getElementById('parecerAnualContainer');
-    if (!container) return;
-
-    if (!EFO_Session) {
-        container.innerHTML = `
-            <div class="glass-panel p-24" style="text-align: center; max-width: 600px; margin: 40px auto; padding: 40px;">
-                <div style="font-size: 50px; margin-bottom: 20px;">🔒</div>
-                <h3 style="font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 10px;">Acesso Restrito</h3>
-                <p style="color: var(--text-secondary); line-height: 1.5;">Efetue o login para visualizar o Parecer Estratégico.</p>
-            </div>`;
-        return;
-    }
-
-    const compId = EFO_Session.role === 'admin' ? EFO_Active_Company_Id : EFO_Session.companyId;
-    const company = EFO_Companies[compId];
-    if (!company) {
-        container.innerHTML = `
-            <div class="glass-panel p-24" style="text-align: center; max-width: 600px; margin: 40px auto; padding: 40px;">
-                <div style="font-size: 50px; margin-bottom: 20px;">⚠️</div>
-                <h3 style="font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 10px;">Nenhuma Empresa Selecionada</h3>
-                <p style="color: var(--text-secondary); line-height: 1.5;">Selecione ou cadastre uma empresa ativa.</p>
-            </div>`;
-        return;
-    }
-
-    const yearSelect = document.getElementById('parecerAnualYearSelect');
-    if (yearSelect) {
-        const years = getDREYears();
-        let optionsHtml = '';
-        years.forEach(y => {
-            optionsHtml += `<option value="${y}" ${y === EFO_Active_DRE_Year ? 'selected' : ''}>${y}</option>`;
-        });
-        yearSelect.innerHTML = optionsHtml;
-        yearSelect.onchange = (e) => {
-            EFO_Active_DRE_Year = parseInt(e.target.value);
-            updateAllViews();
-        };
-    }
-
-    const yr = EFO_Active_DRE_Year;
-    const d = calculateDREData(yr);
-
-    const R_BRUTA = sumArrays(d['dre.receita_bruta.produtos'], d['dre.receita_bruta.servicos'], d['dre.receita_bruta.outras']);
-    const totalRevenue = R_BRUTA.reduce((a, b) => a + b, 0);
-
-    if (totalRevenue === 0) {
-        container.innerHTML = `
-            <div class="glass-panel p-24" style="text-align: center; max-width: 600px; margin: 40px auto; padding: 40px;">
-                <div style="font-size: 50px; margin-bottom: 20px;">📈</div>
-                <h3 style="font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 10px;">Dados Insuficientes</h3>
-                <p style="color: var(--text-secondary); line-height: 1.5; margin-bottom: 20px;">A empresa ativa não possui transações categorizadas no ano de ${yr}.</p>
-                <p style="font-size: 13px; color: var(--text-secondary);">Por favor, importe arquivos .OFX e categorize as transações na aba <strong>Conciliação Bancária</strong>.</p>
-            </div>`;
-        return;
-    }
-
-    const report = buildStrategicReport(compId, yr, null);
-    container.innerHTML = report.html;
-    
-    // Defer chart rendering to make sure canvas is in DOM
-    setTimeout(() => {
-        initParecerRadarChart(`parecerRadarChart_anual`, report.scores);
-    }, 100);
-}
 function renderConciliationTable() {
     const tbody = document.getElementById('conciliationTbody');
     const badge = document.getElementById('pendingCount');
