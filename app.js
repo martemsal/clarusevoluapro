@@ -1955,6 +1955,1105 @@ function renderBalanco() {
     passivoTbody.innerHTML = passivoHtml;
 }
 
+function getStrategicCards(compId, yr, m, metrics) {
+    const key = `EFO_Strategic_Cards_${compId}_${yr}_${m !== null ? m : 'anual'}`;
+    let cards = [];
+    try {
+        const cached = localStorage.getItem(key);
+        if (cached) {
+            cards = JSON.parse(cached);
+        }
+    } catch(e) {
+        console.error(e);
+    }
+    
+    const defaultActions = [];
+    
+    // Check debt
+    if (metrics.emprestimosCp > 50000) {
+        defaultActions.push({
+            id: 'action-debt',
+            title: 'Alongamento de Dívida de CP',
+            description: 'Negociação com bancos para alongar os empréstimos de curto prazo para longo prazo, reduzindo a pressão no caixa imediato.',
+            objective: 'Reduzir o serviço da dívida mensal e melhorar a liquidez corrente.',
+            priority: '🔴 Crítico',
+            priorityClass: 'danger',
+            prazo: '30 dias',
+            responsible: 'Diretor Financeiro (CFO)',
+            category: 'Financeiro',
+            indicators: 'Liquidez Corrente, Fluxo de Caixa',
+            status: 'Não iniciado'
+        });
+    }
+    
+    // Check working capital
+    if (metrics.workingCapital < 0) {
+        defaultActions.push({
+            id: 'action-working-capital',
+            title: 'Equacionamento do Capital de Giro',
+            description: 'Redução do prazo médio de recebimento de clientes e renegociação de prazos maiores com fornecedores.',
+            objective: 'Reverter o saldo negativo do capital de giro circulante líquido.',
+            priority: '🔴 Crítico',
+            priorityClass: 'danger',
+            prazo: '45 dias',
+            responsible: 'Gestor de Contas / Comercial',
+            category: 'Capital de Giro',
+            indicators: 'Capital de Giro, Liquidez Corrente',
+            status: 'Não iniciado'
+        });
+    }
+    
+    // Check costs / margin
+    if (metrics.ebitdaMargin < 15) {
+        defaultActions.push({
+            id: 'action-margin',
+            title: 'Revisão da Margem de Contribuição',
+            description: 'Auditar a precificação de produtos/serviços e renegociar contratos de fornecedores críticos de CMV.',
+            objective: 'Elevar a margem EBITDA para a meta saudável de no mínimo 15%.',
+            priority: '🟠 Alto',
+            priorityClass: 'warning',
+            prazo: '60 dias',
+            responsible: 'Controladoria',
+            category: 'Custos',
+            indicators: 'Margem EBITDA, Margem Líquida',
+            status: 'Não iniciado'
+        });
+    }
+    
+    // Check tax
+    if (metrics.taxRate > 10) {
+        defaultActions.push({
+            id: 'action-tax',
+            title: 'Estudo de Planejamento Tributário',
+            description: 'Avaliar enquadramento no Lucro Presumido vs Simples Nacional frente ao faturamento projetado.',
+            objective: 'Otimizar recolhimento de tributos federais e municipais.',
+            priority: '🟡 Médio',
+            priorityClass: 'info',
+            prazo: '90 dias',
+            responsible: 'Contabilidade Parceira',
+            category: 'Tributário',
+            indicators: 'Deduções, Lucratividade',
+            status: 'Não iniciado'
+        });
+    }
+    
+    // Overhead
+    if (metrics.despesas > metrics.revenue * 0.3) {
+        defaultActions.push({
+            id: 'action-overhead',
+            title: 'Otimização de Despesas Fixas',
+            description: 'Revisão de contratos fixos administrativos (softwares, aluguel, infraestrutura) e redução de overhead.',
+            objective: 'Reduzir despesas administrativas em 15% sem afetar a entrega operacional.',
+            priority: '🟠 Alto',
+            priorityClass: 'warning',
+            prazo: '30 dias',
+            responsible: 'Gerente Administrativo',
+            category: 'Custos',
+            indicators: 'Despesas Administrativas',
+            status: 'Não iniciado'
+        });
+    }
+    
+    // Growth
+    if (metrics.trend === 'Regressão') {
+        defaultActions.push({
+            id: 'action-growth',
+            title: 'Aceleração de Vendas (Crescimento)',
+            description: 'Reavaliar funil comercial, campanhas de tráfego pago e comissão de vendedores para reverter queda de receita.',
+            objective: 'Reverter tendência de queda de faturamento.',
+            priority: '🟡 Médio',
+            priorityClass: 'info',
+            prazo: '30 dias',
+            responsible: 'Diretor Comercial',
+            category: 'Comercial',
+            indicators: 'Receita Bruta, Crescimento',
+            status: 'Não iniciado'
+        });
+    } else {
+        defaultActions.push({
+            id: 'action-growth-ok',
+            title: 'Sustentação de Canal de Vendas',
+            description: 'Investir 10% adicionais em marketing/comercial nas frentes mais rentáveis demonstradas no período.',
+            objective: 'Manter a taxa de crescimento da receita bruta.',
+            priority: '🟢 Baixo',
+            priorityClass: 'success',
+            prazo: '60 dias',
+            responsible: 'Marketing',
+            category: 'Comercial',
+            indicators: 'Receita Bruta, EBITDA',
+            status: 'Não iniciado'
+        });
+    }
+
+    if (cards.length === 0) {
+        cards = defaultActions;
+        localStorage.setItem(key, JSON.stringify(cards));
+    } else {
+        defaultActions.forEach(dAct => {
+            const found = cards.find(c => c.id === dAct.id);
+            if (!found) {
+                cards.push(dAct);
+            } else {
+                found.title = dAct.title;
+                found.description = dAct.description;
+                found.objective = dAct.objective;
+                found.priority = dAct.priority;
+                found.prazo = dAct.prazo;
+                found.responsible = dAct.responsible;
+                found.category = dAct.category;
+                found.indicators = dAct.indicators;
+            }
+        });
+        localStorage.setItem(key, JSON.stringify(cards));
+    }
+    return cards;
+}
+
+window.updateStrategicCardStatus = function(compId, yr, m, cardId, newStatus) {
+    const key = `EFO_Strategic_Cards_${compId}_${yr}_${m !== null ? m : 'anual'}`;
+    try {
+        const cached = localStorage.getItem(key);
+        if (cached) {
+            const cards = JSON.parse(cached);
+            const card = cards.find(c => c.id === cardId);
+            if (card) {
+                card.status = newStatus;
+                localStorage.setItem(key, JSON.stringify(cards));
+                showToast('Card Atualizado', `O status do card "${card.title}" foi alterado para "${newStatus}".`, 'success');
+                if (m !== null) {
+                    renderParecerMensal();
+                } else {
+                    renderParecerAnual();
+                }
+            }
+        }
+    } catch(e) {
+        console.error(e);
+    }
+};
+
+function initParecerRadarChart(canvasId, scores) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    
+    const existingChart = Chart.getChart(canvas);
+    if (existingChart) {
+        existingChart.destroy();
+    }
+    
+    new Chart(canvas, {
+        type: 'radar',
+        data: {
+            labels: ['Financeiro', 'Comercial', 'Operacional', 'Tributário', 'Custos', 'Governança', 'Capital de Giro', 'Lucratividade', 'Fluxo de Caixa', 'Crescimento'],
+            datasets: [{
+                label: 'Score Estratégico (0-10)',
+                data: scores,
+                backgroundColor: 'rgba(99, 102, 241, 0.2)',
+                borderColor: 'rgb(99, 102, 241)',
+                pointBackgroundColor: 'rgb(99, 102, 241)',
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: 'rgb(99, 102, 241)'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                    pointLabels: {
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        font: { family: 'Outfit', size: 10, weight: '500' }
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.4)',
+                        backdropColor: 'transparent',
+                        beginAtZero: true,
+                        max: 10,
+                        stepSize: 2
+                    }
+                }
+            },
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    });
+}
+
+function calculateStrategicHealth(metrics, m) {
+    let scoreLucro = metrics.ebitdaMargin >= 20 ? 25 : (metrics.ebitdaMargin >= 10 ? 18 : (metrics.ebitdaMargin >= 0 ? 10 : 2));
+    let scoreLiq = metrics.liquidezCorrente >= 1.5 ? 25 : (metrics.liquidezCorrente >= 1.1 ? 18 : (metrics.liquidezCorrente >= 0.9 ? 10 : 2));
+    let scoreGiro = metrics.workingCapital > 0 ? 25 : 5;
+    let scoreEndiv = metrics.emprestimosCp === 0 ? 25 : (metrics.emprestimosCp < (metrics.revenue * (m === null ? 0.1 : 1.0)) ? 18 : 8);
+    return scoreLucro + scoreLiq + scoreGiro + scoreEndiv;
+}
+
+function buildStrategicReport(compId, yr, m) {
+    const company = EFO_Companies[compId];
+    const d = calculateDREData(yr);
+    const bData = calculateBalancoData(yr);
+    
+    const monthsFull = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    
+    // Core DRE aggregates
+    const R_BRUTA = sumArrays(d['dre.receita_bruta.produtos'], d['dre.receita_bruta.servicos'], d['dre.receita_bruta.outras']);
+    const DEDUCOES = sumArrays(d['dre.deducoes.impostos'], d['dre.deducoes.devolucoes'], d['dre.deducoes.descontos']);
+    const R_LIQUIDA = R_BRUTA.map((v, i) => v - DEDUCOES[i]);
+    const CUSTOS = sumArrays(d['dre.custos.mercadorias'], d['dre.custos.producao'], d['dre.custos.servicos'], d['dre.custos.operacionais']);
+    const L_BRUTO = R_LIQUIDA.map((v, i) => v - CUSTOS[i]);
+    
+    const D_COM = sumArrays(d['dre.despesas_comercial.comissao'], d['dre.despesas_comercial.trafego'], d['dre.despesas_comercial.marketing'], d['dre.despesas_comercial.viagens'], d['dre.despesas_comercial.transporte_logistica'], d['dre.despesas_comercial.outras']);
+    const D_PES = sumArrays(d['dre.despesas_pessoal.salarios'], d['dre.despesas_pessoal.inss'], d['dre.despesas_pessoal.fgts'], d['dre.despesas_pessoal.beneficios'], d['dre.despesas_pessoal.rescisoes']);
+    const D_ADM = sumArrays(d['dre.despesas_administrativas.pro_labore'], d['dre.despesas_administrativas.salarios'], d['dre.despesas_administrativas.encargos'], d['dre.despesas_administrativas.aluguel'], d['dre.despesas_administrativas.outras']);
+    const D_EST = sumArrays(d['dre.despesas_estrutura.manutencao'], d['dre.despesas_estrutura.reparos'], d['dre.despesas_estrutura.limpeza']);
+    const D_VEI = sumArrays(d['dre.despesas_veiculos.combustivel'], d['dre.despesas_veiculos.manutencao'], d['dre.despesas_veiculos.seguro'], d['dre.despesas_veiculos.ipva']);
+    const D_FIN = sumArrays(d['dre.despesas_financeiras.tarifas'], d['dre.despesas_financeiras.juros'], d['dre.despesas_financeiras.iof']);
+    const R_FIN = sumArrays(d['dre.receitas_financeiras.rendimentos'], d['dre.receitas_financeiras.juros_recebidos']);
+    const D_TOTAL = sumArrays(D_COM, D_PES, D_ADM, D_EST, D_VEI, D_FIN);
+    const EBITDA = L_BRUTO.map((v, i) => v - D_TOTAL[i] + R_FIN[i]);
+
+    const sum = (arr) => arr.reduce((a, b) => a + b, 0);
+
+    let metrics = {};
+    if (m !== null) {
+        metrics.periodName = `${monthsFull[m]} de ${yr}`;
+        metrics.revenue = R_BRUTA[m];
+        metrics.deducoes = DEDUCOES[m];
+        metrics.receitaLiquida = R_LIQUIDA[m];
+        metrics.custos = CUSTOS[m];
+        metrics.lucroBruto = L_BRUTO[m];
+        metrics.despesas = D_TOTAL[m];
+        metrics.ebitda = EBITDA[m];
+        metrics.rFin = R_FIN[m];
+        metrics.lucroLiquido = EBITDA[m];
+        
+        metrics.caixaBancos = bData['balanco.ativo_circulante.caixa_bancos'][m] || 0;
+        metrics.aplicacoes = bData['balanco.ativo_circulante.aplicacoes'][m] || 0;
+        metrics.clientesReceber = bData['balanco.ativo_circulante.clientes_receber'][m] || 0;
+        metrics.estoques = bData['balanco.ativo_circulante.estoques'][m] || 0;
+        metrics.adiantamentos = bData['balanco.ativo_circulante.adiantamentos'][m] || 0;
+        metrics.tributosRecuperar = bData['balanco.ativo_circulante.tributos_recuperar'][m] || 0;
+        
+        metrics.fornecedores = bData['balanco.passivo_circulante.fornecedores'][m] || 0;
+        metrics.emprestimosCp = bData['balanco.passivo_circulante.emprestimos_cp'][m] || 0;
+        metrics.obrigacoesTrab = bData['balanco.passivo_circulante.obrigacoes_trab'][m] || 0;
+        metrics.obrigacoesTrib = bData['balanco.passivo_circulante.obrigacoes_trib'][m] || 0;
+        metrics.passivoCircOutras = bData['balanco.passivo_circulante.outras'][m] || 0;
+    } else {
+        metrics.periodName = `Exercício Anual de ${yr}`;
+        metrics.revenue = sum(R_BRUTA);
+        metrics.deducoes = sum(DEDUCOES);
+        metrics.receitaLiquida = sum(R_LIQUIDA);
+        metrics.custos = sum(CUSTOS);
+        metrics.lucroBruto = sum(L_BRUTO);
+        metrics.despesas = sum(D_TOTAL);
+        metrics.ebitda = sum(EBITDA);
+        metrics.rFin = sum(R_FIN);
+        metrics.lucroLiquido = metrics.ebitda;
+
+        const activeMonthIndices = [];
+        for (let idx = 0; idx < 12; idx++) { if (R_BRUTA[idx] > 0) activeMonthIndices.push(idx); }
+        const lastActiveMonth = activeMonthIndices.length > 0 ? activeMonthIndices[activeMonthIndices.length - 1] : 11;
+
+        metrics.caixaBancos = bData['balanco.ativo_circulante.caixa_bancos'][lastActiveMonth] || 0;
+        metrics.aplicacoes = bData['balanco.ativo_circulante.aplicacoes'][lastActiveMonth] || 0;
+        metrics.clientesReceber = bData['balanco.ativo_circulante.clientes_receber'][lastActiveMonth] || 0;
+        metrics.estoques = bData['balanco.ativo_circulante.estoques'][lastActiveMonth] || 0;
+        metrics.adiantamentos = bData['balanco.ativo_circulante.adiantamentos'][lastActiveMonth] || 0;
+        metrics.tributosRecuperar = bData['balanco.ativo_circulante.tributos_recuperar'][lastActiveMonth] || 0;
+
+        metrics.fornecedores = bData['balanco.passivo_circulante.fornecedores'][lastActiveMonth] || 0;
+        metrics.emprestimosCp = bData['balanco.passivo_circulante.emprestimos_cp'][lastActiveMonth] || 0;
+        metrics.obrigacoesTrab = bData['balanco.passivo_circulante.obrigacoes_trab'][lastActiveMonth] || 0;
+        metrics.obrigacoesTrib = bData['balanco.passivo_circulante.obrigacoes_trib'][lastActiveMonth] || 0;
+        metrics.passivoCircOutras = bData['balanco.passivo_circulante.outras'][lastActiveMonth] || 0;
+    }
+
+    metrics.ATIVO_CIRC = metrics.caixaBancos + metrics.aplicacoes + metrics.clientesReceber + metrics.estoques + metrics.adiantamentos + metrics.tributosRecuperar;
+    metrics.PASSIVO_CIRC = metrics.fornecedores + metrics.emprestimosCp + metrics.obrigacoesTrab + metrics.obrigacoesTrib + metrics.passivoCircOutras;
+    metrics.liquidezCorrente = metrics.PASSIVO_CIRC > 0 ? metrics.ATIVO_CIRC / metrics.PASSIVO_CIRC : 1.5;
+    metrics.ebitdaMargin = metrics.revenue > 0 ? (metrics.ebitda / metrics.revenue) * 100 : 0;
+    metrics.netMargin = metrics.revenue > 0 ? (metrics.lucroLiquido / metrics.revenue) * 100 : 0;
+    metrics.workingCapital = metrics.ATIVO_CIRC - metrics.PASSIVO_CIRC;
+    metrics.cmvRate = metrics.revenue > 0 ? (metrics.custos / metrics.revenue) * 100 : 0;
+    metrics.taxRate = metrics.revenue > 0 ? (metrics.deducoes / metrics.revenue) * 100 : 0;
+
+    // Trend
+    metrics.trend = 'Estabilidade';
+    if (m !== null && m > 0) {
+        const prevRev = R_BRUTA[m - 1];
+        if (prevRev > 0) {
+            const growth = ((metrics.revenue - prevRev) / prevRev) * 100;
+            if (growth > 2) metrics.trend = 'Crescimento';
+            else if (growth < -2) metrics.trend = 'Regressão';
+        }
+    } else if (m === null) {
+        const h1 = R_BRUTA.slice(0, 6).reduce((a, b) => a + b, 0);
+        const h2 = R_BRUTA.slice(6, 12).reduce((a, b) => a + b, 0);
+        if (h1 > 0 && h2 > 0) {
+            const growth = ((h2 - h1) / h1) * 100;
+            if (growth > 2) metrics.trend = 'Crescimento';
+            else if (growth < -2) metrics.trend = 'Regressão';
+        }
+    }
+
+    // Health Score
+    const healthScore = calculateStrategicHealth(metrics, m);
+    
+    let healthClass = 'Saudável';
+    let healthColor = '#10b981';
+    let healthBadgeBg = 'rgba(16, 185, 129, 0.15)';
+    if (healthScore >= 80) {
+        healthClass = 'Excelente';
+        healthColor = '#10b981';
+        healthBadgeBg = 'rgba(16, 185, 129, 0.25)';
+    } else if (healthScore >= 60) {
+        healthClass = 'Saudável';
+        healthColor = '#6366f1';
+        healthBadgeBg = 'rgba(99, 102, 241, 0.2)';
+    } else if (healthScore >= 45) {
+        healthClass = 'Atenção';
+        healthColor = '#f59e0b';
+        healthBadgeBg = 'rgba(245, 158, 11, 0.2)';
+    } else if (healthScore >= 30) {
+        healthClass = 'Crítica';
+        healthColor = '#ef4444';
+        healthBadgeBg = 'rgba(239, 68, 68, 0.2)';
+    } else {
+        healthClass = 'Emergencial';
+        healthColor = '#ef4444';
+        healthBadgeBg = 'rgba(239, 68, 68, 0.35)';
+    }
+
+    // Risk level
+    let riskLevel = 'Médio';
+    let riskColor = '#f59e0b';
+    if (metrics.liquidezCorrente >= 1.5 && metrics.emprestimosCp === 0) {
+        riskLevel = 'Muito Baixo';
+        riskColor = '#10b981';
+    } else if (metrics.liquidezCorrente >= 1.2 && metrics.emprestimosCp < metrics.caixaBancos + metrics.aplicacoes) {
+        riskLevel = 'Baixo';
+        riskColor = '#10b981';
+    } else if (metrics.liquidezCorrente >= 1.0) {
+        riskLevel = 'Médio';
+        riskColor = '#f59e0b';
+    } else if (metrics.liquidezCorrente >= 0.7) {
+        riskLevel = 'Alto';
+        riskColor = '#ef4444';
+    } else {
+        riskLevel = 'Muito Alto';
+        riskColor = '#ef4444';
+    }
+
+    // 1. DIAGNÓSTICO EXECUTIVO variables
+    const capCaixa = metrics.ebitda > 0 ? 'Forte Geração Operacional' : 'Insuficiente / Déficit de Caixa';
+    const sitGiro = metrics.workingCapital > 0 ? 'Positiva (Superavitária)' : 'Crítica (Necessidade de Giro)';
+    const sitEndiv = metrics.emprestimosCp > 0 ? 'Exposta (Alavancado)' : 'Sob Controle';
+    const sitLucro = metrics.ebitdaMargin >= 15 ? 'Excelente' : (metrics.ebitdaMargin >= 5 ? 'Moderada' : 'Insuficiente');
+    const sitOp = metrics.ebitda > metrics.despesas ? 'Eficiente' : 'Necessita Ajustes / Otimização';
+
+    // 2. RESUMO EXECUTIVO TEXT
+    const userName = EFO_Session.name.split(' ')[0];
+    const trendText = metrics.trend === 'Crescimento' ? 'apresentando uma trajetória ascendente e expansão de receitas' : (metrics.trend === 'Regressão' ? 'passando por uma contração nas receitas com sinais de compressão gerencial' : 'mantendo estabilidade no fluxo operacional');
+    const leverageWarning = metrics.emprestimosCp > 0 ? `A exposição ao passivo bancário de curto prazo de ${formatCurrency(metrics.emprestimosCp)} exige atenção rigorosa para evitar desgastes de liquidez imediata.` : 'A estrutura de capital está saudável, livre de dívidas de curto prazo de natureza bancária.';
+    const giroWarning = metrics.workingCapital < 0 ? `O capital de giro líquido encontra-se deficitário em ${formatCurrency(Math.abs(metrics.workingCapital))}, demandando alongamento de prazos com fornecedores.` : 'O saldo do capital de giro líquido mantém-se superavitário, garantindo segurança na continuidade operacional.';
+    
+    const summaryText = `Prezado(a) **${userName}**, o relatório estratégico aponta que no período de **${metrics.periodName}**, a empresa operou com classificação **${healthClass}** (${healthScore}/100 no Índice de Saúde Empresarial). A operação está ${trendText}. ${leverageWarning} ${giroWarning} A principal prioridade recomendada para o próximo período é a consolidação do contas a receber e otimização das despesas fixas para maximizar o fluxo de caixa livre.`;
+
+    // 3. PRINCIPAIS ALERTAS
+    const alerts = [];
+    if (metrics.emprestimosCp > 0) {
+        alerts.push({
+            icon: '🔴',
+            priority: 'Crítico',
+            color: '#ef4444',
+            bg: 'rgba(239, 68, 68, 0.1)',
+            title: 'Exposição Bancária de Curto Prazo',
+            desc: `Contratação de financiamentos de curto prazo atinge o montante de ${formatCurrency(metrics.emprestimosCp)}.`,
+            impact: 'Geração de despesas com juros e tarifas financeiras, comprometendo o fluxo de caixa.',
+            risk: 'Incapacidade de honrar vencimentos imediatos caso ocorra oscilação de faturamento.',
+            urgency: 'Imediata',
+            probabilidade: 'Alta',
+            consequencias: 'Aumento do custo da dívida, juros de mora e risco de execução judicial ou restrições cadastrais.',
+            indicator: 'Empréstimos CP / Liquidez'
+        });
+    }
+    if (metrics.workingCapital < 0) {
+        alerts.push({
+            icon: '🔴',
+            priority: 'Crítico',
+            color: '#ef4444',
+            bg: 'rgba(239, 68, 68, 0.1)',
+            title: 'Capital de Giro Líquido Negativo',
+            desc: `O ativo circulante líquido é insuficiente para cobrir as obrigações imediatas em ${formatCurrency(Math.abs(metrics.workingCapital))}.`,
+            impact: 'Necessidade de novos empréstimos ou aporte de capital dos sócios para manter a operação rodando.',
+            risk: 'Paralisação operacional ou dependência contínua de recursos externos de custo elevado.',
+            urgency: 'Imediata',
+            probabilidade: 'Altíssima',
+            consequencias: 'Dependência de factoring ou antecipação de recebíveis, diminuindo drasticamente as margens futuras.',
+            indicator: 'Capital de Giro'
+        });
+    }
+    if (metrics.ebitdaMargin < 15) {
+        alerts.push({
+            icon: '🟠',
+            priority: 'Alto',
+            color: '#f59e0b',
+            bg: 'rgba(245, 158, 11, 0.1)',
+            title: 'Margem EBITDA abaixo da referência de mercado',
+            desc: `A margem operacional EBITDA está em ${metrics.ebitdaMargin.toFixed(1)}%, abaixo do patamar recomendado de 15%.`,
+            impact: 'Baixa eficiência na conversão de vendas em lucro operacional real.',
+            risk: 'Falta de fôlego para investimento em expansão ou constituição de reservas.',
+            urgency: 'Alta',
+            probabilidade: 'Média-Alta',
+            consequencias: 'Erosão lenta do caixa operacional e obsolescência da capacidade de reinvestimento.',
+            indicator: 'Margem EBITDA'
+        });
+    }
+    if (metrics.cmvRate > 50) {
+        alerts.push({
+            icon: '🟠',
+            priority: 'Alto',
+            color: '#f59e0b',
+            bg: 'rgba(245, 158, 11, 0.1)',
+            title: 'Custo de Mercadorias e Serviços Elevado',
+            desc: `O custo direto de vendas (CMV/CSP) consome ${metrics.cmvRate.toFixed(1)}% do faturamento total.`,
+            impact: 'Redução drástica do lucro bruto, espremendo as despesas de estrutura.',
+            risk: 'Qualquer aumento inflacionário de fornecedores gerará prejuízo imediato.',
+            urgency: 'Média',
+            probabilidade: 'Média',
+            consequencias: 'Perda de competitividade por preço ou necessidade constante de repasse aos clientes finais.',
+            indicator: 'Custo de Mercadorias / Produção'
+        });
+    }
+    if (metrics.taxRate > 12) {
+        alerts.push({
+            icon: '🟡',
+            priority: 'Médio',
+            color: '#3b82f6',
+            bg: 'rgba(59, 130, 246, 0.1)',
+            title: 'Alíquota Efetiva de Tributos Elevada',
+            desc: `Impostos e deduções representam ${metrics.taxRate.toFixed(1)}% do faturamento bruto.`,
+            impact: 'Saída relevante de caixa antes do cômputo dos custos operacionais.',
+            risk: 'Carga tributária incompatível com o regime simplificado em caso de desenquadramento.',
+            urgency: 'Média',
+            probabilidade: 'Baixa-Média',
+            consequencias: 'Redução da rentabilidade líquida distribuível aos sócios.',
+            indicator: 'Deduções Tributárias'
+        });
+    }
+    if (alerts.length === 0) {
+        alerts.push({
+            icon: '🟢',
+            priority: 'Baixo',
+            color: '#10b981',
+            bg: 'rgba(16, 185, 129, 0.1)',
+            title: 'Nenhum alerta crítico detectado',
+            desc: 'A operação financeira no período não apresenta distorções severas ou pontos de risco estrutural imediatos.',
+            impact: 'Garante estabilidade para tomada de decisões com segurança.',
+            risk: 'Muito Baixo.',
+            urgency: 'Baixa',
+            probabilidade: 'Baixa',
+            consequencias: 'Estabilidade operacional e crescimento sustentável.',
+            indicator: 'Geral'
+        });
+    }
+
+    // 4. PRINCIPAIS OPORTUNIDADES
+    const opportunities = [];
+    if (metrics.emprestimosCp > 0) {
+        opportunities.push({
+            title: 'Renegociação de Dívidas de Curto Prazo',
+            desc: 'Substituição de empréstimos com taxas elevadas e curto prazo por linhas de longo prazo estruturadas (como capital de giro subsidiado ou refinanciamento).',
+            benefits: 'Redução imediata do fluxo de saídas mensais de amortização, reestabelecendo a saúde de caixa da empresa.',
+            impact: 'Melhoria direta no indicador de Liquidez Corrente e na folga financeira diária.',
+            priority: '🔴 Alta Prioridade',
+            area: 'Financeira / Relacionamento Bancário'
+        });
+    }
+    if (metrics.workingCapital < 0) {
+        opportunities.push({
+            title: 'Otimização dos Ciclos Financeiros (Capital de Giro)',
+            desc: 'Implantar política comercial rigorosa com prazo médio de faturamento a no máximo 15 dias, aliada à extensão de pagamentos a fornecedores de insumos chaves para no mínimo 45 dias.',
+            benefits: 'Geração de caixa próprio por meio da redução da necessidade de capital de giro (NCG).',
+            impact: 'Equilíbrio da liquidez operacional sem custos financeiros adicionais.',
+            priority: '🔴 Alta Prioridade',
+            area: 'Comercial / Compras'
+        });
+    }
+    if (metrics.cmvRate > 40) {
+        opportunities.push({
+            title: 'Compras Estratégicas e Homologação de Fornecedores',
+            desc: 'Agrupar pedidos de compra com fornecedores homologados para ganhar escala de desconto e obter opções alternativas de insumos.',
+            benefits: 'Aumento na margem bruta do negócio sem necessidade de reajustar o preço final ao consumidor.',
+            impact: 'Redução de até 5% no CMV no curto-médio prazo.',
+            priority: '🟠 Média-Alta',
+            area: 'Compras / Suprimentos'
+        });
+    }
+    if (metrics.despesas > 15000) {
+        opportunities.push({
+            title: 'Redução de Despesas Administrativas (Overhead)',
+            desc: 'Auditoria de sistemas em nuvem, assinaturas de software subutilizados, contas de consumo fixas e serviços de terceiros sem contrato ativo.',
+            benefits: 'Corte de despesas recorrentes inúteis, vertendo esse valor direto no lucro líquido.',
+            impact: 'Aumento direto de margem operacional.',
+            priority: '🟡 Média',
+            area: 'Administrativa'
+        });
+    }
+    opportunities.push({
+        title: 'Estudo para Revisão Tributária Anual',
+        desc: 'Consultoria contábil para simular a tributação da empresa em diferentes regimes fiscais (Simples Nacional vs. Lucro Presumido).',
+        benefits: 'Redução de alíquota efetiva de tributação com base no Custo de Pessoal/Fator R ou regime setorial.',
+        impact: 'Economia financeira substancial anualizada.',
+        priority: '🟢 Baixa-Média',
+        area: 'Diretoria / Contabilidade'
+    });
+
+    // 5. ANÁLISE GERENCIAL
+    const gerencialData = [
+        {
+            name: 'Liquidez Corrente',
+            value: metrics.liquidezCorrente.toFixed(2),
+            meaning: 'Mede a capacidade da empresa de pagar suas obrigações de curto prazo utilizando seus ativos circulantes.',
+            status: metrics.liquidezCorrente >= 1.5 ? 'Bom (Suficiente)' : (metrics.liquidezCorrente >= 1.0 ? 'Atenção (Apertado)' : 'Crítico (Deficitário)'),
+            statusClass: metrics.liquidezCorrente >= 1.5 ? 'success' : (metrics.liquidezCorrente >= 1.0 ? 'warning' : 'danger'),
+            reference: 'Acima de 1.50 para o setor de atuação.',
+            risks: 'Se menor que 1.00, a empresa necessita de caixa externo para pagar as contas básicas do dia a dia, gerando endividamento sistemático.',
+            action: 'Renegociar prazos com credores de curto prazo e vender ativos ociosos se necessário, além de acelerar cobrança de inadimplentes.'
+        },
+        {
+            name: 'Margem EBITDA',
+            value: metrics.ebitdaMargin.toFixed(1) + '%',
+            meaning: 'Indica a percentagem de receita que se converte em lucro puramente operacional (sem juros, impostos, depreciação).',
+            status: metrics.ebitdaMargin >= 15 ? 'Bom (Operação Eficiente)' : (metrics.ebitdaMargin >= 5 ? 'Atenção (Margem Estreita)' : 'Ruim (Sem Valor Gerado)'),
+            statusClass: metrics.ebitdaMargin >= 15 ? 'success' : (metrics.ebitdaMargin >= 5 ? 'warning' : 'danger'),
+            reference: 'Entre 15% e 25% para empresas eficientes.',
+            risks: 'Uma margem operacional muito baixa mostra que a empresa trabalha muito (fatura alto) mas gasta quase tudo na própria operação.',
+            action: 'Revisar estrutura de custos diretos (CMV) e gastos comerciais com marketing de baixa performance.'
+        },
+        {
+            name: 'Margem Líquida',
+            value: metrics.netMargin.toFixed(1) + '%',
+            meaning: 'É o percentual de lucro que realmente sobra para os sócios após todas as deduções, despesas e impostos do período.',
+            status: metrics.netMargin >= 10 ? 'Bom (Retorno Saudável)' : (metrics.netMargin >= 3 ? 'Atenção (Retorno Limítrofe)' : 'Ruim (Sem Retorno Real)'),
+            statusClass: metrics.netMargin >= 10 ? 'success' : (metrics.netMargin >= 3 ? 'warning' : 'danger'),
+            reference: 'Entre 10% e 18% para o segmento.',
+            risks: 'Margem líquida comprimida indica vulnerabilidade a qualquer alteração de mercado, tributos ou custos de fornecedores.',
+            action: 'Trabalhar na otimização tributária e na redução de taxas de intermediação financeira e tarifas bancárias.'
+        },
+        {
+            name: 'Capital de Giro Líquido',
+            value: formatCurrency(metrics.workingCapital),
+            meaning: 'Representa a folga ou suficiência financeira de curto prazo para manter a operação rodando.',
+            status: metrics.workingCapital > 0 ? 'Bom (Superavitário)' : 'Crítico (Necessitado de Capital)',
+            statusClass: metrics.workingCapital > 0 ? 'success' : 'danger',
+            reference: 'Sempre deve ser positivo e superior a 10% do faturamento.',
+            risks: 'Capital de giro negativo força a empresa a recorrer a bancos e antecipação de recebíveis, corroendo a lucratividade.',
+            action: 'Apertar as regras de parcelamento de clientes e renegociar contratos de longo prazo de fornecimento.'
+        }
+    ];
+
+    // 6. PERGUNTAS QUE TODO EMPRESÁRIO FARIA
+    const faqs = [
+        {
+            q: 'Estou realmente lucrando?',
+            a: metrics.lucroLiquido > 0 
+                ? `Sim! A empresa registrou um resultado líquido positivo de **${formatCurrency(metrics.lucroLiquido)}** no período, representando uma margem real de **${metrics.netMargin.toFixed(1)}%** após todas as despesas e impostos.`
+                : `Não. No momento, a empresa opera em déficit com resultado líquido de **${formatCurrency(metrics.lucroLiquido)}**. É urgente auditar os custos e reavaliar a estrutura de overhead.`
+        },
+        {
+            q: 'Minha empresa está crescendo de forma saudável?',
+            a: metrics.trend === 'Crescimento' 
+                ? `Sim, a empresa apresenta tendência de crescimento. O faturamento bruto somou **${formatCurrency(metrics.revenue)}** com avanço em relação aos períodos anteriores.`
+                : `A empresa apresenta estabilidade ou regressão de receita. O crescimento requer investimentos em escala de canais ou diversificação de portfólio comercial.`
+        },
+        {
+            q: 'Tenho caixa suficiente?',
+            a: metrics.caixaBancos + metrics.aplicacoes > metrics.despesas 
+                ? `Sim, a empresa conta com **${formatCurrency(metrics.caixaBancos + metrics.aplicacoes)}** em caixa e aplicações financeiras, o que cobre com segurança o fluxo fixo operacional.`
+                : `O saldo líquido em caixa está apertado. É recomendado manter uma reserva de emergência mínima de 3 meses de despesas fixas para mitigar riscos.`
+        },
+        {
+            q: 'Estou pagando impostos acima do esperado?',
+            a: `Sua alíquota efetiva de tributação consolidada é de **${metrics.taxRate.toFixed(1)}%** sobre o faturamento. Se este índice for superior a 12% em atividades de serviços, recomenda-se realizar um planejamento tributário.`
+        },
+        {
+            q: 'Posso investir?',
+            a: metrics.workingCapital > 0 && metrics.liquidezCorrente > 1.2
+                ? `Sim, com a liquidez e capital de giro sob controle, existem margens para investimentos programados em tecnologia ou capacidade operacional.`
+                : `Não é recomendado investir em ativos fixos ou expansão pesada no momento. O foco principal deve ser recompor as reservas e sanar o endividamento bancário.`
+        },
+        {
+            q: 'Posso contratar novos colaboradores?',
+            a: metrics.ebitdaMargin > 12
+                ? `Sim, o fôlego operacional atual permite expansão moderada de quadro, preferencialmente focada em áreas que gerem receita direta (vendas ou entrega técnica).`
+                : `Recomenda-se cautela. Novas contratações fixas agora podem elevar o ponto de equilíbrio financeiro e pressionar ainda mais as margens.`
+        },
+        {
+            q: 'Meu endividamento preocupa?',
+            a: metrics.emprestimosCp > 0
+                ? `Sim, o montante de **${formatCurrency(metrics.emprestimosCp)}** alocado em passivos circulantes gera pressão contínua de caixa e despesa financeira. Deve ser alongado ou quitado.`
+                : `Não, a empresa opera livre de dívidas de curto prazo de natureza bancária, apresentando excelente saúde financeira.`
+        },
+        {
+            q: 'Estou precificando corretamente?',
+            a: metrics.cmvRate > 0 && metrics.cmvRate <= 45
+                ? `Aparentemente sim. O seu Custo Direto (CMV/CSP) consome **${metrics.cmvRate.toFixed(1)}%** da receita, mantendo-se na margem ideal de até 45%.`
+                : `Alerta na precificação. O custo de mercadorias consome **${metrics.cmvRate.toFixed(1)}%** do faturamento, espremendo a margem de contribuição. Avalie os custos operacionais de insumos.`
+        },
+        {
+            q: 'Meu negócio está gerando valor?',
+            a: metrics.ebitda > 0
+                ? `Sim! O EBITDA de **${formatCurrency(metrics.ebitda)}** comprova que a operação principal é intrinsecamente rentável e gera valor econômico real.`
+                : `A operação atual não está gerando valor líquido. É imperativo reestruturar a eficiência produtiva ou renegociar contratos de CMV.`
+        },
+        {
+            q: 'Existe risco de falta de caixa?',
+            a: metrics.liquidezCorrente < 1.0 || metrics.workingCapital < 0
+                ? `Sim, o risco é classificado como **${riskLevel}** devido à liquidez de **${metrics.liquidezCorrente.toFixed(2)}** e capital de giro negativo. Priorize fluxo de caixa.`
+                : `Risco muito baixo. A folga operacional garante fluxo de caixa estável e cobertura de obrigações sem sobressaltos.`
+        }
+    ];
+
+    // 7. PLANO DE AÇÃO ESTRATÉGICO & 8. CARDS
+    const cards = getStrategicCards(compId, yr, m, metrics);
+
+    // 9. EVOLUÇÃO HISTÓRICA LOOP
+    let evolutionRowsHtml = '';
+    const monthsShort = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    let lastHS = null;
+    for (let monthIdx = 0; monthIdx < 12; monthIdx++) {
+        const mRev = R_BRUTA[monthIdx];
+        if (mRev === 0) continue; // Skip months with no data
+        
+        const mDed = DEDUCOES[monthIdx];
+        const mLiq = R_LIQUIDA[monthIdx];
+        const mCustos = CUSTOS[monthIdx];
+        const mLBruto = L_BRUTO[monthIdx];
+        const mDesp = D_TOTAL[monthIdx];
+        const mEbitda = EBITDA[monthIdx];
+        const mRFin = R_FIN[monthIdx];
+        
+        const mCaixaBancos = bData['balanco.ativo_circulante.caixa_bancos'][monthIdx] || 0;
+        const mAplic = bData['balanco.ativo_circulante.aplicacoes'][monthIdx] || 0;
+        const mClientes = bData['balanco.ativo_circulante.clientes_receber'][monthIdx] || 0;
+        const mEstoque = bData['balanco.ativo_circulante.estoques'][monthIdx] || 0;
+        const mAdiant = bData['balanco.ativo_circulante.adiantamentos'][monthIdx] || 0;
+        const mTributos = bData['balanco.ativo_circulante.tributos_recuperar'][monthIdx] || 0;
+        
+        const mFornec = bData['balanco.passivo_circulante.fornecedores'][monthIdx] || 0;
+        const mEmp = bData['balanco.passivo_circulante.emprestimos_cp'][monthIdx] || 0;
+        const mTrab = bData['balanco.passivo_circulante.obrigacoes_trab'][monthIdx] || 0;
+        const mTrib = bData['balanco.passivo_circulante.obrigacoes_trib'][monthIdx] || 0;
+        const mOutr = bData['balanco.passivo_circulante.outras'][monthIdx] || 0;
+        
+        const mAtCirc = mCaixaBancos + mAplic + mClientes + mEstoque + mAdiant + mTributos;
+        const mPassCirc = mFornec + mEmp + mTrab + mTrib + mOutr;
+        
+        const mMetrics = {
+            revenue: mRev,
+            deducoes: mDed,
+            workingCapital: mAtCirc - mPassCirc,
+            liquidezCorrente: mPassCirc > 0 ? mAtCirc / mPassCirc : 1.5,
+            ebitdaMargin: mRev > 0 ? (mEbitda / mRev) * 100 : 0,
+            emprestimosCp: mEmp
+        };
+        const mHS = calculateStrategicHealth(mMetrics, monthIdx);
+        const mEbitdaMargin = mRev > 0 ? (mEbitda / mRev) * 100 : 0;
+        
+        let hsTrendIcon = '➡️';
+        if (lastHS !== null) {
+            if (mHS > lastHS) hsTrendIcon = '🔺';
+            else if (mHS < lastHS) hsTrendIcon = '🔻';
+        }
+        lastHS = mHS;
+
+        evolutionRowsHtml += `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); color: var(--text-secondary);">
+                <td style="padding: 10px; font-weight: 500; color: var(--text-primary);">${monthsShort[monthIdx]}</td>
+                <td style="padding: 10px;">${formatCurrency(mRev)}</td>
+                <td style="padding: 10px;">${formatCurrency(mEbitda)}</td>
+                <td style="padding: 10px;">${mEbitdaMargin.toFixed(1)}%</td>
+                <td style="padding: 10px;">${formatCurrency(mAtCirc - mPassCirc)}</td>
+                <td style="padding: 10px;">${formatCurrency(mEmp)}</td>
+                <td style="padding: 10px; font-weight: 600; color: ${mHS >= 60 ? 'var(--success)' : (mHS >= 40 ? 'var(--warning)' : 'var(--danger)')};">${mHS} ${hsTrendIcon}</td>
+            </tr>
+        `;
+    }
+
+    // 10. RADAR ESTRATÉGICO notes
+    const scoreFinanceiro = Math.min(10, Math.max(0, Math.round(metrics.liquidezCorrente * 5)));
+    const scoreComercial = Math.min(10, Math.max(0, Math.round(Math.min(metrics.revenue, 200000) / 20000)));
+    const scoreOperacional = Math.min(10, Math.max(0, Math.round(metrics.ebitdaMargin > 0 ? (metrics.ebitdaMargin / 3) + 2 : 2)));
+    const scoreTributario = Math.min(10, Math.max(0, Math.round(metrics.taxRate > 0 ? 12 - metrics.taxRate : 8)));
+    const scoreCustos = Math.min(10, Math.max(0, Math.round(metrics.cmvRate > 0 ? (100 - metrics.cmvRate) / 10 : 8)));
+    const scoreGovernanca = 10 - Math.min(6, Math.round(OFX_Raw_Import.filter(t => t.status === 'Pendente').length / 5));
+    const scoreGiro = Math.min(10, Math.max(0, Math.round(metrics.workingCapital > 0 ? (metrics.workingCapital / (metrics.revenue * 0.5)) * 5 + 5 : 3)));
+    const scoreLucratividade = Math.min(10, Math.max(0, Math.round(metrics.netMargin > 0 ? (metrics.netMargin / 3) + 2 : 2)));
+    const scoreFluxo = Math.min(10, Math.max(0, Math.round(metrics.caixaBancos + metrics.aplicacoes > metrics.emprestimosCp ? 9 : 3)));
+    const scoreCrescimento = metrics.trend === 'Crescimento' ? 9 : (metrics.trend === 'Estabilidade' ? 6 : 3);
+
+    const radarScores = [scoreFinanceiro, scoreComercial, scoreOperacional, scoreTributario, scoreCustos, scoreGovernanca, scoreGiro, scoreLucratividade, scoreFluxo, scoreCrescimento];
+
+    const radarJustifications = [
+        { name: 'Financeiro', score: scoreFinanceiro, note: `Liquidez Corrente de ${metrics.liquidezCorrente.toFixed(2)}. ${metrics.liquidezCorrente >= 1.5 ? 'Excelente folga para honrar passivos.' : 'Falta folga operacional de curto prazo.'}` },
+        { name: 'Comercial', score: scoreComercial, note: `Faturamento bruto de ${formatCurrency(metrics.revenue)}. Tração operacional comercial ${metrics.revenue > 100000 ? 'elevada.' : 'moderada.'}` },
+        { name: 'Operacional', score: scoreOperacional, note: `Margem EBITDA de ${metrics.ebitdaMargin.toFixed(1)}%. Eficiência operacional ${metrics.ebitdaMargin >= 15 ? 'sólida.' : 'comprimida.'}` },
+        { name: 'Tributário', score: scoreTributario, note: `Encargo fiscal consome ${metrics.taxRate.toFixed(1)}% do faturamento. ${metrics.taxRate < 10 ? 'Tributação controlada.' : 'Alíquota efetiva elevada.'}` },
+        { name: 'Custos', score: scoreCustos, note: `Custo direto (CMV/CSP) em ${metrics.cmvRate.toFixed(1)}% da receita. ${metrics.cmvRate < 45 ? 'Eficiência ótima.' : 'Insumos elevados comprimem a margem.'}` },
+        { name: 'Governança', score: scoreGovernanca, note: `Controle contábil de lançamentos. ${scoreGovernanca >= 8 ? 'Excelente nível de conciliação.' : 'Existem transações sem classificação pendentes.'}` },
+        { name: 'Capital de Giro', score: scoreGiro, note: `Capital de giro líquido de ${formatCurrency(metrics.workingCapital)}. ${metrics.workingCapital > 0 ? 'Giro superavitário.' : 'Giro deficitário.'}` },
+        { name: 'Lucratividade', score: scoreLucratividade, note: `Retorno líquido efetivo de ${metrics.netMargin.toFixed(1)}% sobre as vendas. ${metrics.netMargin >= 10 ? 'Margem saudável.' : 'Margem reduzida.'}` },
+        { name: 'Fluxo de Caixa', score: scoreFluxo, note: `Disponibilidade de caixa vs dívidas imediatas. ${metrics.caixaBancos + metrics.aplicacoes > metrics.emprestimosCp ? 'Seguro.' : 'Exposto.'}` },
+        { name: 'Crescimento', score: scoreCrescimento, note: `A tendência atual de receita é de ${metrics.trend}.` }
+    ];
+
+    // 11. PARECER FINAL DO CONSULTOR TEXTS
+    const parecerRiscosText = metrics.workingCapital < 0 || metrics.emprestimosCp > 0
+        ? 'A estrutura financeira apresenta vulnerabilidade acentuada pelo capital de giro negativo e pelo endividamento concentrado no curto prazo. Qualquer atraso nas cobranças comprometerá o fluxo de caixa.'
+        : 'Os riscos estão mapeados e sob controle, com liquidez e capital de giro apresentando solidez gerencial.';
+    
+    const parecerOportText = 'A grande oportunidade reside no aumento de eficiência de margem por meio da renegociação dos insumos de CMV e na consolidação do prazo médio de pagamento com fornecedores chave.';
+    
+    const parecerRecomendText = metrics.emprestimosCp > 0
+        ? 'Reestruturar a carteira de dívida bancária de curto prazo para obter carência e taxas reduzidas de longo prazo.'
+        : 'Investir na consolidação comercial e implantação de um orçamento base zero para controle absoluto dos custos fixos.';
+
+    const parecerConclusaoText = 'Com ações corretivas imediatas na área de capital de giro e custos operacionais diretos, a empresa tem todas as condições de consolidar seu crescimento e expandir de forma altamente lucrativa.';
+
+    // Construct full HTML
+    let html = `
+        <div class="glass-panel p-24" style="max-width: 1100px; margin: 0 auto; text-align: left; background: var(--glass-bg); border: 1px solid var(--glass-border); box-shadow: var(--shadow-lg); border-radius: 12px; font-family: 'Outfit', sans-serif;">
+            
+            <!-- HEADER -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 20px; margin-bottom: 28px; flex-wrap: wrap; gap: 16px;">
+                <div>
+                    <span class="badge" style="background: rgba(99, 102, 241, 0.2); color: var(--accent-primary); font-weight: 600; padding: 6px 12px; border-radius: 6px; font-size: 11px; letter-spacing: 0.5px;">PARECER ESTRATÉGICO EXECUTIVO CLARUS EVOLUA</span>
+                    <h2 style="font-size: 26px; font-weight: 700; margin-top: 8px; margin-bottom: 6px; color: var(--text-primary); font-family: 'Outfit', sans-serif;">Parecer de Inteligência Financeira — ${company.name}</h2>
+                    <div style="font-size: 13px; color: var(--text-secondary);">CNPJ: ${company.config?.cnpj || 'Não Informado'} | Regime: ${company.config?.regime_tributario || 'Simples Nacional'} | Período: ${metrics.periodName}</div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Atividade Setorial</div>
+                    <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: var(--success); font-weight: 600; padding: 6px 12px; border-radius: 6px; display: inline-block; margin-top: 4px; font-size: 12px;">${company.config?.tipo_atividade || 'Serviço'}</span>
+                </div>
+            </div>
+
+            <!-- 1. DIAGNÓSTICO EXECUTIVO -->
+            <div style="margin-bottom: 40px; background: rgba(255,255,255,0.01); border: 1px solid rgba(255,255,255,0.03); border-radius: 10px; padding: 24px;">
+                <h3 style="font-size: 18px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 8px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.5px;">1. Diagnóstico Executivo</h3>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 24px;">
+                    <!-- HEALTH SCORE CARD -->
+                    <div class="glass-panel" style="padding: 20px; text-align: center; background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.05); display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                        <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Saúde Empresarial</div>
+                        <div style="width: 80px; height: 80px; border-radius: 50%; border: 4px solid ${healthColor}; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; color: var(--text-primary); background: ${healthBadgeBg};">${healthScore}</div>
+                        <div style="font-weight: 600; font-size: 14px; margin-top: 8px; color: ${healthColor};">${healthClass}</div>
+                    </div>
+                    
+                    <!-- TREND & RISK CARD -->
+                    <div class="glass-panel" style="padding: 20px; background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.05); display: flex; flex-direction: column; justify-content: space-between;">
+                        <div>
+                            <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Tendência Operacional</div>
+                            <div style="font-size: 16px; font-weight: 600; color: ${metrics.trend === 'Regressão' ? '#ef4444' : (metrics.trend === 'Crescimento' ? '#10b981' : 'var(--text-secondary)')}; margin-top: 4px;">
+                                ${metrics.trend === 'Crescimento' ? '📈 Crescimento' : (metrics.trend === 'Regressão' ? '📉 Regressão' : '➡️ Estabilidade')}
+                            </div>
+                        </div>
+                        <div style="margin-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px;">
+                            <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Risco Financeiro</div>
+                            <div style="font-size: 16px; font-weight: 600; color: ${riskColor}; margin-top: 4px;">⚠️ Risco ${riskLevel}</div>
+                        </div>
+                    </div>
+
+                    <!-- DETAILED DIAGNOSTICS CARD -->
+                    <div class="glass-panel" style="padding: 20px; grid-column: span 2; background: rgba(0,0,0,0.2); border-color: rgba(255,255,255,0.05); font-size: 13px; line-height: 1.5; color: var(--text-secondary);">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div>🔌 **Geração de Caixa:** <span style="font-weight: 600; color: var(--text-primary);">${capCaixa}</span></div>
+                            <div>💼 **Capital de Giro:** <span style="font-weight: 600; color: var(--text-primary);">${sitGiro}</span></div>
+                            <div>🏦 **Endividamento:** <span style="font-weight: 600; color: var(--text-primary);">${sitEndiv}</span></div>
+                            <div>📊 **Lucratividade:** <span style="font-weight: 600; color: var(--text-primary);">${sitLucro}</span></div>
+                            <div>⚙️ **Situação Operacional:** <span style="font-weight: 600; color: var(--text-primary);">${sitOp}</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="font-size: 14px; color: var(--text-primary); line-height: 1.6; border-left: 3px solid var(--accent-primary); padding-left: 12px;">
+                    <strong>Resumo do Diagnóstico:</strong> ${summaryText}
+                </div>
+            </div>
+
+            <!-- 2. RESUMO EXECUTIVO -->
+            <div style="margin-bottom: 40px;">
+                <h3 style="font-size: 18px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 8px; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">2. Análise Comportamental e Desempenho</h3>
+                <p style="color: var(--text-primary); line-height: 1.7; font-size: 14px;">
+                    O volume de receitas brutas faturadas atingiu o montante de **${formatCurrency(metrics.revenue)}** no período. Sob a perspectiva da competência contábil, a empresa apresenta indicadores operacionais estáveis. Entretanto, quando confrontamos a receita com o custo de captação de recursos e obrigações fixas, identificamos gargalos de eficiência.
+                </p>
+                <p style="color: var(--text-secondary); line-height: 1.7; font-size: 13.5px; margin-top: 8px;">
+                    A maior pressão no fluxo líquido gerencial provém das taxas financeiras decorrentes da manutenção de passivos de giro bancário de curto prazo e da inadimplência marginal das contas a receber. A otimização desses dois indicadores alavancará a margem de contribuição direta, restaurando o caixa livre.
+                </p>
+            </div>
+
+            <!-- 3. PRINCIPAIS ALERTAS -->
+            <div style="margin-bottom: 40px;">
+                <h3 style="font-size: 18px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 8px; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">3. Principais Alertas Gerenciais</h3>
+                <div style="display: grid; grid-template-columns: 1fr; gap: 16px;">
+                    ${alerts.map(a => `
+                        <div style="background: ${a.bg}; border: 1px solid rgba(255,255,255,0.03); border-left: 4px solid ${a.color}; padding: 18px; border-radius: 8px; transition: transform 0.2s;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                <h4 style="color: var(--text-primary); font-size: 15px; font-weight: 600; margin: 0;">${a.icon} ${a.title}</h4>
+                                <span class="badge" style="background: ${a.color}; color: #fff; font-size: 10px; font-weight: 600; padding: 4px 8px; border-radius: 4px; text-transform: uppercase;">Prioridade: ${a.priority}</span>
+                            </div>
+                            <p style="font-size: 13.5px; color: var(--text-secondary); margin: 0 0 10px 0; line-height: 1.5;">${a.desc}</p>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; font-size: 12px; color: var(--text-secondary); border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">
+                                <div>💥 **Impacto:** <span style="color: var(--text-primary);">${a.impact}</span></div>
+                                <div>🔥 **Risco:** <span style="color: var(--text-primary);">${a.risk}</span></div>
+                                <div>⏳ **Urgência:** <span style="color: var(--text-primary);">${a.urgency}</span></div>
+                                <div>💡 **Indicador:** <span style="color: var(--text-primary);">${a.indicator}</span></div>
+                                <div style="grid-column: span 2;">⚠️ **Consequências:** <span style="color: var(--text-primary);">${a.consequencias}</span></div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <!-- 4. PRINCIPAIS OPORTUNIDADES -->
+            <div style="margin-bottom: 40px;">
+                <h3 style="font-size: 18px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 8px; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">4. Matriz de Oportunidades</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+                    ${opportunities.map(o => `
+                        <div class="glass-panel" style="padding: 18px; border-color: rgba(255,255,255,0.05); display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <h4 style="font-size: 14.5px; font-weight: 600; color: var(--accent-primary); margin-top: 0; margin-bottom: 8px;">💡 ${o.title}</h4>
+                                <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 12px;">${o.desc}</p>
+                            </div>
+                            <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; font-size: 12px; color: var(--text-secondary); line-height: 1.4;">
+                                <div style="margin-bottom: 4px;">🎯 **Benefícios:** <span style="color: var(--text-primary);">${o.benefits}</span></div>
+                                <div style="margin-bottom: 4px;">📈 **Impacto Esperado:** <span style="color: var(--text-primary);">${o.impact}</span></div>
+                                <div style="margin-bottom: 4px;">⚡ **Prioridade:** <span style="color: var(--text-primary);">${o.priority}</span></div>
+                                <div>🏢 **Área:** <span style="color: var(--text-primary);">${o.area}</span></div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <!-- 5. ANÁLISE GERENCIAL -->
+            <div style="margin-bottom: 40px;">
+                <h3 style="font-size: 18px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 8px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.5px;">5. Análise Gerencial e Interpretação de KPIs</h3>
+                <div style="display: grid; grid-template-columns: 1fr; gap: 20px;">
+                    ${gerencialData.map(g => `
+                        <div class="glass-panel" style="padding: 20px; border-color: rgba(255,255,255,0.05); background: rgba(0,0,0,0.15);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 12px;">
+                                <strong style="font-size: 15px; color: var(--text-primary);">${g.name}</strong>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 18px; font-weight: 700; color: var(--accent-primary);">${g.value}</span>
+                                    <span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-secondary); font-size: 10px; padding: 4px 8px; border-radius: 4px;">Status: <span style="font-weight: 600; color: var(--${g.statusClass});">${g.status}</span></span>
+                                </div>
+                            </div>
+                            <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+                                <div>
+                                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">🔍 O que significa?</div>
+                                    <div>${g.meaning}</div>
+                                    <div style="font-weight: 600; color: var(--text-primary); margin-top: 8px; margin-bottom: 4px;">📊 Referência de Mercado:</div>
+                                    <div>${g.reference}</div>
+                                </div>
+                                <div>
+                                    <div style="font-weight: 600; color: var(--text-primary); margin-bottom: 4px;">⚠️ Riscos Associados:</div>
+                                    <div>${g.risks}</div>
+                                    <div style="font-weight: 600; color: var(--accent-primary); margin-top: 8px; margin-bottom: 4px;">🛠️ O que fazer?</div>
+                                    <div style="color: var(--text-primary);">${g.action}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <!-- 6. PERGUNTAS QUE TODO EMPRESÁRIO FARIA -->
+            <div style="margin-bottom: 40px;">
+                <h3 style="font-size: 18px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 8px; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">6. Perguntas que Todo Empresário Faria (Respondidas pela IA)</h3>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    ${faqs.map((f, idx) => `
+                        <div class="glass-panel" style="padding: 16px; border-color: rgba(255,255,255,0.04); background: rgba(0,0,0,0.15);">
+                            <div style="font-weight: 600; color: var(--text-primary); font-size: 14px; margin-bottom: 6px; display: flex; gap: 8px; align-items: center;">
+                                <span style="background: var(--accent-primary); color: #fff; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px;">Q</span>
+                                ${f.q}
+                            </div>
+                            <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; padding-left: 28px;">
+                                ${f.a}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <!-- 7. PLANO DE AÇÃO ESTRATÉGICO -->
+            <div style="margin-bottom: 40px;">
+                <h3 style="font-size: 18px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 8px; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">7. Plano de Ação Estratégico</h3>
+                <div style="overflow-x: auto; background: rgba(0,0,0,0.15); border: 1px solid var(--glass-border); border-radius: 8px;">
+                    <table class="report-table" style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                        <thead>
+                            <tr style="background: rgba(99,102,241,0.15); color: var(--text-primary); text-align: left;">
+                                <th style="padding: 12px 10px; border: 1px solid var(--glass-border);">Prioridade / Prazo</th>
+                                <th style="padding: 12px 10px; border: 1px solid var(--glass-border);">Ação e Escopo</th>
+                                <th style="padding: 12px 10px; border: 1px solid var(--glass-border);">Responsável</th>
+                                <th style="padding: 12px 10px; border: 1px solid var(--glass-border);">Impacto em KPI</th>
+                                <th style="padding: 12px 10px; border: 1px solid var(--glass-border);">Resultado Esperado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${cards.map(c => `
+                                <tr style="border-bottom: 1px solid var(--glass-border); color: var(--text-secondary);">
+                                    <td style="padding: 12px 10px; border: 1px solid var(--glass-border); font-weight: 600; color: var(--text-primary);">
+                                        <div>${c.priority}</div>
+                                        <div style="font-size: 10px; color: var(--text-secondary); margin-top: 4px;">📅 ${c.prazo}</div>
+                                    </td>
+                                    <td style="padding: 12px 10px; border: 1px solid var(--glass-border);">
+                                        <strong style="color: var(--text-primary);">${c.title}</strong>
+                                        <div style="font-size: 11px; margin-top: 4px;">${c.description}</div>
+                                    </td>
+                                    <td style="padding: 12px 10px; border: 1px solid var(--glass-border);">${c.responsible}</td>
+                                    <td style="padding: 12px 10px; border: 1px solid var(--glass-border); font-weight: 500; color: var(--accent-primary);">${c.indicators}</td>
+                                    <td style="padding: 12px 10px; border: 1px solid var(--glass-border);">${c.objective}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 8. GERAÇÃO AUTOMÁTICA DOS CARDS (ACOMPANHAMENTO) -->
+            <div style="margin-bottom: 40px;">
+                <h3 style="font-size: 18px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 8px; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">8. Cards de Ações Integradas (Acompanhamento Interativo)</h3>
+                <p style="font-size: 13.5px; color: var(--text-secondary); margin-bottom: 16px;">Toda ação recomendada gerou um **Card Estratégico** interativo. Você pode atualizar o status do card diretamente na plataforma para acompanhar sua governança e execução.</p>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                    ${cards.map(c => `
+                        <div class="glass-panel" style="padding: 18px; border-color: rgba(255,255,255,0.05); background: rgba(15, 23, 42, 0.4); display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid ${c.priority.includes('Crítico') ? '#ef4444' : (c.priority.includes('Alto') ? '#f59e0b' : '#3b82f6')};">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; color: var(--accent-primary);">${c.category}</span>
+                                    <span style="font-size: 10px; font-weight: 600; color: var(--text-secondary);">${c.prazo}</span>
+                                </div>
+                                <h4 style="font-size: 14.5px; font-weight: 600; color: var(--text-primary); margin: 0 0 6px 0;">${c.title}</h4>
+                                <p style="font-size: 12px; color: var(--text-secondary); line-height: 1.4; margin: 0 0 10px 0;">${c.description}</p>
+                                <div style="font-size: 11px; color: var(--text-secondary); background: rgba(0,0,0,0.15); padding: 8px; border-radius: 4px; margin-bottom: 12px;">
+                                    🎯 **Objetivo:** ${c.objective}
+                                </div>
+                            </div>
+                            <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                                <div style="font-size: 11px; color: var(--text-secondary);">
+                                    👤 **Resp:** ${c.responsible.split(' ')[0]}
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <label style="font-size: 11px; color: var(--text-secondary); margin-bottom: 0;">Status:</label>
+                                    <select onchange="updateStrategicCardStatus('${compId}', ${yr}, ${m !== null ? m : 'null'}, '${c.id}', this.value)" style="padding: 4px 8px; font-size: 11px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 4px; color: var(--text-primary);">
+                                        <option value="Não iniciado" ${c.status === 'Não iniciado' ? 'selected' : ''}>Não iniciado</option>
+                                        <option value="Em andamento" ${c.status === 'Em andamento' ? 'selected' : ''}>Em andamento</option>
+                                        <option value="Concluído" ${c.status === 'Concluído' ? 'selected' : ''}>Concluído</option>
+                                        <option value="Cancelado" ${c.status === 'Cancelado' ? 'selected' : ''}>Cancelado</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <!-- 9. EVOLUÇÃO HISTÓRICA -->
+            <div style="margin-bottom: 40px;">
+                <h3 style="font-size: 18px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 8px; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">9. Evolução Histórica Comparativa</h3>
+                <div style="overflow-x: auto; background: rgba(0,0,0,0.15); border: 1px solid var(--glass-border); border-radius: 8px;">
+                    <table class="report-table" style="width: 100%; border-collapse: collapse; font-size: 12px; text-align: left;">
+                        <thead>
+                            <tr style="background: rgba(255,255,255,0.03); color: var(--text-primary);">
+                                <th style="padding: 10px; border: 1px solid var(--glass-border);">Mês</th>
+                                <th style="padding: 10px; border: 1px solid var(--glass-border);">Receita Bruta</th>
+                                <th style="padding: 10px; border: 1px solid var(--glass-border);">EBITDA</th>
+                                <th style="padding: 10px; border: 1px solid var(--glass-border);">Margem EBITDA</th>
+                                <th style="padding: 10px; border: 1px solid var(--glass-border);">Capital de Giro</th>
+                                <th style="padding: 10px; border: 1px solid var(--glass-border);">Endividamento</th>
+                                <th style="padding: 10px; border: 1px solid var(--glass-border);">Saúde Geral</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${evolutionRowsHtml}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 10. RADAR ESTRATÉGICO -->
+            <div style="margin-bottom: 40px;">
+                <h3 style="font-size: 18px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 8px; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.5px;">10. Radar de Maturidade Estratégica</h3>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 24px; flex-wrap: wrap;">
+                    <!-- RADAR CANVAS -->
+                    <div class="glass-panel" style="padding: 16px; border-color: rgba(255,255,255,0.04); background: rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; height: 350px;">
+                        <canvas id="parecerRadarChart_${m !== null ? 'mensal' : 'anual'}" style="max-height: 320px;"></canvas>
+                    </div>
+
+                    <!-- JUSTIFICATIONS -->
+                    <div style="max-height: 350px; overflow-y: auto; background: rgba(0,0,0,0.15); border: 1px solid var(--glass-border); border-radius: 8px; padding: 12px 16px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 11.5px; text-align: left;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.06); color: var(--text-primary); font-weight: 600;">
+                                    <th style="padding: 8px 4px;">Dimensão</th>
+                                    <th style="padding: 8px 4px; text-align: center;">Nota</th>
+                                    <th style="padding: 8px 4px;">Justificativa Operacional</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${radarJustifications.map(j => `
+                                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.03); color: var(--text-secondary);">
+                                        <td style="padding: 8px 4px; font-weight: 600; color: var(--text-primary);">${j.name}</td>
+                                        <td style="padding: 8px 4px; text-align: center; font-weight: 700; color: var(--accent-primary);">${j.score}/10</td>
+                                        <td style="padding: 8px 4px; line-height: 1.4;">${j.note}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 11. PARECER FINAL DO CONSULTOR -->
+            <div style="background: rgba(99,102,241,0.05); border: 1px solid rgba(99,102,241,0.15); border-radius: 8px; padding: 24px;">
+                <h3 style="font-size: 16px; font-weight: 600; color: var(--accent-primary); margin-top: 0; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;">✒️ Parecer Final do Consultor</h3>
+                
+                <div style="font-size: 13.5px; color: var(--text-primary); line-height: 1.6;">
+                    <p style="margin-bottom: 12px;">Prezado conselho de administração e diretoria executiva,</p>
+                    <p style="margin-bottom: 12px;">Com base na auditoria consolidada dos dados do período, a empresa demonstra excelente resiliência comercial. No entanto, o **risco de liquidez** associado ao capital de giro negativo exige intervenção cirúrgica imediata da gerência para alongar prazos de curto prazo.</p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05); padding: 12px 0;">
+                        <div>
+                            <strong>Principais Ameaças:</strong><br>
+                            <span style="color: var(--text-secondary); font-size: 12.5px;">${parecerRiscosText}</span>
+                        </div>
+                        <div>
+                            <strong>Oportunidades de Escala:</strong><br>
+                            <span style="color: var(--text-secondary); font-size: 12.5px;">${parecerOportText}</span>
+                        </div>
+                    </div>
+                    
+                    <p style="margin-bottom: 12px;">**Recomendação prioritária:** ${parecerRecomendText}</p>
+                    <p style="margin-bottom: 12px;">**Visão para o próximo período:** Com a implantação e acompanhamento diário dos Cards de Ação Estratégicos propostos, a diretoria reequilibrará as contas de fornecedores e a necessidade de capital de giro circulante líquido. ${parecerConclusaoText}</p>
+                </div>
+                
+                <div style="margin-top: 24px; text-align: right; font-size: 12px; color: var(--text-secondary); border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px;">
+                    ✒️ <strong>Clarus Consultoria Estratégica</strong> &bull; Gestão & Finanças Empresariais Premium
+                </div>
+            </div>
+            
+        </div>
+    `;
+
+    return { html, scores: radarScores };
+}
+
 function renderParecerMensal() {
     const container = document.getElementById('parecerMensalContainer');
     if (!container) return;
@@ -2007,13 +3106,11 @@ function renderParecerMensal() {
     const yr = EFO_Active_DRE_Year;
     const m = EFO_Active_Parecer_Month;
     const d = calculateDREData(yr);
-    const bData = calculateBalancoData(yr);
-
-    const monthsFull = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-    const monthName = monthsFull[m];
 
     const R_BRUTA = sumArrays(d['dre.receita_bruta.produtos'], d['dre.receita_bruta.servicos'], d['dre.receita_bruta.outras']);
     const monthRevenue = R_BRUTA[m];
+    const monthsFull = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const monthName = monthsFull[m];
 
     if (monthRevenue === 0) {
         container.innerHTML = `
@@ -2026,172 +3123,13 @@ function renderParecerMensal() {
         return;
     }
 
-    const DEDUCOES = sumArrays(d['dre.deducoes.impostos'], d['dre.deducoes.devolucoes'], d['dre.deducoes.descontos']);
-    const monthDeducoes = DEDUCOES[m];
-    const monthLiquida = monthRevenue - monthDeducoes;
+    const report = buildStrategicReport(compId, yr, m);
+    container.innerHTML = report.html;
     
-    const CUSTOS = sumArrays(d['dre.custos.mercadorias'], d['dre.custos.producao'], d['dre.custos.servicos'], d['dre.custos.operacionais']);
-    const monthCustos = CUSTOS[m];
-    const monthLBruto = monthLiquida - monthCustos;
-
-    const D_COM = sumArrays(d['dre.despesas_comercial.comissao'], d['dre.despesas_comercial.trafego'], d['dre.despesas_comercial.marketing'], d['dre.despesas_comercial.viagens'], d['dre.despesas_comercial.transporte_logistica'], d['dre.despesas_comercial.outras']);
-    const D_PES = sumArrays(d['dre.despesas_pessoal.salarios'], d['dre.despesas_pessoal.inss'], d['dre.despesas_pessoal.fgts'], d['dre.despesas_pessoal.beneficios'], d['dre.despesas_pessoal.rescisoes']);
-    const D_ADM = sumArrays(d['dre.despesas_administrativas.pro_labore'], d['dre.despesas_administrativas.salarios'], d['dre.despesas_administrativas.encargos'], d['dre.despesas_administrativas.aluguel'], d['dre.despesas_administrativas.outras']);
-    const D_EST = sumArrays(d['dre.despesas_estrutura.manutencao'], d['dre.despesas_estrutura.reparos'], d['dre.despesas_estrutura.limpeza']);
-    const D_VEI = sumArrays(d['dre.despesas_veiculos.combustivel'], d['dre.despesas_veiculos.manutencao'], d['dre.despesas_veiculos.seguro'], d['dre.despesas_veiculos.ipva']);
-    const D_FIN = sumArrays(d['dre.despesas_financeiras.tarifas'], d['dre.despesas_financeiras.juros'], d['dre.despesas_financeiras.iof']);
-    const R_FIN = sumArrays(d['dre.receitas_financeiras.rendimentos'], d['dre.receitas_financeiras.juros_recebidos']);
-    const D_TOTAL = sumArrays(D_COM, D_PES, D_ADM, D_EST, D_VEI, D_FIN);
-
-    const monthEbitda = monthLBruto - D_TOTAL[m] + R_FIN[m];
-    const ebitdaMargin = monthRevenue > 0 ? (monthEbitda / monthRevenue) * 100 : 0;
-
-    const monthCMV = d['dre.custos.mercadorias'][m];
-    const monthImpostos = d['dre.deducoes.impostos'][m];
-
-    const caixaBancos = bData['balanco.ativo_circulante.caixa_bancos'][m];
-    const aplicacoes = bData['balanco.ativo_circulante.aplicacoes'][m];
-    const clientesReceber = bData['balanco.ativo_circulante.clientes_receber'][m];
-    const estoques = bData['balanco.ativo_circulante.estoques'][m];
-    const adiantamentos = bData['balanco.ativo_circulante.adiantamentos'][m];
-    const tributosRecuperar = bData['balanco.ativo_circulante.tributos_recuperar'][m];
-    const ATIVO_CIRC = caixaBancos + aplicacoes + clientesReceber + estoques + adiantamentos + tributosRecuperar;
-
-    const fornecedores = bData['balanco.passivo_circulante.fornecedores'][m];
-    const emprestimosCp = bData['balanco.passivo_circulante.emprestimos_cp'][m];
-    const obrigacoesTrab = bData['balanco.passivo_circulante.obrigacoes_trab'][m];
-    const obrigacoesTrib = bData['balanco.passivo_circulante.obrigacoes_trib'][m];
-    const passivoCircOutras = bData['balanco.passivo_circulante.outras'][m];
-    const PASSIVO_CIRC = fornecedores + emprestimosCp + obrigacoesTrab + obrigacoesTrib + passivoCircOutras;
-
-    const segment = company.config.cnae_principal === '1813099' ? 'Indústria Gráfica / Editorial (B2B)' : (company.config.tipo_atividade === 'Indústria' ? 'Indústria Geral' : (company.config.tipo_atividade === 'Comércio' ? 'Comércio' : 'Prestação de Serviços'));
-    const companyCNPJ = company.config.cnpj || 'Não Informado';
-    const companyRegime = company.config.regime_tributario || 'Simples Nacional';
-    const companyActivity = company.config.tipo_atividade || 'Serviço';
-    const companyName = company.name || 'Empresa Ativa';
-
-    let evolStatus = "Em Forte Evolução Operacional";
-    if (emprestimosCp > aplicacoes + caixaBancos) {
-        evolStatus = "Evoluindo com Alavancagem e Risco de Liquidez";
-    } else if (monthEbitda <= 0) {
-        evolStatus = "Em Situação de Risco Operacional / Prejuízo";
-    }
-
-    const cmvRate = monthRevenue > 0 ? (monthCMV / monthRevenue) * 100 : 0;
-    const taxRate = monthRevenue > 0 ? (monthImpostos / monthRevenue) * 100 : 0;
-
-    let html = `
-        <div class="glass-panel p-24" style="max-width: 1000px; margin: 0 auto; text-align: left; background: var(--glass-bg); border: 1px solid var(--glass-border); box-shadow: var(--shadow-lg); border-radius: 12px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 20px; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
-                <div>
-                    <span class="badge" style="background: rgba(99, 102, 241, 0.2); color: var(--accent-primary); font-weight: 600; padding: 6px 12px; border-radius: 6px; font-size: 11px;">PARECER ESTRATÉGICO MENSAL EXECUTIVO</span>
-                    <h2 style="font-size: 24px; font-weight: 700; margin-top: 8px; margin-bottom: 4px; color: var(--text-primary); font-family: 'Outfit', sans-serif;">Parecer Gerencial — ${companyName}</h2>
-                    <div style="font-size: 13px; color: var(--text-secondary);">CNPJ: ${companyCNPJ} | Regime: ${companyRegime} | Referência: ${monthName} de ${yr}</div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;">Atividade Principal</div>
-                    <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: var(--success); font-weight: 600; padding: 6px 12px; border-radius: 6px; display: inline-block; margin-top: 4px; font-size: 12px;">${companyActivity}</span>
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
-                <div class="glass-panel" style="padding: 16px; background: rgba(0,0,0,0.15); border-color: rgba(255,255,255,0.03);">
-                    <div style="font-size: 12px; color: var(--text-secondary);">Segmento de Atuação</div>
-                    <div style="font-weight: 600; color: var(--text-primary); margin-top: 4px; font-size: 14px;">${segment}</div>
-                </div>
-                <div class="glass-panel" style="padding: 16px; background: rgba(0,0,0,0.15); border-color: rgba(255,255,255,0.03);">
-                    <div style="font-size: 12px; color: var(--text-secondary);">Faturamento do Mês</div>
-                    <div style="font-weight: 600; color: var(--text-primary); margin-top: 4px; font-size: 14px;">${formatCurrency(monthRevenue)}</div>
-                </div>
-                <div class="glass-panel" style="padding: 16px; background: rgba(0,0,0,0.15); border-color: rgba(255,255,255,0.03);">
-                    <div style="font-size: 12px; color: var(--text-secondary);">Modelo de Negócio</div>
-                    <div style="font-weight: 600; color: var(--text-primary); margin-top: 4px; font-size: 14px;">${companyActivity === 'Indústria' ? 'Produção Industrial B2B' : (companyActivity === 'Comércio' ? 'Revenda de Mercadorias' : 'Prestação de Serviços B2B')}</div>
-                </div>
-                <div class="glass-panel" style="padding: 16px; background: rgba(0,0,0,0.15); border-color: rgba(255,255,255,0.03);">
-                    <div style="font-size: 12px; color: var(--text-secondary);">Desafio Financeiro Principal</div>
-                    <div style="font-weight: 600; color: var(--text-primary); margin-top: 4px; font-size: 14px;">${emprestimosCp > 100000 ? 'Equalização do Passivo Bancário' : 'Gestão de Capital de Giro'}</div>
-                </div>
-            </div>
-
-            <div style="margin-bottom: 30px;">
-                <h3 style="font-size: 16px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 6px; margin-bottom: 16px;">1. RESUMO EXECUTIVO (Visão do Mês)</h3>
-                <p style="color: var(--text-primary); line-height: 1.6; margin-bottom: 16px; font-size: 14px;">
-                    Neste mês de **${monthName}**, sob a perspectiva estratégica da diretoria, a empresa encontra-se **${evolStatus}**. O desempenho em volume de negócios reflete a tração comercial no período. Contudo, o modelo financeiro do mês apresenta uma distorção entre o lucro escriturado (competência) e a geração de caixa líquido livre, o que exigiu tomadas de capital de terceiros significativas de curto prazo.
-                </p>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex-wrap: wrap;">
-                    <div style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.15); padding: 16px; border-radius: 8px;">
-                        <h4 style="color: var(--danger); margin-top: 0; font-size: 13px; font-weight: 600; margin-bottom: 12px;">🔴 Principais Alertas</h4>
-                        <ul style="margin: 0; padding-left: 18px; font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
-                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Contratação de Dívida Relevante:</strong> O passivo de curto prazo fechou o mês em ${formatCurrency(emprestimosCp)}, gerando pressão em juros e amortizações imediatas.</li>
-                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Margem Operacional Elevada:</strong> EBITDA de ${ebitdaMargin.toFixed(1)}% sugere forte possibilidade de custos operacionais e CMV ainda pendentes de conciliação no mês.</li>
-                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Carga Tributária Efetiva:</strong> Recolhimento de impostos na ordem de ${taxRate.toFixed(2)}% sobre a receita bruta mensal.</li>
-                        </ul>
-                    </div>
-                    <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.15); padding: 16px; border-radius: 8px;">
-                        <h4 style="color: var(--success); margin-top: 0; font-size: 13px; font-weight: 600; margin-bottom: 12px;">🟢 Pontos Positivos</h4>
-                        <ul style="margin: 0; padding-left: 18px; font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
-                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Tração Comercial Mensal:</strong> Volume faturado no mês de ${formatCurrency(monthRevenue)} demonstra excelente fôlego de vendas.</li>
-                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Geração Potencial de Caixa:</strong> EBITDA de ${formatCurrency(monthEbitda)} demonstra capacidade intrínseca de gerar valor da operação principal.</li>
-                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Overhead (Fixo):</strong> Gastos estruturais controlados no mês, impulsionando a alavancagem.</li>
-                        </ul>
-                    </div>
-                </div>
-                <div style="margin-top: 16px; background: rgba(99,102,241,0.06); border: 1px dashed rgba(99,102,241,0.25); padding: 12px 16px; border-radius: 8px; font-size: 13px; color: var(--text-primary);">
-                    🎯 <strong>Prioridade Estratégica para o Próximo Período:</strong> Auditoria completa dos custos e conciliação total de empréstimos e despesas industriais do mês.
-                </div>
-            </div>
-
-            <div style="margin-bottom: 30px;">
-                <h3 style="font-size: 16px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 6px; margin-bottom: 16px;">2. ANÁLISE ECONÔMICA (DRE do Mês)</h3>
-                <p style="color: var(--text-secondary); line-height: 1.6; font-size: 13px; margin-bottom: 12px;">
-                    O faturamento bruto de ${formatCurrency(monthRevenue)} no mês é detalhado abaixo na perspectiva econômica:
-                </p>
-                <ul style="margin: 0 0 16px 0; padding-left: 20px; font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
-                    <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Custos de Mercadorias (CMV):</strong> ${formatCurrency(monthCMV)} (${cmvRate.toFixed(1)}% do faturamento). Se muito baixa, indica custos do mês não transitados nas contas bancárias.</li>
-                    <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Estrutura de Aluguel e Despesas Fixas:</strong> Custo com aluguel administrativo de ${formatCurrency(d['dre.despesas_administrativas.aluguel'][m])} no mês.</li>
-                    <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Lucratividade Econômica do Mês:</strong> EBITDA de ${formatCurrency(monthEbitda)} com margem operacional de ${ebitdaMargin.toFixed(1)}%.</li>
-                </ul>
-                <div style="font-style: italic; font-size: 13px; color: var(--text-primary); background: rgba(0,0,0,0.1); padding: 12px 16px; border-radius: 8px; border-left: 3px solid var(--accent-secondary);">
-                    💡 <strong>Diagnóstico do Mês:</strong> “A aparente alta rentabilidade do mês no DRE contrapõe-se à necessidade de conciliar contas de despesas variáveis e folha de pagamentos para obter a real margem de contribuição.”
-                </div>
-            </div>
-
-            <div style="margin-bottom: 30px;">
-                <h3 style="font-size: 16px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 6px; margin-bottom: 16px;">3. ANÁLISE FINANCEIRA (Balanço & Liquidez no Mês)</h3>
-                <p style="color: var(--text-secondary); line-height: 1.6; font-size: 13px; margin-bottom: 12px;">
-                    A análise do balanço ao final deste mês indica:
-                </p>
-                <ul style="margin: 0 0 16px 0; padding-left: 20px; font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
-                    <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Saldo de Caixa e Aplicações:</strong> Encerrou o mês em ${formatCurrency(aplicacoes + caixaBancos)}.</li>
-                    <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Endividamento Bancário de CP:</strong> Fechou em ${formatCurrency(emprestimosCp)}.</li>
-                    <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Liquidez Corrente:</strong> Relação entre ativos circulantes (${formatCurrency(ATIVO_CIRC)}) e passivos circulantes (${formatCurrency(PASSIVO_CIRC)}).</li>
-                </ul>
-                <div style="font-style: italic; font-size: 13px; color: var(--text-primary); background: rgba(0,0,0,0.1); padding: 12px 16px; border-radius: 8px; border-left: 3px solid var(--danger);">
-                    ⚠️ <strong>Alerta do Mês:</strong> “A necessidade de capital de giro deve ser monitorada face ao volume de financiamentos bancários ativos neste período.”
-                </div>
-            </div>
-
-            <div style="margin-bottom: 30px;">
-                <h3 style="font-size: 16px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 6px; margin-bottom: 16px;">4. ANÁLISE OPERACIONAL (EFO Mensal)</h3>
-                <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: var(--text-secondary); line-height: 1.6;">
-                    <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Comissões de Vendas:</strong> Total no mês de ${formatCurrency(d['dre.despesas_comercial.comissao'][m])}.</li>
-                    <li style="margin-bottom: 4px;"><strong style="color:var(--text-primary);">Transporte e Logística:</strong> Despesas operacionais do mês de ${formatCurrency(d['dre.despesas_comercial.transporte_logistica'][m])}.</li>
-                </ul>
-            </div>
-
-            <div>
-                <h3 style="font-size: 16px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 6px; margin-bottom: 16px;">5. PARECER FINAL DO CONSULTOR PARA O MÊS</h3>
-                <p style="color: var(--text-primary); line-height: 1.6; font-size: 13px;">
-                    Para o mês de **${monthName}**, destaca-se a robustez comercial, mas o endividamento bancário de curto prazo de ${formatCurrency(emprestimosCp)} requer acompanhamento diário. Recomenda-se focar na conciliação dos lançamentos manuais pendentes para obter os indicadores EFO de rentabilidade real do mês.
-                </p>
-                <div style="margin-top: 20px; text-align: right; font-size: 12px; color: var(--text-secondary); border-top: 1px solid var(--glass-border); padding-top: 12px;">
-                    ✒️ <strong>Clarus Consultoria Estratégica</strong> &bull; Parecer Executivo Mensal
-                </div>
-            </div>
-        </div>
-    `;
-
-    container.innerHTML = html;
+    // Defer chart rendering to make sure canvas is in DOM
+    setTimeout(() => {
+        initParecerRadarChart(`parecerRadarChart_mensal`, report.scores);
+    }, 100);
 }
 
 function renderParecerAnual() {
@@ -2236,7 +3174,6 @@ function renderParecerAnual() {
 
     const yr = EFO_Active_DRE_Year;
     const d = calculateDREData(yr);
-    const bData = calculateBalancoData(yr);
 
     const R_BRUTA = sumArrays(d['dre.receita_bruta.produtos'], d['dre.receita_bruta.servicos'], d['dre.receita_bruta.outras']);
     const totalRevenue = R_BRUTA.reduce((a, b) => a + b, 0);
@@ -2252,110 +3189,14 @@ function renderParecerAnual() {
         return;
     }
 
-    const DEDUCOES = sumArrays(d['dre.deducoes.impostos'], d['dre.deducoes.devolucoes'], d['dre.deducoes.descontos']);
-    const R_LIQUIDA = R_BRUTA.map((v, i) => v - DEDUCOES[i]);
-    const CUSTOS = sumArrays(d['dre.custos.mercadorias'], d['dre.custos.producao'], d['dre.custos.servicos'], d['dre.custos.operacionais']);
-    const L_BRUTO = R_LIQUIDA.map((v, i) => v - CUSTOS[i]);
-
-    const D_COM = sumArrays(d['dre.despesas_comercial.comissao'], d['dre.despesas_comercial.trafego'], d['dre.despesas_comercial.marketing'], d['dre.despesas_comercial.viagens'], d['dre.despesas_comercial.transporte_logistica'], d['dre.despesas_comercial.outras']);
-    const D_PES = sumArrays(d['dre.despesas_pessoal.salarios'], d['dre.despesas_pessoal.inss'], d['dre.despesas_pessoal.fgts'], d['dre.despesas_pessoal.beneficios'], d['dre.despesas_pessoal.rescisoes']);
-    const D_ADM = sumArrays(d['dre.despesas_administrativas.pro_labore'], d['dre.despesas_administrativas.salarios'], d['dre.despesas_administrativas.encargos'], d['dre.despesas_administrativas.aluguel'], d['dre.despesas_administrativas.outras']);
-    const D_EST = sumArrays(d['dre.despesas_estrutura.manutencao'], d['dre.despesas_estrutura.reparos'], d['dre.despesas_estrutura.limpeza']);
-    const D_VEI = sumArrays(d['dre.despesas_veiculos.combustivel'], d['dre.despesas_veiculos.manutencao'], d['dre.despesas_veiculos.seguro'], d['dre.despesas_veiculos.ipva']);
-    const D_FIN = sumArrays(d['dre.despesas_financeiras.tarifas'], d['dre.despesas_financeiras.juros'], d['dre.despesas_financeiras.iof']);
-    const R_FIN = sumArrays(d['dre.receitas_financeiras.rendimentos'], d['dre.receitas_financeiras.juros_recebidos']);
-    const D_TOTAL = sumArrays(D_COM, D_PES, D_ADM, D_EST, D_VEI, D_FIN);
-
-    const EBITDA = L_BRUTO.map((v, i) => v - D_TOTAL[i] + R_FIN[i]);
-    const totalEBITDA = EBITDA.reduce((a, b) => a + b, 0);
-    const ebitdaMargin = totalRevenue > 0 ? (totalEBITDA / totalRevenue) * 100 : 0;
-
-    const totalCMV = d['dre.custos.mercadorias'].reduce((a, b) => a + b, 0);
-    const totalImpostos = d['dre.deducoes.impostos'].reduce((a, b) => a + b, 0);
+    const report = buildStrategicReport(compId, yr, null);
+    container.innerHTML = report.html;
     
-    const activeMonthIndices = [];
-    for (let m = 0; m < 12; m++) { if (R_BRUTA[m] > 0) activeMonthIndices.push(m); }
-    const lastActiveMonth = activeMonthIndices.length > 0 ? activeMonthIndices[activeMonthIndices.length - 1] : 0;
-    
-    const emprestimosCp = bData['balanco.passivo_circulante.emprestimos_cp'][lastActiveMonth];
-    const segment = company.config.cnae_principal === '1813099' ? 'Indústria Gráfica / Editorial (B2B)' : (company.config.tipo_atividade === 'Indústria' ? 'Indústria Geral' : (company.config.tipo_atividade === 'Comércio' ? 'Comércio' : 'Prestação de Serviços'));
-    const companyCNPJ = company.config.cnpj || 'Não Informado';
-    const companyRegime = company.config.regime_tributario || 'Simples Nacional';
-    const companyActivity = company.config.tipo_atividade || 'Serviço';
-    const companyName = company.name || 'Empresa Ativa';
-
-    const cmvRate = totalRevenue > 0 ? (totalCMV / totalRevenue) * 100 : 0;
-    const taxRate = totalRevenue > 0 ? (totalImpostos / totalRevenue) * 100 : 0;
-
-    let html = `
-        <div class="glass-panel p-24" style="max-width: 1000px; margin: 0 auto; text-align: left; background: var(--glass-bg); border: 1px solid var(--glass-border); box-shadow: var(--shadow-lg); border-radius: 12px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 20px; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
-                <div>
-                    <span class="badge" style="background: rgba(99, 102, 241, 0.2); color: var(--accent-primary); font-weight: 600; padding: 6px 12px; border-radius: 6px; font-size: 11px;">PARECER ESTRATÉGICO ANUAL EXECUTIVO</span>
-                    <h2 style="font-size: 24px; font-weight: 700; margin-top: 8px; margin-bottom: 4px; color: var(--text-primary); font-family: 'Outfit', sans-serif;">Parecer Gerencial — ${companyName}</h2>
-                    <div style="font-size: 13px; color: var(--text-secondary);">CNPJ: ${companyCNPJ} | Regime: ${companyRegime} | Ano do Exercício: ${yr}</div>
-                </div>
-            </div>
-
-            <div style="margin-bottom: 30px;">
-                <h3 style="font-size: 16px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 6px; margin-bottom: 16px;">1. RESUMO EXECUTIVO (Perspectiva Anual)</h3>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; flex-wrap: wrap;">
-                    <div style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.15); padding: 16px; border-radius: 8px;">
-                        <h4 style="color: var(--danger); margin-top: 0; font-size: 13px; font-weight: 600; margin-bottom: 12px;">🔴 Principais Alertas</h4>
-                        <ul style="margin: 0; padding-left: 18px; font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
-                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Contratação de Dívida Relevante:</strong> Aumento do passivo de curto prazo para ${formatCurrency(emprestimosCp)}, gerando pressão em juros e amortizações.</li>
-                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Margem Operacional Superdimensionada:</strong> EBITDA de ${ebitdaMargin.toFixed(1)}% sugere forte possibilidade de custos industriais e CMV ainda pendentes de lançamento ou conciliação.</li>
-                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Carga Tributária Irreal no Simples:</strong> Recolhimento de impostos na ordem de ${taxRate.toFixed(2)}% sobre a receita acumulada, incompatível com o faturamento de ${formatCurrency(totalRevenue)}.</li>
-                        </ul>
-                    </div>
-                    <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.15); padding: 16px; border-radius: 8px;">
-                        <h4 style="color: var(--success); margin-top: 0; font-size: 13px; font-weight: 600; margin-bottom: 12px;">🟢 Pontos Positivos</h4>
-                        <ul style="margin: 0; padding-left: 18px; font-size: 12px; color: var(--text-secondary); line-height: 1.6;">
-                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Forte Tração Comercial:</strong> Volume faturado acumulado de ${formatCurrency(totalRevenue)}.</li>
-                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Geração Potencial de Caixa:</strong> EBITDA gerado de ${formatCurrency(totalEBITDA)} demonstra forte capacidade intrínseca de gerar valor da operação principal.</li>
-                            <li style="margin-bottom: 6px;"><strong style="color:var(--text-primary);">Baixo Nível de Despesas Fixas Estruturais:</strong> Gastos administrativos controlados.</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <div style="margin-bottom: 30px;">
-                <h3 style="font-size: 16px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 6px; margin-bottom: 16px;">7. PLANO DE AÇÃO GERENCIAL (Perspectiva Anual)</h3>
-                <div style="overflow-x: auto;">
-                    <table class="report-table" style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                        <thead>
-                            <tr style="background: rgba(99,102,241,0.1); color: var(--text-primary); text-align: left;">
-                                <th style="padding: 10px; border: 1px solid var(--glass-border);">Prioridade</th>
-                                <th style="padding: 10px; border: 1px solid var(--glass-border);">Problema Identificado</th>
-                                <th style="padding: 10px; border: 1px solid var(--glass-border);">Ação Recomendada</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td style="padding: 10px; border: 1px solid var(--glass-border); font-weight: bold; color: var(--danger);">1. Urgente</td>
-                                <td style="padding: 10px; border: 1px solid var(--glass-border); color: var(--text-primary);">Dívida de curto prazo (${formatCurrency(emprestimosCp)}) superior ao saldo de caixa.</td>
-                                <td style="padding: 10px; border: 1px solid var(--glass-border); color: var(--text-secondary);">Renegociar vencimento dos contratos e converter para LP.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div>
-                <h3 style="font-size: 16px; font-weight: 600; color: var(--accent-primary); border-bottom: 2px solid rgba(99,102,241,0.1); padding-bottom: 6px; margin-bottom: 16px;">8. PARECER FINAL DO CONSULTOR</h3>
-                <p style="color: var(--text-primary); line-height: 1.6; font-size: 13px;">
-                    Como consultor empresarial sênior da Clarus, o que mais me <strong>preocupa</strong> é a velocidade do endividamento da empresa para financiar sua escalabilidade associada a uma aparente lacuna no registro de custos reais na DRE. O empresário deve decidir, imediatamente, sobre a auditoria das contas de conciliação bancária para lançar os custos ainda omitidos e estruturar um cronograma realista de fluxo de caixa projetado para o exercício.
-                </p>
-                <div style="margin-top: 20px; text-align: right; font-size: 12px; color: var(--text-secondary); border-top: 1px solid var(--glass-border); padding-top: 12px;">
-                    ✒️ <strong>Clarus Consultoria Estratégica</strong> &bull; Gestão & Finanças Empresariais Premium
-                </div>
-            </div>
-        </div>
-    `;
-
-    container.innerHTML = html;
+    // Defer chart rendering to make sure canvas is in DOM
+    setTimeout(() => {
+        initParecerRadarChart(`parecerRadarChart_anual`, report.scores);
+    }, 100);
 }
-
 function renderConciliationTable() {
     const tbody = document.getElementById('conciliationTbody');
     const badge = document.getElementById('pendingCount');
