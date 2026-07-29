@@ -1949,6 +1949,8 @@ function getStrategicCards(compId, yr, m, metrics) {
         const cached = localStorage.getItem(key);
         if (cached) {
             cards = JSON.parse(cached);
+            // Filter out old legacy cards from previous sessions to prevent checklist property undefined crashes
+            cards = cards.filter(c => c && c.id && c.id.startsWith('CARD-'));
         }
     } catch(e) {
         console.error(e);
@@ -5474,8 +5476,8 @@ window.renderProjetos = function() {
                         Nenhum card estratégico encontrado para os filtros selecionados.
                     </div>
                 ` : filteredCards.map(c => {
-                    const completedTasks = c.checklist.filter(t => t.checked).length;
-                    const totalTasks = c.checklist.length;
+                    const completedTasks = (c.checklist || []).filter(t => t.checked).length;
+                    const totalTasks = (c.checklist || []).length;
                     const cardProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
                     
                     let pColor = '#ef4444';
@@ -5554,7 +5556,7 @@ window.openProjectCardDetailsModal = function(cardId) {
     const modalContent = document.getElementById('projectModalContent');
     if (!modal || !modalContent) return;
 
-    let checklistHtml = c.checklist.map((step, sIdx) => `
+    let checklistHtml = (c.checklist || []).map((step, sIdx) => `
         <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; font-size: 13px; color: var(--text-secondary);">
             <input type="checkbox" ${step.checked ? 'checked' : ''} onchange="updateProjectCardChecklist('${cardId}', ${sIdx}, this.checked)" style="margin-top: 4px; cursor: pointer;">
             <span style="${step.checked ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${step.text}</span>
