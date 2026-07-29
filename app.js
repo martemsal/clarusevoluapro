@@ -630,6 +630,10 @@ function initTabs() {
             if (target === 'tab-upgrade') title = "Upgrade de Plano Necessário";
             if (target === 'tab-dashboard') title = "Indicadores EFO";
             if (target === 'tab-dre') title = "Demonstrativo de Resultado (DRE)";
+            if (target === 'tab-projetos') {
+                title = "Projetos de Melhoria";
+                renderProjetos();
+            }
             if (target === 'tab-balanco') title = "Balanço Gerencial";
             if (target === 'tab-parecer-mensal') {
                 title = "Parecer Estratégico";
@@ -1054,6 +1058,9 @@ function updateAllViews() {
     renderManualConciliationTable();
     if (document.getElementById('tab-parecer-mensal') && document.getElementById('tab-parecer-mensal').classList.contains('active')) {
         renderParecerMensal();
+    }
+    if (document.getElementById('tab-projetos') && document.getElementById('tab-projetos').classList.contains('active')) {
+        renderProjetos();
     }
 
     if (document.getElementById('tab-client-files') && document.getElementById('tab-client-files').classList.contains('active')) {
@@ -1949,119 +1956,254 @@ function getStrategicCards(compId, yr, m, metrics) {
     
     const defaultActions = [];
     
-    // Check debt
+    // 1. CP Debt Card
     if (metrics.emprestimosCp > 50000) {
         defaultActions.push({
-            id: 'action-debt',
-            title: 'Alongamento de Dívida de CP',
-            description: 'Negociação com bancos para alongar os empréstimos de curto prazo para longo prazo, reduzindo a pressão no caixa imediato.',
-            objective: 'Reduzir o serviço da dívida mensal e melhorar a liquidez corrente.',
-            priority: '🔴 Crítico',
-            priorityClass: 'danger',
+            id: 'CARD-2026-0001',
+            code: 'CARD-2026-0001',
+            title: 'Alongamento de Dívidas de CP',
+            category: 'Financeiro',
+            origin: 'Balanço Patrimonial',
+            problem: 'Exposição elevada ao passivo bancário de curto prazo que pressiona a liquidez diária.',
+            diagnosis: `O endividamento de curto prazo somou ${formatCurrency(metrics.emprestimosCp)} contra um caixa consolidado de ${formatCurrency(metrics.caixaBancos + metrics.aplicacoes)}.`,
+            objective: 'Negociar carência e alongar os parcelamentos para médio/longo prazo.',
+            benefits: 'Aumento da Liquidez Corrente, redução da pressão operacional de caixa e renegociação de juros menores.',
+            impact: 'Redução do serviço mensal da dívida e economia potencial de juros estimada em R$ 15.000,00.',
+            potentialImpactVal: 15000,
+            priority: 'Crítica',
+            complexity: 'Alta',
             prazo: '30 dias',
             responsible: 'Diretor Financeiro (CFO)',
-            category: 'Financeiro',
-            indicators: 'Liquidez Corrente, Fluxo de Caixa',
-            status: 'Não iniciado'
+            indicators: 'Liquidez Corrente, Fluxo de Caixa, Endividamento',
+            checklist: [
+                { text: 'Levantar todos os contratos bancários ativos de curto prazo.', checked: false },
+                { text: 'Mapear o cronograma de vencimentos e taxas de juros cobradas.', checked: false },
+                { text: 'Agendar reuniões com gerentes e bancos credores.', checked: false },
+                { text: 'Apresentar a DRE gerencial para comprovar a capacidade operacional.', checked: false },
+                { text: 'Formalizar refinanciamento para longo prazo.', checked: false }
+            ],
+            conclusionCriteria: 'Contratos repactuados com redução do desembolso mensal da dívida em pelo menos 15%.',
+            status: 'Não iniciado',
+            observations: ''
         });
     }
     
-    // Check working capital
+    // 2. Working Capital Card
     if (metrics.workingCapital < 0) {
         defaultActions.push({
-            id: 'action-working-capital',
-            title: 'Equacionamento do Capital de Giro',
-            description: 'Redução do prazo médio de recebimento de clientes e renegociação de prazos maiores com fornecedores.',
-            objective: 'Reverter o saldo negativo do capital de giro circulante líquido.',
-            priority: '🔴 Crítico',
-            priorityClass: 'danger',
-            prazo: '45 dias',
-            responsible: 'Gestor de Contas / Comercial',
+            id: 'CARD-2026-0002',
+            code: 'CARD-2026-0002',
+            title: 'Equacionamento de Capital de Giro',
             category: 'Capital de Giro',
-            indicators: 'Capital de Giro, Liquidez Corrente',
-            status: 'Não iniciado'
+            origin: 'Balanço Patrimonial',
+            problem: 'O capital de giro líquido está negativo, indicando dependência de recursos externos de terceiros.',
+            diagnosis: `O déficit de capital de giro circulante líquido fechou em ${formatCurrency(Math.abs(metrics.workingCapital))}.`,
+            objective: 'Equilibrar a necessidade de capital de giro operacional (NCG) e restabelecer saldo positivo.',
+            benefits: 'Independência financeira de empréstimos e antecipações, melhorando a saúde e caixa geral.',
+            impact: 'Liberação projetada de R$ 25.000,00 em fluxo operacional líquido e aumento de caixa.',
+            potentialImpactVal: 25000,
+            priority: 'Crítica',
+            complexity: 'Média',
+            prazo: '45 dias',
+            responsible: 'Diretor / Empresário',
+            indicators: 'Capital de Giro, Liquidez Corrente, Fluxo de Caixa',
+            checklist: [
+                { text: 'Auditar o Prazo Médio de Recebimento (PMR) atual.', checked: false },
+                { text: 'Auditar o Prazo Médio de Pagamento (PMP) de fornecedores.', checked: false },
+                { text: 'Negociar prazos maiores com fornecedores para no mínimo 45 dias.', checked: false },
+                { text: 'Reduzir prazo máximo de parcelamento comercial para 15 dias.', checked: false },
+                { text: 'Estruturar régua de cobrança ativa para conter a inadimplência.', checked: false }
+            ],
+            conclusionCriteria: 'Capital de giro líquido retornar ao patamar positivo (superavitário) estável.',
+            status: 'Não iniciado',
+            observations: ''
         });
     }
     
-    // Check costs / margin
+    // 3. Margin Audit Card
     if (metrics.ebitdaMargin < 15) {
         defaultActions.push({
-            id: 'action-margin',
-            title: 'Revisão da Margem de Contribuição',
-            description: 'Auditar a precificação de produtos/serviços e renegociar contratos de fornecedores críticos de CMV.',
-            objective: 'Elevar a margem EBITDA para a meta saudável de no mínimo 15%.',
-            priority: '🟠 Alto',
-            priorityClass: 'warning',
+            id: 'CARD-2026-0003',
+            code: 'CARD-2026-0003',
+            title: 'Revisão e Auditoria de Precificação',
+            category: 'Precificação',
+            origin: 'DRE',
+            problem: 'Margem EBITDA abaixo da meta corporativa recomendada, demonstrando compressão de lucratividade.',
+            diagnosis: `A margem EBITDA está em ${metrics.ebitdaMargin.toFixed(1)}% contra o ideal recomendado de no mínimo 15%.`,
+            objective: 'Reavaliar markup e margem de contribuição direta para atingir meta operacional de 15%.',
+            benefits: 'Aumento direto do retorno sobre faturamento e folga operacional para suportar custos de estrutura.',
+            impact: 'Ganho potencial estimado de R$ 12.000,00 de lucro operacional incremental mensal.',
+            potentialImpactVal: 12000,
+            priority: 'Alta',
+            complexity: 'Média',
             prazo: '60 dias',
             responsible: 'Controladoria',
-            category: 'Custos',
-            indicators: 'Margem EBITDA, Margem Líquida',
-            status: 'Não iniciado'
+            indicators: 'Margem EBITDA, Margem Líquida, Rentabilidade',
+            checklist: [
+                { text: 'Mapear a margem de contribuição individual de cada produto/serviço.', checked: false },
+                { text: 'Identificar itens com markup defasado na Curva A comercial.', checked: false },
+                { text: 'Auditar tarifas de adquirentes e intermediadoras de pagamento.', checked: false },
+                { text: 'Aplicar reajuste de preços nos produtos com markup negativo.', checked: false },
+                { text: 'Direcionar comissionamento para foco em produtos de maior margem.', checked: false }
+            ],
+            conclusionCriteria: 'Média ponderada da margem de contribuição dos produtos subir 5%.',
+            status: 'Não iniciado',
+            observations: ''
         });
     }
     
-    // Check tax
+    // 4. Tax Plan Card
     if (metrics.taxRate > 10) {
         defaultActions.push({
-            id: 'action-tax',
-            title: 'Estudo de Planejamento Tributário',
-            description: 'Avaliar enquadramento no Lucro Presumido vs Simples Nacional frente ao faturamento projetado.',
-            objective: 'Otimizar recolhimento de tributos federais e municipais.',
-            priority: '🟡 Médio',
-            priorityClass: 'info',
+            id: 'CARD-2026-0004',
+            code: 'CARD-2026-0004',
+            title: 'Planejamento Tributário Anual',
+            category: 'Tributário',
+            origin: 'DRE',
+            problem: 'A alíquota efetiva média sobre faturamento está gerando desvio de caixa tributário irrelevante.',
+            diagnosis: `Tributos e deduções consumiram ${metrics.taxRate.toFixed(1)}% do faturamento bruto.`,
+            objective: 'Otimizar o enquadramento de impostos federais e recolhimentos diretos.',
+            benefits: 'Redução na alíquota de impostos das guias DAS/DARF e blindagem contra autuações.',
+            impact: 'Economia financeira consolidada estimada em até R$ 18.000,00 anualizados.',
+            potentialImpactVal: 18000,
+            priority: 'Média',
+            complexity: 'Alta',
             prazo: '90 dias',
             responsible: 'Contabilidade Parceira',
-            category: 'Tributário',
-            indicators: 'Deduções, Lucratividade',
-            status: 'Não iniciado'
+            indicators: 'Deduções Tributárias, Lucratividade',
+            checklist: [
+                { text: 'Reunir todas as guias e apurações fiscais do último exercício.', checked: false },
+                { text: 'Projetar faturamento comercial para os próximos 12 meses.', checked: false },
+                { text: 'Simular carga fiscal no Lucro Presumido vs Simples Nacional.', checked: false },
+                { text: 'Avaliar folha de pagamento e pro-labore para otimizar Fator R.', checked: false },
+                { text: 'Revisar créditos monofásicos de PIS/COFINS.', checked: false }
+            ],
+            conclusionCriteria: 'Apresentação formal de relatório comparativo de enquadramento tributário.',
+            status: 'Não iniciado',
+            observations: ''
         });
     }
     
-    // Overhead
-    if (metrics.despesas > metrics.revenue * 0.3) {
+    // 5. Overhead Card
+    if (metrics.despesas > 15000) {
         defaultActions.push({
-            id: 'action-overhead',
+            id: 'CARD-2026-0005',
+            code: 'CARD-2026-0005',
             title: 'Otimização de Despesas Fixas',
-            description: 'Revisão de contratos fixos administrativos (softwares, aluguel, infraestrutura) e redução de overhead.',
-            objective: 'Reduzir despesas administrativas em 15% sem afetar a entrega operacional.',
-            priority: '🟠 Alto',
-            priorityClass: 'warning',
+            category: 'Custos',
+            origin: 'DRE',
+            problem: 'O overhead administrativo consome parcelas excessivas das margens de contribuição.',
+            diagnosis: `As despesas administrativas e estruturais somaram ${formatCurrency(metrics.despesas)} no período.`,
+            objective: 'Identificar desperdícios recorrentes e economizar em contas fixas sem prejudicar a operação.',
+            benefits: 'Aumento imediato da margem líquida e abaixamento do ponto de equilíbrio econômico.',
+            impact: 'Economia mensal garantida de R$ 5.000,00 em despesas recorrentes cortadas.',
+            potentialImpactVal: 5000,
+            priority: 'Alta',
+            complexity: 'Baixa',
             prazo: '30 dias',
             responsible: 'Gerente Administrativo',
-            category: 'Custos',
-            indicators: 'Despesas Administrativas',
-            status: 'Não iniciado'
+            indicators: 'Despesas Administrativas, Margem Líquida',
+            checklist: [
+                { text: 'Listar todas as contas recorrentes e contratos de consumo ativo.', checked: false },
+                { text: 'Identificar assinaturas de softwares obsoletos e licenças ociosas.', checked: false },
+                { text: 'Renegociar tarifas bancárias e taxas de adquirentes.', checked: false },
+                { text: 'Realizar cotação com novos prestadores de telefonia/limpeza.', checked: false },
+                { text: 'Executar os cortes e consolidar o novo teto orçamentário.', checked: false }
+            ],
+            conclusionCriteria: 'Redução de no mínimo 10% nas despesas fixas demonstradas no DRE gerencial.',
+            status: 'Não iniciado',
+            observations: ''
         });
     }
     
-    // Growth
+    // 6. Growth Card
     if (metrics.trend === 'Regressão') {
         defaultActions.push({
-            id: 'action-growth',
-            title: 'Aceleração de Vendas (Crescimento)',
-            description: 'Reavaliar funil comercial, campanhas de tráfego pago e comissão de vendedores para reverter queda de receita.',
-            objective: 'Reverter tendência de queda de faturamento.',
-            priority: '🟡 Médio',
-            priorityClass: 'info',
+            id: 'CARD-2026-0006',
+            code: 'CARD-2026-0006',
+            title: 'Aceleração Comercial e Vendas',
+            category: 'Comercial',
+            origin: 'DRE',
+            problem: 'A empresa registra perda de fôlego comercial com declínio nas vendas.',
+            diagnosis: `O faturamento bruto somou ${formatCurrency(metrics.revenue)} com tendência de regressão MoM.`,
+            objective: 'Retomar taxa histórica de faturamento com foco em canais de alto retorno de conversão.',
+            benefits: 'Melhoria na receita bruta, aumento da margem líquida por diluição operacional de fixos.',
+            impact: 'Aumento projetado de faturamento no período de R$ 30.000,00.',
+            potentialImpactVal: 30000,
+            priority: 'Média',
+            complexity: 'Média',
             prazo: '30 dias',
             responsible: 'Diretor Comercial',
-            category: 'Comercial',
-            indicators: 'Receita Bruta, Crescimento',
-            status: 'Não iniciado'
+            indicators: 'Receita Bruta, Crescimento, EBITDA',
+            checklist: [
+                { text: 'Mapear a jornada e taxa de conversão do funil de vendas.', checked: false },
+                { text: 'Avaliar ROAS e ROI das campanhas de tráfego pago ativo.', checked: false },
+                { text: 'Reajustar metas de vendas e estruturar comissionamento agressivo.', checked: false },
+                { text: 'Lançar campanha de reativação de base fria com ofertas pontuais.', checked: false }
+            ],
+            conclusionCriteria: 'O faturamento do mês consolidar saldo superior ao mês anterior.',
+            status: 'Não iniciado',
+            observations: ''
         });
     } else {
         defaultActions.push({
-            id: 'action-growth-ok',
-            title: 'Sustentação de Canal de Vendas',
-            description: 'Investir 10% adicionais em marketing/comercial nas frentes mais rentáveis demonstradas no período.',
-            objective: 'Manter a taxa de crescimento da receita bruta.',
-            priority: '🟢 Baixo',
-            priorityClass: 'success',
+            id: 'CARD-2026-0006',
+            code: 'CARD-2026-0006',
+            title: 'Sustentação do Canal Comercial',
+            category: 'Comercial',
+            origin: 'DRE',
+            problem: 'Necessidade de manter a escalabilidade comercial ativa sem sobrecarregar a capacidade produtiva.',
+            diagnosis: `Crescimento operacional consolidado com faturamento bruto de ${formatCurrency(metrics.revenue)}.`,
+            objective: 'Garantir a manutenção de novos contratos e estabilidade de tráfego de vendas.',
+            benefits: 'Consolidação de market share e previsibilidade de caixa operacional para investimentos.',
+            impact: 'Garantia de faturamento incremental de R$ 30.000,00 mantido no período.',
+            potentialImpactVal: 30000,
+            priority: 'Baixa',
+            complexity: 'Baixa',
             prazo: '60 dias',
             responsible: 'Marketing',
-            category: 'Comercial',
             indicators: 'Receita Bruta, EBITDA',
-            status: 'Não iniciado'
+            checklist: [
+                { text: 'Validar a satisfação (LTV/NPS) dos novos clientes da base.', checked: false },
+                { text: 'Aumentar investimento em 10% nos criativos de melhor performance.', checked: false },
+                { text: 'Mapear gargalos na entrega dos produtos/serviços.', checked: false }
+            ],
+            conclusionCriteria: 'Manter a curva de vendas estável com crescimento marginal de 2%.',
+            status: 'Não iniciado',
+            observations: ''
+        });
+    }
+    
+    // 7. Governance Card
+    const pendentesCount = OFX_Raw_Import.filter(t => t.status === 'Pendente').length;
+    if (pendentesCount > 5) {
+        defaultActions.push({
+            id: 'CARD-2026-0007',
+            code: 'CARD-2026-0007',
+            title: 'Integração e Governança Financeira',
+            category: 'Governança',
+            origin: 'Análise da LIA',
+            problem: 'Existem lançamentos em aberto prejudicando a precisão contábil do painel.',
+            diagnosis: `Identificamos ${pendentesCount} transações bancárias e manuais sem classificação correta.`,
+            objective: 'Zerar todas as conciliações financeiras pendentes no dashboard.',
+            benefits: 'Obtenção de relatórios de DRE, Balanço e Indicadores 100% corretos para auditoria contábil.',
+            impact: 'Garantia de dados precisos e eliminação de distorções gerenciais estimadas em R$ 2.000,00.',
+            potentialImpactVal: 2000,
+            priority: 'Alta',
+            complexity: 'Baixa',
+            prazo: '15 dias',
+            responsible: 'Gerente Financeiro',
+            indicators: 'Geral, Governança',
+            checklist: [
+                { text: 'Acessar a Área de Transações no painel.', checked: false },
+                { text: 'Classificar todas as transações bancárias pendentes.', checked: false },
+                { text: 'Auditar lançamentos manuais com divergência.', checked: false },
+                { text: 'Validar os extratos .OFX importados do período.', checked: false },
+                { text: 'Criar rotina diária de fechamento financeiro de 10 minutos.', checked: false }
+            ],
+            conclusionCriteria: 'Número de transações pendentes zeradas no relatório de fechamento.',
+            status: 'Não iniciado',
+            observations: ''
         });
     }
 
@@ -2075,13 +2217,23 @@ function getStrategicCards(compId, yr, m, metrics) {
                 cards.push(dAct);
             } else {
                 found.title = dAct.title;
-                found.description = dAct.description;
+                found.category = dAct.category;
+                found.origin = dAct.origin;
+                found.problem = dAct.problem;
+                found.diagnosis = dAct.diagnosis;
                 found.objective = dAct.objective;
+                found.benefits = dAct.benefits;
+                found.impact = dAct.impact;
+                found.potentialImpactVal = dAct.potentialImpactVal;
                 found.priority = dAct.priority;
+                found.complexity = dAct.complexity;
                 found.prazo = dAct.prazo;
                 found.responsible = dAct.responsible;
-                found.category = dAct.category;
                 found.indicators = dAct.indicators;
+                found.conclusionCriteria = dAct.conclusionCriteria;
+                if (!found.checklist || found.checklist.length === 0) {
+                    found.checklist = dAct.checklist;
+                }
             }
         });
         localStorage.setItem(key, JSON.stringify(cards));
@@ -5048,3 +5200,496 @@ Você pode me perguntar algo como:
 
 O que você prefere que a gente veja primeiro?`;
 }
+
+
+function getCompanyMetrics(compId, yr, m) {
+    const d = calculateDREData(yr);
+    const bData = calculateBalancoData(yr);
+    if (!d || !bData) return null;
+
+    const monthsFull = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+    const R_BRUTA = sumArrays(d['dre.receita_bruta.produtos'], d['dre.receita_bruta.servicos'], d['dre.receita_bruta.outras']);
+    const DEDUCOES = sumArrays(d['dre.deducoes.impostos'], d['dre.deducoes.devolucoes'], d['dre.deducoes.descontos']);
+    const R_LIQUIDA = R_BRUTA.map((v, i) => v - DEDUCOES[i]);
+    const CUSTOS = sumArrays(d['dre.custos.mercadorias'], d['dre.custos.producao'], d['dre.custos.servicos'], d['dre.custos.operacionais']);
+    const L_BRUTO = R_LIQUIDA.map((v, i) => v - CUSTOS[i]);
+    
+    const D_COM = sumArrays(d['dre.despesas_comercial.comissao'], d['dre.despesas_comercial.trafego'], d['dre.despesas_comercial.marketing'], d['dre.despesas_comercial.viagens'], d['dre.despesas_comercial.transporte_logistica'], d['dre.despesas_comercial.outras']);
+    const D_PES = sumArrays(d['dre.despesas_pessoal.salarios'], d['dre.despesas_pessoal.inss'], d['dre.despesas_pessoal.fgts'], d['dre.despesas_pessoal.beneficios'], d['dre.despesas_pessoal.rescisoes']);
+    const D_ADM = sumArrays(d['dre.despesas_administrativas.pro_labore'], d['dre.despesas_administrativas.salarios'], d['dre.despesas_administrativas.encargos'], d['dre.despesas_administrativas.aluguel'], d['dre.despesas_administrativas.outras']);
+    const D_EST = sumArrays(d['dre.despesas_estrutura.manutencao'], d['dre.despesas_estrutura.reparos'], d['dre.despesas_estrutura.limpeza']);
+    const D_VEI = sumArrays(d['dre.despesas_veiculos.combustivel'], d['dre.despesas_veiculos.manutencao'], d['dre.despesas_veiculos.seguro'], d['dre.despesas_veiculos.ipva']);
+    const D_FIN = sumArrays(d['dre.despesas_financeiras.tarifas'], d['dre.despesas_financeiras.juros'], d['dre.despesas_financeiras.iof']);
+    const R_FIN = sumArrays(d['dre.receitas_financeiras.rendimentos'], d['dre.receitas_financeiras.juros_recebidos']);
+    const D_TOTAL = sumArrays(D_COM, D_PES, D_ADM, D_EST, D_VEI, D_FIN);
+    const EBITDA = L_BRUTO.map((v, i) => v - D_TOTAL[i] + R_FIN[i]);
+
+    const sum = (arr) => arr.reduce((a, b) => a + b, 0);
+
+    let metrics = {};
+    if (m !== null) {
+        metrics.revenue = R_BRUTA[m];
+        metrics.deducoes = DEDUCOES[m];
+        metrics.receitaLiquida = R_LIQUIDA[m];
+        metrics.custos = CUSTOS[m];
+        metrics.lucroBruto = L_BRUTO[m];
+        metrics.despesas = D_TOTAL[m];
+        metrics.ebitda = EBITDA[m];
+        metrics.rFin = R_FIN[m];
+        metrics.lucroLiquido = EBITDA[m];
+        
+        metrics.caixaBancos = bData['balanco.ativo_circulante.caixa_bancos'][m] || 0;
+        metrics.aplicacoes = bData['balanco.ativo_circulante.aplicacoes'][m] || 0;
+        metrics.clientesReceber = bData['balanco.ativo_circulante.clientes_receber'][m] || 0;
+        metrics.estoques = bData['balanco.ativo_circulante.estoques'][m] || 0;
+        metrics.adiantamentos = bData['balanco.ativo_circulante.adiantamentos'][m] || 0;
+        metrics.tributosRecuperar = bData['balanco.ativo_circulante.tributos_recuperar'][m] || 0;
+        
+        metrics.fornecedores = bData['balanco.passivo_circulante.fornecedores'][m] || 0;
+        metrics.emprestimosCp = bData['balanco.passivo_circulante.emprestimos_cp'][m] || 0;
+        metrics.obrigacoesTrab = bData['balanco.passivo_circulante.obrigacoes_trab'][m] || 0;
+        metrics.obrigacoesTrib = bData['balanco.passivo_circulante.obrigacoes_trib'][m] || 0;
+        metrics.passivoCircOutras = bData['balanco.passivo_circulante.outras'][m] || 0;
+    } else {
+        metrics.revenue = sum(R_BRUTA);
+        metrics.deducoes = sum(DEDUCOES);
+        metrics.receitaLiquida = sum(R_LIQUIDA);
+        metrics.custos = sum(CUSTOS);
+        metrics.lucroBruto = sum(L_BRUTO);
+        metrics.despesas = sum(D_TOTAL);
+        metrics.ebitda = sum(EBITDA);
+        metrics.rFin = sum(R_FIN);
+        metrics.lucroLiquido = metrics.ebitda;
+
+        const activeMonthIndices = [];
+        for (let idx = 0; idx < 12; idx++) { if (R_BRUTA[idx] > 0) activeMonthIndices.push(idx); }
+        const lastActiveMonth = activeMonthIndices.length > 0 ? activeMonthIndices[activeMonthIndices.length - 1] : 11;
+
+        metrics.caixaBancos = bData['balanco.ativo_circulante.caixa_bancos'][lastActiveMonth] || 0;
+        metrics.aplicacoes = bData['balanco.ativo_circulante.aplicacoes'][lastActiveMonth] || 0;
+        metrics.clientesReceber = bData['balanco.ativo_circulante.clientes_receber'][lastActiveMonth] || 0;
+        metrics.estoques = bData['balanco.ativo_circulante.estoques'][lastActiveMonth] || 0;
+        metrics.adiantamentos = bData['balanco.ativo_circulante.adiantamentos'][lastActiveMonth] || 0;
+        metrics.tributosRecuperar = bData['balanco.ativo_circulante.tributos_recuperar'][lastActiveMonth] || 0;
+
+        metrics.fornecedores = bData['balanco.passivo_circulante.fornecedores'][lastActiveMonth] || 0;
+        metrics.emprestimosCp = bData['balanco.passivo_circulante.emprestimos_cp'][lastActiveMonth] || 0;
+        metrics.obrigacoesTrab = bData['balanco.passivo_circulante.obrigacoes_trab'][lastActiveMonth] || 0;
+        metrics.obrigacoesTrib = bData['balanco.passivo_circulante.obrigacoes_trib'][lastActiveMonth] || 0;
+        metrics.passivoCircOutras = bData['balanco.passivo_circulante.outras'][lastActiveMonth] || 0;
+    }
+
+    metrics.ATIVO_CIRC = metrics.caixaBancos + metrics.aplicacoes + metrics.clientesReceber + metrics.estoques + metrics.adiantamentos + metrics.tributosRecuperar;
+    metrics.PASSIVO_CIRC = metrics.fornecedores + metrics.emprestimosCp + metrics.obrigacoesTrab + metrics.obrigacoesTrib + metrics.passivoCircOutras;
+    metrics.liquidezCorrente = metrics.PASSIVO_CIRC > 0 ? metrics.ATIVO_CIRC / metrics.PASSIVO_CIRC : 1.5;
+    metrics.ebitdaMargin = metrics.revenue > 0 ? (metrics.ebitda / metrics.revenue) * 100 : 0;
+    metrics.netMargin = metrics.revenue > 0 ? (metrics.lucroLiquido / metrics.revenue) * 100 : 0;
+    metrics.workingCapital = metrics.ATIVO_CIRC - metrics.PASSIVO_CIRC;
+    metrics.cmvRate = metrics.revenue > 0 ? (metrics.custos / metrics.revenue) * 100 : 0;
+    metrics.taxRate = metrics.revenue > 0 ? (metrics.deducoes / metrics.revenue) * 100 : 0;
+    
+    // Trend
+    metrics.trend = 'Estabilidade';
+    if (m !== null && m > 0) {
+        const prevRev = R_BRUTA[m - 1];
+        if (prevRev > 0) {
+            const growth = ((metrics.revenue - prevRev) / prevRev) * 100;
+            if (growth > 2) metrics.trend = 'Crescimento';
+            else if (growth < -2) metrics.trend = 'Regressão';
+        }
+    }
+    return metrics;
+}
+
+window.renderProjetos = function() {
+    const container = document.getElementById('projetosContainer');
+    if (!container) return;
+
+    if (!EFO_Session) {
+        container.innerHTML = `
+            <div class="glass-panel p-24" style="text-align: center; max-width: 600px; margin: 40px auto; padding: 40px;">
+                <div style="font-size: 50px; margin-bottom: 20px;">🔒</div>
+                <h3 style="font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 10px;">Acesso Restrito</h3>
+                <p style="color: var(--text-secondary); line-height: 1.5;">Efetue o login para visualizar o módulo de Projetos de Melhoria.</p>
+            </div>`;
+        return;
+    }
+
+    const compId = EFO_Session.role === 'admin' ? EFO_Active_Company_Id : EFO_Session.companyId;
+    const company = EFO_Companies[compId];
+    if (!company) {
+        container.innerHTML = `
+            <div class="glass-panel p-24" style="text-align: center; max-width: 600px; margin: 40px auto; padding: 40px;">
+                <div style="font-size: 50px; margin-bottom: 20px;">⚠️</div>
+                <h3 style="font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 10px;">Nenhuma Empresa Selecionada</h3>
+                <p style="color: var(--text-secondary); line-height: 1.5;">Selecione ou cadastre uma empresa ativa.</p>
+            </div>`;
+        return;
+    }
+
+    const yr = EFO_Active_DRE_Year;
+    const m = EFO_Active_Parecer_Month;
+    const metrics = getCompanyMetrics(compId, yr, m);
+    if (!metrics) {
+        container.innerHTML = `
+            <div class="glass-panel p-24" style="text-align: center; max-width: 600px; margin: 40px auto; padding: 40px;">
+                <div style="font-size: 50px; margin-bottom: 20px;">📈</div>
+                <h3 style="font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 10px;">Dados Insuficientes</h3>
+                <p style="color: var(--text-secondary); line-height: 1.5;">Classifique suas transações na Área de Transações para gerarmos os projetos.</p>
+            </div>`;
+        return;
+    }
+
+    const cards = getStrategicCards(compId, yr, m, metrics);
+    
+    // Get filter states
+    const catFilter = document.getElementById('projectCatFilter')?.value || 'All';
+    const priFilter = document.getElementById('projectPriFilter')?.value || 'All';
+    const statFilter = document.getElementById('projectStatFilter')?.value || 'All';
+    const searchVal = document.getElementById('projectSearchInput')?.value || '';
+
+    // Filter cards
+    const filteredCards = cards.filter(c => {
+        if (catFilter !== 'All' && c.category !== catFilter) return false;
+        if (priFilter !== 'All' && c.priority !== priFilter) return false;
+        if (statFilter !== 'All' && c.status !== statFilter) return false;
+        if (searchVal !== '') {
+            const term = searchVal.toLowerCase();
+            return c.code.toLowerCase().includes(term) || 
+                   c.title.toLowerCase().includes(term) || 
+                   c.problem.toLowerCase().includes(term) || 
+                   c.category.toLowerCase().includes(term);
+        }
+        return true;
+    });
+
+    // Compute Metrics Dashboard
+    const totalCards = cards.length;
+    const completedCards = cards.filter(c => c.status === 'Concluído').length;
+    const inProgressCards = cards.filter(c => c.status === 'Em andamento').length;
+    const delayedCards = cards.filter(c => (c.status !== 'Concluído' && c.status !== 'Cancelado') && (c.prazo === 'Imediato' || c.prazo === '7 dias' || c.prazo === '15 dias')).length; // Simulating delayed cards
+    const execRate = totalCards > 0 ? Math.round((completedCards / totalCards) * 100) : 0;
+    
+    const potentialImpact = cards.reduce((sum, c) => sum + (c.potentialImpactVal || 0), 0);
+    const realizedImpact = cards.reduce((sum, c) => sum + (c.status === 'Concluído' ? (c.potentialImpactVal || 0) : 0), 0);
+
+    const isLight = document.body.classList.contains('light-mode');
+
+    let html = `
+        <div style="max-width: 1100px; margin: 0 auto; font-family: 'Outfit', sans-serif;">
+            
+            <!-- HEADER AND FILTERS -->
+            <div class="glass-panel" style="padding: 20px; margin-bottom: 24px; background: var(--bg-secondary); border: 1px solid var(--glass-border);">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 16px;">
+                    <div>
+                        <h2 style="font-size: 24px; font-weight: 700; color: var(--text-primary); margin: 0;">Projetos de Melhoria</h2>
+                        <p style="font-size: 13px; color: var(--text-secondary); margin: 4px 0 0 0;">Transformação contínua de diagnósticos contábeis em planos de ação práticos.</p>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="text" id="projectSearchInput" placeholder="Buscar por código ou título..." value="${searchVal}" oninput="renderProjetos()" style="padding: 8px 12px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-primary); font-size: 13px; width: 220px;">
+                    </div>
+                </div>
+                
+                <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 13px; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="color: var(--text-secondary); font-weight: 500;">Área/Categoria:</label>
+                        <select id="projectCatFilter" onchange="renderProjetos()" style="padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-primary);">
+                            <option value="All" ${catFilter === 'All' ? 'selected' : ''}>Todas</option>
+                            <option value="Financeiro" ${catFilter === 'Financeiro' ? 'selected' : ''}>Financeiro</option>
+                            <option value="Capital de Giro" ${catFilter === 'Capital de Giro' ? 'selected' : ''}>Capital de Giro</option>
+                            <option value="Precificação" ${catFilter === 'Precificação' ? 'selected' : ''}>Precificação</option>
+                            <option value="Tributário" ${catFilter === 'Tributário' ? 'selected' : ''}>Tributário</option>
+                            <option value="Custos" ${catFilter === 'Custos' ? 'selected' : ''}>Custos</option>
+                            <option value="Comercial" ${catFilter === 'Comercial' ? 'selected' : ''}>Comercial</option>
+                            <option value="Governança" ${catFilter === 'Governança' ? 'selected' : ''}>Governança</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="color: var(--text-secondary); font-weight: 500;">Prioridade:</label>
+                        <select id="projectPriFilter" onchange="renderProjetos()" style="padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-primary);">
+                            <option value="All" ${priFilter === 'All' ? 'selected' : ''}>Todas</option>
+                            <option value="Crítica" ${priFilter === 'Crítica' ? 'selected' : ''}>Crítica</option>
+                            <option value="Alta" ${priFilter === 'Alta' ? 'selected' : ''}>Alta</option>
+                            <option value="Média" ${priFilter === 'Média' ? 'selected' : ''}>Média</option>
+                            <option value="Baixa" ${priFilter === 'Baixa' ? 'selected' : ''}>Baixa</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="color: var(--text-secondary); font-weight: 500;">Status:</label>
+                        <select id="projectStatFilter" onchange="renderProjetos()" style="padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-primary);">
+                            <option value="All" ${statFilter === 'All' ? 'selected' : ''}>Todos</option>
+                            <option value="Não iniciado" ${statFilter === 'Não iniciado' ? 'selected' : ''}>Não iniciado</option>
+                            <option value="Em andamento" ${statFilter === 'Em andamento' ? 'selected' : ''}>Em andamento</option>
+                            <option value="Aguardando Cliente" ${statFilter === 'Aguardando Cliente' ? 'selected' : ''}>Aguardando Cliente</option>
+                            <option value="Em validação" ${statFilter === 'Em validação' ? 'selected' : ''}>Em validação</option>
+                            <option value="Concluído" ${statFilter === 'Concluído' ? 'selected' : ''}>Concluído</option>
+                            <option value="Cancelado" ${statFilter === 'Cancelado' ? 'selected' : ''}>Cancelado</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DASHBOARD WIDGETS -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                <!-- EXECUTION RATE -->
+                <div class="glass-panel" style="padding: 20px; background: var(--bg-secondary); border: 1px solid var(--glass-border); display: flex; align-items: center; gap: 16px;">
+                    <div style="width: 54px; height: 54px; border-radius: 50%; border: 4px solid var(--accent-primary); display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; color: var(--text-primary); background: rgba(99, 102, 241, 0.1);">${execRate}%</div>
+                    <div>
+                        <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Taxa de Execução</div>
+                        <div style="font-size: 15px; font-weight: 600; color: var(--text-primary); margin-top: 2px;">${completedCards} de ${totalCards} Concluídos</div>
+                    </div>
+                </div>
+                
+                <!-- CRITICAL CARDS -->
+                <div class="glass-panel" style="padding: 20px; background: var(--bg-secondary); border: 1px solid var(--glass-border); display: flex; align-items: center; gap: 16px;">
+                    <div style="width: 54px; height: 54px; border-radius: 50%; border: 4px solid var(--danger); display: flex; align-items: center; justify-content: center; font-size: 20px; color: var(--text-primary); background: rgba(239, 68, 68, 0.15);">⚠️</div>
+                    <div>
+                        <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Ações Críticas / Altas</div>
+                        <div style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-top: 2px;">${cards.filter(c => c.priority === 'Crítica' || c.priority === 'Alta').length} Projetos</div>
+                    </div>
+                </div>
+
+                <!-- IMPACT POTENTIAL -->
+                <div class="glass-panel" style="padding: 20px; background: var(--bg-secondary); border: 1px solid var(--glass-border); display: flex; flex-direction: column; justify-content: center;">
+                    <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 4px;">Impacto Financeiro Potencial</div>
+                    <div style="font-size: 18px; font-weight: 700; color: var(--text-primary);">${formatCurrency(potentialImpact)}</div>
+                </div>
+
+                <!-- IMPACT REALIZED -->
+                <div class="glass-panel" style="padding: 20px; background: var(--bg-secondary); border: 1px solid var(--glass-border); display: flex; flex-direction: column; justify-content: center;">
+                    <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; margin-bottom: 4px;">Retorno Financeiro Realizado</div>
+                    <div style="font-size: 18px; font-weight: 700; color: var(--success);">${formatCurrency(realizedImpact)}</div>
+                    <!-- Small progress bar -->
+                    <div style="width: 100%; height: 5px; background: rgba(0,0,0,0.15); border-radius: 3px; margin-top: 8px; overflow: hidden;">
+                        <div style="height: 100%; background: var(--success); width: ${potentialImpact > 0 ? (realizedImpact / potentialImpact * 100) : 0}%;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CARDS GRID -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 40px;">
+                ${filteredCards.length === 0 ? `
+                    <div style="grid-column: span 3; text-align: center; padding: 40px; color: var(--text-secondary);">
+                        <div style="font-size: 40px; margin-bottom: 12px;">🔍</div>
+                        Nenhum card estratégico encontrado para os filtros selecionados.
+                    </div>
+                ` : filteredCards.map(c => {
+                    const completedTasks = c.checklist.filter(t => t.checked).length;
+                    const totalTasks = c.checklist.length;
+                    const cardProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+                    
+                    let pColor = '#ef4444';
+                    let pBg = 'rgba(239, 68, 68, 0.1)';
+                    if (c.priority === 'Alta') { pColor = '#f59e0b'; pBg = 'rgba(245, 158, 11, 0.1)'; }
+                    else if (c.priority === 'Média') { pColor = '#3b82f6'; pBg = 'rgba(59, 130, 246, 0.1)'; }
+                    else if (c.priority === 'Baixa') { pColor = '#10b981'; pBg = 'rgba(16, 185, 129, 0.1)'; }
+
+                    return `
+                        <div class="glass-panel" style="padding: 20px; background: var(--bg-secondary); border: 1px solid var(--glass-border); border-top: 4px solid ${pColor}; display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s;">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <span style="font-size: 10.5px; text-transform: uppercase; font-weight: 600; color: var(--accent-primary);">${c.category}</span>
+                                    <span style="font-size: 10px; font-weight: 500; color: var(--text-secondary); background: ${pBg}; color: ${pColor}; padding: 2px 6px; border-radius: 4px; text-transform: uppercase;">Prioridade: ${c.priority}</span>
+                                </div>
+                                <div style="font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 2px;">${c.code}</div>
+                                <h4 style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin: 0 0 8px 0;">${c.title}</h4>
+                                <p style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.4; margin: 0 0 12px 0;">${c.problem}</p>
+                                
+                                <!-- Checklist progress -->
+                                <div style="margin-bottom: 14px; font-size: 11.5px; color: var(--text-secondary);">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                                        <span>📋 Checklist de Execução</span>
+                                        <span style="font-weight: 600; color: var(--text-primary);">${completedTasks}/${totalTasks} (${cardProgress}%)</span>
+                                    </div>
+                                    <div style="width: 100%; height: 5px; background: rgba(0,0,0,0.15); border-radius: 3px; overflow: hidden;">
+                                        <div style="height: 100%; background: var(--accent-primary); width: ${cardProgress}%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style="border-top: 1px solid var(--glass-border); padding-top: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                                <button onclick="openProjectCardDetailsModal('${c.id}')" style="padding: 6px 12px; font-size: 11.5px; background: rgba(99,102,241,0.1); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--accent-primary); font-weight: 600; cursor: pointer; transition: background 0.2s;">🔍 Ver Detalhes</button>
+                                
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <label style="font-size: 11.5px; color: var(--text-secondary); margin-bottom: 0;">Status:</label>
+                                    <select onchange="updateStrategicCardStatus('${compId}', ${yr}, ${m !== null ? m : 'null'}, '${c.id}', this.value)" style="padding: 4px 8px; font-size: 11px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 4px; color: var(--text-primary); font-weight: 500;">
+                                        <option value="Não iniciado" ${c.status === 'Não iniciado' ? 'selected' : ''}>Não iniciado</option>
+                                        <option value="Em andamento" ${c.status === 'Em andamento' ? 'selected' : ''}>Em andamento</option>
+                                        <option value="Aguardando Cliente" ${c.status === 'Aguardando Cliente' ? 'selected' : ''}>Aguardando Cliente</option>
+                                        <option value="Em validação" ${c.status === 'Em validação' ? 'selected' : ''}>Em validação</option>
+                                        <option value="Concluído" ${c.status === 'Concluído' ? 'selected' : ''}>Concluído</option>
+                                        <option value="Cancelado" ${c.status === 'Cancelado' ? 'selected' : ''}>Cancelado</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+
+        <!-- DETAILS MODAL -->
+        <div id="projectDetailsModal" class="modal" style="display: none; background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; overflow-y: auto; padding: 20px 10px;">
+            <div class="glass-panel" style="max-width: 750px; margin: 30px auto; background: var(--bg-secondary); border: 1px solid var(--glass-border); padding: 24px; border-radius: 12px; box-shadow: var(--shadow-lg);">
+                <div id="projectModalContent">
+                    <!-- Loaded dynamically -->
+                </div>
+            </div>
+        </div>
+    `;
+
+    container.innerHTML = html;
+};
+
+window.openProjectCardDetailsModal = function(cardId) {
+    const compId = EFO_Session.role === 'admin' ? EFO_Active_Company_Id : EFO_Session.companyId;
+    const yr = EFO_Active_DRE_Year;
+    const m = EFO_Active_Parecer_Month;
+    const metrics = getCompanyMetrics(compId, yr, m);
+    const cards = getStrategicCards(compId, yr, m, metrics);
+    const c = cards.find(card => card.id === cardId);
+    if (!c) return;
+
+    const modal = document.getElementById('projectDetailsModal');
+    const modalContent = document.getElementById('projectModalContent');
+    if (!modal || !modalContent) return;
+
+    let checklistHtml = c.checklist.map((step, sIdx) => `
+        <div style="display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; font-size: 13px; color: var(--text-secondary);">
+            <input type="checkbox" ${step.checked ? 'checked' : ''} onchange="updateProjectCardChecklist('${cardId}', ${sIdx}, this.checked)" style="margin-top: 4px; cursor: pointer;">
+            <span style="${step.checked ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${step.text}</span>
+        </div>
+    `).join('');
+
+    let pColor = '#ef4444';
+    if (c.priority === 'Alta') pColor = '#f59e0b';
+    else if (c.priority === 'Média') pColor = '#3b82f6';
+    else if (c.priority === 'Baixa') pColor = '#10b981';
+
+    modalContent.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px; margin-bottom: 16px;">
+            <div>
+                <span class="badge" style="background: rgba(99,102,241,0.15); color: var(--accent-primary); font-size: 10.5px; text-transform: uppercase; font-weight: 600; padding: 4px 8px; border-radius: 4px;">${c.category}</span>
+                <span style="font-size: 12px; color: var(--text-secondary); margin-left: 10px;">${c.code}</span>
+                <h3 style="font-size: 20px; font-weight: 700; color: var(--text-primary); margin: 6px 0 0 0;">${c.title}</h3>
+            </div>
+            <button onclick="closeProjectCardDetailsModal()" style="background: none; border: none; font-size: 20px; color: var(--text-secondary); cursor: pointer;">&times;</button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; font-size: 12.5px; color: var(--text-secondary); margin-bottom: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 16px;">
+            <div>👤 **Responsável Sugerido:** <span style="font-weight: 600; color: var(--text-primary);">${c.responsible}</span></div>
+            <div>⚡ **Prioridade:** <span style="font-weight: 600; color: ${pColor};">${c.priority}</span></div>
+            <div>🧩 **Complexidade:** <span style="font-weight: 600; color: var(--text-primary);">${c.complexity}</span></div>
+            <div>📅 **Prazo Recomendado:** <span style="font-weight: 600; color: var(--text-primary);">${c.prazo}</span></div>
+            <div>🔌 **Origem:** <span style="font-weight: 600; color: var(--text-primary);">${c.origin}</span></div>
+            <div>📊 **KPIs Afetados:** <span style="font-weight: 600; color: var(--accent-primary);">${c.indicators}</span></div>
+        </div>
+
+        <div style="font-size: 13.5px; line-height: 1.5; color: var(--text-secondary); display: flex; flex-direction: column; gap: 16px; max-height: 380px; overflow-y: auto; padding-right: 8px; margin-bottom: 20px;">
+            <div>
+                <strong style="color: var(--text-primary); font-size: 13px;">🔍 Problema Identificado:</strong>
+                <p style="margin: 4px 0 0 0;">${c.problem}</p>
+            </div>
+            <div>
+                <strong style="color: var(--text-primary); font-size: 13px;">📊 Diagnóstico Contábil (Evidência):</strong>
+                <p style="margin: 4px 0 0 0;">${c.diagnosis}</p>
+            </div>
+            <div>
+                <strong style="color: var(--text-primary); font-size: 13px;">🎯 Objetivo do Projeto:</strong>
+                <p style="margin: 4px 0 0 0;">${c.objective}</p>
+            </div>
+            <div>
+                <strong style="color: var(--text-primary); font-size: 13px;">🏆 Benefícios Esperados:</strong>
+                <p style="margin: 4px 0 0 0;">${c.benefits}</p>
+            </div>
+            <div>
+                <strong style="color: var(--text-primary); font-size: 13px;">💵 Impacto Financeiro Estimado:</strong>
+                <p style="margin: 4px 0 0 0;">${c.impact} (Potencial: **${formatCurrency(c.potentialImpactVal)}**)</p>
+            </div>
+            <div style="background: rgba(0,0,0,0.15); padding: 12px; border-radius: 8px; border-left: 3px solid var(--accent-primary);">
+                <strong style="color: var(--text-primary); font-size: 13px;">📝 Checklist de Execução:</strong>
+                <div style="margin-top: 8px;">${checklistHtml}</div>
+            </div>
+            <div>
+                <strong style="color: var(--text-primary); font-size: 13px;">🔒 Critério de Conclusão:</strong>
+                <p style="margin: 4px 0 0 0; font-style: italic;">"${c.conclusionCriteria}"</p>
+            </div>
+            <div>
+                <strong style="color: var(--text-primary); font-size: 13px;">💬 Observações e Notas de Fechamento:</strong>
+                <textarea id="projectModalObs" oninput="updateProjectCardObservations('${cardId}', this.value)" placeholder="Escreva observações, anotações de progresso ou justificativas de alteração..." style="width: 100%; height: 70px; margin-top: 6px; padding: 8px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); font-size: 13px; resize: none;">${c.observations || ''}</textarea>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--glass-border); padding-top: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
+                <label style="color: var(--text-secondary); margin-bottom: 0;">Mudar Status:</label>
+                <select onchange="updateStrategicCardStatus('${compId}', ${yr}, ${m !== null ? m : 'null'}, '${c.id}', this.value); closeProjectCardDetailsModal();" style="padding: 4px 8px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 4px; color: var(--text-primary);">
+                    <option value="Não iniciado" ${c.status === 'Não iniciado' ? 'selected' : ''}>Não iniciado</option>
+                    <option value="Em andamento" ${c.status === 'Em andamento' ? 'selected' : ''}>Em andamento</option>
+                    <option value="Aguardando Cliente" ${c.status === 'Aguardando Cliente' ? 'selected' : ''}>Aguardando Cliente</option>
+                    <option value="Em validação" ${c.status === 'Em validação' ? 'selected' : ''}>Em validação</option>
+                    <option value="Concluído" ${c.status === 'Concluído' ? 'selected' : ''}>Concluído</option>
+                    <option value="Cancelado" ${c.status === 'Cancelado' ? 'selected' : ''}>Cancelado</option>
+                </select>
+            </div>
+            <button onclick="closeProjectCardDetailsModal()" style="padding: 8px 16px; background: var(--accent-primary); border: none; border-radius: 8px; color: #fff; font-weight: 600; cursor: pointer; transition: background 0.2s;">Fechar Detalhes</button>
+        </div>
+    `;
+
+    modal.style.display = 'block';
+};
+
+window.closeProjectCardDetailsModal = function() {
+    const modal = document.getElementById('projectDetailsModal');
+    if (modal) modal.style.display = 'none';
+};
+
+window.updateProjectCardChecklist = function(cardId, stepIdx, isChecked) {
+    const compId = EFO_Session.role === 'admin' ? EFO_Active_Company_Id : EFO_Session.companyId;
+    const yr = EFO_Active_DRE_Year;
+    const m = EFO_Active_Parecer_Month;
+    const metrics = getCompanyMetrics(compId, yr, m);
+    const key = `EFO_Strategic_Cards_${compId}_${yr}_${m !== null ? m : 'anual'}`;
+    
+    try {
+        const cards = getStrategicCards(compId, yr, m, metrics);
+        const card = cards.find(c => c.id === cardId);
+        if (card && card.checklist[stepIdx]) {
+            card.checklist[stepIdx].checked = isChecked;
+            
+            // Auto progress check
+            const allChecked = card.checklist.every(step => step.checked);
+            if (allChecked && card.status !== 'Concluído' && card.status !== 'Em validação') {
+                card.status = 'Em validação';
+                showToast('Checklist Concluído', `Todas as tarefas do card "${card.title}" foram feitas. Status movido para Em validação!`, 'success');
+            }
+            
+            localStorage.setItem(key, JSON.stringify(cards));
+            renderProjetos();
+            // Re-render modal in place without closing
+            openProjectCardDetailsModal(cardId);
+        }
+    } catch(e) {
+        console.error(e);
+    }
+};
+
+window.updateProjectCardObservations = function(cardId, text) {
+    const compId = EFO_Session.role === 'admin' ? EFO_Active_Company_Id : EFO_Session.companyId;
+    const yr = EFO_Active_DRE_Year;
+    const m = EFO_Active_Parecer_Month;
+    const metrics = getCompanyMetrics(compId, yr, m);
+    const key = `EFO_Strategic_Cards_${compId}_${yr}_${m !== null ? m : 'anual'}`;
+    
+    try {
+        const cards = getStrategicCards(compId, yr, m, metrics);
+        const card = cards.find(c => c.id === cardId);
+        if (card) {
+            card.observations = text;
+            localStorage.setItem(key, JSON.stringify(cards));
+        }
+    } catch(e) {
+        console.error(e);
+    }
+};
+
