@@ -361,7 +361,10 @@
 
     // --- 6. HEADER DETECTION & DE-DUPLICATION ---
     function detectHeaderRow(rawRows) {
-        if (!rawRows || rawRows.length === 0) {
+        if (rawRows && !Array.isArray(rawRows) && Array.isArray(rawRows.rows)) {
+            rawRows = rawRows.rows;
+        }
+        if (!rawRows || !Array.isArray(rawRows) || rawRows.length === 0) {
             throw new Error('Planilha sem linhas para identificar cabeçalho.');
         }
 
@@ -429,17 +432,22 @@
             tipo: [/^tipo/i, /sentido/i, /d\/c/i, /deb\/cred/i, /natureza/i, /operacao/i]
         };
 
-        headers.forEach(h => {
+        const fields = ['data', 'valor', 'descricao', 'categoria', 'documento', 'tipo'];
+        for (const h of headers) {
             const hClean = h.toLowerCase();
-            Object.keys(patterns).forEach(field => {
+            for (const field of fields) {
                 if (!mapping[field]) {
+                    if (field === 'documento' && (hClean.includes('valor') || mapping.valor === h)) {
+                        continue;
+                    }
                     const match = patterns[field].some(p => p.test(hClean));
                     if (match) {
                         mapping[field] = h;
+                        break;
                     }
                 }
-            });
-        });
+            }
+        }
 
         return mapping;
     }
@@ -499,8 +507,13 @@
                 invalidCount++;
             }
 
+            const errorReason = !isValid ? (
+                !parsedDate ? 'Data inválida' : (!parsedValor ? 'Valor inválido' : 'Descrição vazia')
+            ) : null;
+
             normalized.push({
                 index: idx + 1,
+                row_number: idx + 1,
                 date: parsedDate,
                 rawDate: rawDate,
                 amount: parsedValor,
@@ -509,21 +522,26 @@
                 description: cleanDesc,
                 category: rawCat ? String(rawCat).trim() : null,
                 documentNumber: rawDoc ? String(rawDoc).trim() : null,
+                document_number: rawDoc ? String(rawDoc).trim() : null,
                 isValid: isValid,
-                errorReason: !isValid ? (
-                    !parsedDate ? 'Data inválida' : (!parsedValor ? 'Valor inválido' : 'Descrição vazia')
-                ) : null,
+                status: isValid ? 'VALIDO' : 'INVALIDO',
+                errorReason: errorReason,
+                errors: errorReason ? [errorReason] : [],
                 rawRow: row
             });
         });
 
+        const credit = Math.round(totalCredit * 100) / 100;
+        const debit = Math.round(totalDebit * 100) / 100;
         return {
             totalRows: dataRows.length,
             validRows: validCount,
             invalidRows: invalidCount,
-            totalCredit: Math.round(totalCredit * 100) / 100,
-            totalDebit: Math.round(totalDebit * 100) / 100,
-            netBalance: Math.round((totalCredit - totalDebit) * 100) / 100,
+            totalCredit: credit,
+            totalCredits: credit,
+            totalDebit: debit,
+            totalDebits: debit,
+            netBalance: Math.round((credit - debit) * 100) / 100,
             records: normalized
         };
     }
@@ -533,16 +551,26 @@
         const key = `EFO_Import_Batches_${companyId}`;
         try {
             const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
-            if (!raw) return null;
+            if (!raw) return { isDuplicate: false, existingBatch: null };
             const batches = JSON.parse(raw);
-            return batches.find(b => b.fileSha256 === fileSha256 && b.status !== 'ESTORNADO') || null;
+            const found = batches.find(b => (b.fileSha256 === fileSha256 || b.sha256 === fileSha256) && b.status !== 'ESTORNADO');
+            if (!found) return { isDuplicate: false, existingBatch: null };
+            found.isDuplicate = true;
+            found.existingBatch = found;
+            return found;
         } catch (e) {
             console.error('Erro ao verificar duplicidade de lote:', e);
-            return null;
+            return { isDuplicate: false, existingBatch: null };
         }
     }
 
     function saveStagingBatch(companyId, batchMeta, rawRecords, normalizedResult) {
+        if (typeof companyId === 'object' && companyId !== null) {
+            normalizedResult = batchMeta;
+            rawRecords = rawRecords || [];
+            batchMeta = companyId;
+            companyId = batchMeta.companyId;
+        }
         if (!companyId) throw new Error('Empresa é obrigatória para registrar lote de importação.');
 
         const batchesKey = `EFO_Import_Batches_${companyId}`;
@@ -569,7 +597,8 @@
             fileName: batchMeta.fileName,
             fileType: batchMeta.fileType,
             fileSize: batchMeta.fileSize,
-            fileSha256: batchMeta.fileSha256,
+            fileSha256: batchMeta.fileSha256 || batchMeta.sha256,
+            sha256: batchMeta.fileSha256 || batchMeta.sha256,
             sheetName: batchMeta.sheetName || 'Padrão',
             totalRows: normalizedResult.totalRows,
             validRows: normalizedResult.validRows,
@@ -579,7 +608,9 @@
             netBalance: normalizedResult.netBalance,
             mappingUsed: batchMeta.mapping,
             status: 'STAGING_SALVO', // Not published to live DRE!
-            importedBy: batchMeta.userName || 'Usuário Atual',
+            importedBy: batchMeta.userName || batchMeta.user || 'Usuário Atual',
+            user: batchMeta.userName || batchMeta.user || 'Usuário Atual',
+            importedAt: new Date().toISOString(),
             createdAt: new Date().toISOString()
         };
 

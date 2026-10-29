@@ -5885,7 +5885,8 @@ function handleImportFileSelected(file) {
                 const encoding = EFO_ImportEngine.detectEncoding(uint8);
                 const text = EFO_ImportEngine.decodeBuffer(uint8, encoding);
                 const delimiter = EFO_ImportEngine.detectDelimiter(text);
-                const rawMatrix = EFO_ImportEngine.parseCsvString(text, delimiter);
+                const parsedCsv = EFO_ImportEngine.parseCsvString(text, delimiter);
+                const rawMatrix = parsedCsv.rows || [];
 
                 if (metaBadgesEl) {
                     metaBadgesEl.innerHTML = `
