@@ -365,67 +365,126 @@ async function db_migrateLocalStorageToSupabase(onProgress) {
 // ──────────────────────────────────────────────────────────────
 
 async function db_uploadClientFile(file) {
+    let cloudSaved = false;
     try {
-        const { error } = await _supa.from('efo_client_files').insert({
-            company_id:      file.companyId,
-            client_name:     file.clientName,
-            client_email:    file.clientEmail,
-            file_name:       file.fileName,
-            file_type:       file.fileType,
-            file_size:       file.fileSize,
-            file_data:       file.fileData,
-            folder_path:     file.folderPath,
-            reference_month: file.referenceMonth
-        });
-        if (error) throw error;
-        DB_ONLINE = true;
+        if (_supa) {
+            const { error } = await _supa.from('efo_client_files').insert({
+                company_id:      file.companyId,
+                client_name:     file.clientName,
+                client_email:    file.clientEmail,
+                file_name:       file.fileName,
+                file_type:       file.fileType,
+                file_size:       file.fileSize,
+                file_data:       file.fileData,
+                folder_path:     file.folderPath,
+                reference_month: file.referenceMonth
+            });
+            if (!error) {
+                cloudSaved = true;
+                DB_ONLINE = true;
+            } else {
+                console.warn('[Supabase] db_uploadClientFile erro retornado:', error.message);
+            }
+        }
     } catch (e) {
-        console.warn('[Supabase] db_uploadClientFile failed.', e.message);
-        throw e;
+        console.warn('[Supabase] db_uploadClientFile falhou (usando cache local):', e.message);
+    }
+
+    // Sempre espelha e faz fallback em localStorage para nunca travar a experiência do usuário
+    try {
+        const cacheKey = `EFO_Client_Files_${file.companyId}`;
+        const existing = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+        const newRecord = {
+            id: 'file_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+            companyId:      file.companyId,
+            clientName:     file.clientName,
+            clientEmail:    file.clientEmail,
+            fileName:       file.fileName,
+            fileType:       file.fileType,
+            fileSize:       file.fileSize,
+            fileData:       file.fileData,
+            folderPath:     file.folderPath,
+            referenceMonth: file.referenceMonth,
+            createdAt:      new Date().toISOString(),
+            cloudSynced:    cloudSaved
+        };
+        const filtered = existing.filter(f => !(f.fileName === file.fileName && f.referenceMonth === file.referenceMonth));
+        filtered.unshift(newRecord);
+        localStorage.setItem(cacheKey, JSON.stringify(filtered.slice(0, 100)));
+    } catch (localErr) {
+        console.warn('Erro ao salvar no cache local:', localErr);
+        if (!cloudSaved) throw localErr;
     }
 }
 
 async function db_loadClientFiles(companyId = null, referenceMonth = null) {
+    let cloudFiles = null;
     try {
-        let query = _supa.from('efo_client_files').select('*');
-        
-        if (companyId && companyId !== 'all') {
-            query = query.eq('company_id', companyId);
+        if (_supa) {
+            let query = _supa.from('efo_client_files').select('*');
+            if (companyId && companyId !== 'all') {
+                query = query.eq('company_id', companyId);
+            }
+            if (referenceMonth) {
+                query = query.eq('reference_month', referenceMonth);
+            }
+            const { data, error } = await query.order('created_at', { ascending: false });
+            if (!error && data) {
+                DB_ONLINE = true;
+                cloudFiles = data.map(f => ({
+                    id:             f.id,
+                    companyId:      f.company_id,
+                    clientName:     f.client_name,
+                    clientEmail:    f.client_email,
+                    fileName:       f.file_name,
+                    fileType:       f.file_type,
+                    fileSize:       f.file_size,
+                    fileData:       f.file_data,
+                    folderPath:     f.folder_path,
+                    referenceMonth: f.reference_month,
+                    createdAt:      f.created_at
+                }));
+            }
         }
-        if (referenceMonth) {
-            query = query.eq('reference_month', referenceMonth);
-        }
-        
-        const { data, error } = await query.order('created_at', { ascending: false });
-        if (error) throw error;
-        DB_ONLINE = true;
-        
-        return data.map(f => ({
-            id:             f.id,
-            companyId:      f.company_id,
-            clientName:     f.client_name,
-            clientEmail:    f.client_email,
-            fileName:       f.file_name,
-            fileType:       f.file_type,
-            fileSize:       f.file_size,
-            fileData:       f.file_data,
-            folderPath:     f.folder_path,
-            referenceMonth: f.reference_month,
-            createdAt:      f.created_at
-        }));
     } catch (e) {
-        console.warn('[Supabase] db_loadClientFiles failed.', e.message);
-        return null;
+        console.warn('[Supabase] db_loadClientFiles failed — usando cache local.', e.message);
     }
+
+    if (cloudFiles && cloudFiles.length > 0) {
+        return cloudFiles;
+    }
+
+    // Fallback para cache local (localStorage)
+    if (companyId) {
+        try {
+            const cacheKey = `EFO_Client_Files_${companyId}`;
+            let localFiles = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+            if (referenceMonth) {
+                localFiles = localFiles.filter(f => f.referenceMonth === referenceMonth);
+            }
+            return localFiles;
+        } catch (err) {
+            return [];
+        }
+    }
+    return [];
 }
 
-async function db_deleteClientFile(fileId) {
+async function db_deleteClientFile(fileId, companyId = null) {
     try {
-        const { error } = await _supa.from('efo_client_files').delete().eq('id', fileId);
-        if (error) throw error;
-        DB_ONLINE = true;
+        if (_supa) {
+            await _supa.from('efo_client_files').delete().eq('id', fileId);
+            DB_ONLINE = true;
+        }
     } catch (e) {
         console.warn('[Supabase] db_deleteClientFile failed.', e.message);
-        throw e;
+    }
+    if (companyId) {
+        try {
+            const cacheKey = `EFO_Client_Files_${companyId}`;
+            let localFiles = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+            localFiles = localFiles.filter(f => f.id !== fileId);
+            localStorage.setItem(cacheKey, JSON.stringify(localFiles));
+        } catch (err) {}
     }
 }
