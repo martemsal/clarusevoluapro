@@ -1,0 +1,5 @@
+Data da Transação;Descrição do Lançamento;Valor Documento;Categoria Contábil;Nº Documento
+05/03/2026;Recebimento de Cliente - Venda 102;1.540,50;Receita Bruta;NF-102
+10/03/2026;Pagamento Fornecedor Alpha;-850,20;Custos Mercadorias;DOC-991
+15/03/2026;Tarifa Bancária Manutenção;-45,00;Despesas Bancárias;BOL-12
+20/03/2026;Rendimento Aplicação Financeira;120,80;Receitas Financeiras;EXT-88

@@ -10,6 +10,10 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="stylesheet" href="style.css">
+    <!-- SheetJS for client-side Excel XLSX reading -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Canonical Import Engine -->
+    <script src="import_engine.js"></script>
     <!-- Supabase JS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase_db.js"></script>
@@ -56,6 +60,9 @@
                 <button class="nav-btn" data-target="tab-manual-conciliation" id="navManualConciliationBtn" style="display:none;">
                     Conciliação Manual
                     <span class="badge nav-badge" id="navManualPendingCount">0</span>
+                </button>
+                <button class="nav-btn" data-target="tab-importador" id="navImportadorBtn" style="display:none;">
+                    📥 Importação de Arquivos
                 </button>
                 <button class="nav-btn" data-target="tab-clients" id="navClientsBtn" style="display:none;">Clientes & Empresas</button>
                 <button class="nav-btn" data-target="tab-admin-files" id="navAdminFilesBtn" style="display:none;">Arquivos dos Clientes</button>
@@ -590,7 +597,277 @@
 
 
 
-        </main>
+        
+            <!-- TAB: IMPORTADOR CANÔNICO DE ARQUIVOS (EXCEL & CSV) -->
+            <div id="tab-importador" class="tab-content">
+                <div class="glass-panel p-24" style="margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                                <span style="font-size: 26px;">📥</span>
+                                <h2 style="font-size: 22px; font-weight: 700; color: var(--text-primary); margin: 0;">Módulo de Importação Canônica de Arquivos</h2>
+                            </div>
+                            <p style="color: var(--text-secondary); font-size: 13.5px; margin: 0; max-width: 800px; line-height: 1.5;">
+                                Ingestão, auditoria e normalização inteligente de planilhas financeiras (Excel <code>.xlsx</code> / <code>.csv</code>) no modelo de dados padronizado da Clarus Evolua®.
+                            </p>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="badge" style="background: rgba(99, 102, 241, 0.15); color: var(--accent-primary); border: 1px solid rgba(99, 102, 241, 0.3); padding: 6px 12px; font-size: 12px; font-weight: 600;">
+                                🛡️ Modo Staging Seguro
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Staging security advisory -->
+                    <div style="background: rgba(99, 102, 241, 0.08); border-left: 4px solid var(--accent-primary); border-radius: 6px; padding: 12px 16px; margin-bottom: 24px; font-size: 13px; color: var(--text-primary); line-height: 1.5;">
+                        <strong>Auditoria Preservada:</strong> Os arquivos originais e registros brutos são armazenados em lotes de auditoria (<code style="background: rgba(0,0,0,0.2); padding: 2px 5px; border-radius: 4px;">STAGING_SALVO</code>). Nenhuma informação sobrescreve os cálculos do DRE ou Balanço em produção nesta etapa.
+                    </div>
+
+                    <!-- STEP 1: PARÂMETROS DO LOTE -->
+                    <div style="background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                        <h3 style="font-size: 15px; font-weight: 600; color: var(--text-primary); margin-top: 0; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                            <span style="background: var(--accent-primary); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold;">1</span>
+                            Parâmetros do Lote (Empresa & Período)
+                        </h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px;">
+                            <div>
+                                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">Empresa de Destino:</label>
+                                <select id="importEmpresaSelect" style="width: 100%; padding: 8px 12px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-primary); font-size: 13px;">
+                                    <!-- Injected dynamically -->
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">Ano de Referência:</label>
+                                <select id="importYearSelect" style="width: 100%; padding: 8px 12px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-primary); font-size: 13px;">
+                                    <option value="2026" selected>2026</option>
+                                    <option value="2025">2025</option>
+                                    <option value="2024">2024</option>
+                                    <option value="2023">2023</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">Mês de Referência:</label>
+                                <select id="importMonthSelect" style="width: 100%; padding: 8px 12px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-primary); font-size: 13px;">
+                                    <option value="0">Janeiro</option>
+                                    <option value="1">Fevereiro</option>
+                                    <option value="2">Março</option>
+                                    <option value="3">Abril</option>
+                                    <option value="4">Maio</option>
+                                    <option value="5">Junho</option>
+                                    <option value="6">Julho</option>
+                                    <option value="7">Agosto</option>
+                                    <option value="8">Setembro</option>
+                                    <option value="9">Outubro</option>
+                                    <option value="10">Novembro</option>
+                                    <option value="11">Dezembro</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">Natureza do Lote:</label>
+                                <select id="importTipoLoteSelect" style="width: 100%; padding: 8px 12px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-primary); font-size: 13px;">
+                                    <option value="MOVIMENTACAO_BANCARIA" selected>Extrato / Movimentação Bancária</option>
+                                    <option value="TITULOS_PAGAR_RECEBER">Títulos a Pagar / Receber</option>
+                                    <option value="LANCAMENTOS_CONTABEIS">Balancete / Lançamentos Contábeis</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 2: DROPZONE DO ARQUIVO -->
+                    <div style="background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                        <h3 style="font-size: 15px; font-weight: 600; color: var(--text-primary); margin-top: 0; margin-bottom: 14px; display: flex; align-items: center; gap: 8px;">
+                            <span style="background: var(--accent-primary); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold;">2</span>
+                            Upload de Arquivo (Excel .XLSX ou CSV)
+                        </h3>
+
+                        <div id="importFileDropzone" style="border: 2px dashed rgba(99, 102, 241, 0.4); border-radius: 12px; background: rgba(99, 102, 241, 0.03); padding: 36px 20px; text-align: center; cursor: pointer; transition: all 0.25s ease;"
+                             onclick="document.getElementById('importFileInput').click();">
+                            <div style="font-size: 44px; margin-bottom: 12px;">📊</div>
+                            <h4 style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin: 0 0 6px 0;">
+                                Arraste o arquivo aqui ou clique para selecionar
+                            </h4>
+                            <p style="font-size: 13px; color: var(--text-secondary); margin: 0 0 14px 0;">
+                                Formatos aceitos: <strong>Excel (.xlsx, .xls)</strong> e <strong>CSV (.csv com delimitador vírgula ou ponto e vírgula)</strong>
+                            </p>
+                            <button type="button" class="btn-primary" style="padding: 8px 18px; font-size: 13px; pointer-events: none;">
+                                📁 Escolher Arquivo da Máquina
+                            </button>
+                            <input type="file" id="importFileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+                        </div>
+
+                        <!-- Inspection details box (shown after file loaded) -->
+                        <div id="importInspectionBox" style="display: none; margin-top: 20px; padding: 16px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 20px;" id="importFileIcon">📄</span>
+                                    <div>
+                                        <div style="font-size: 14px; font-weight: 600; color: var(--text-primary);" id="importFileName">-</div>
+                                        <div style="font-size: 11.5px; color: var(--text-secondary);" id="importFileSize">-</div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="importMetaBadges">
+                                    <!-- Badges injected dynamically -->
+                                </div>
+                            </div>
+
+                            <!-- Sheet selection for XLSX with multiple sheets -->
+                            <div id="importSheetSelectRow" style="display: none; align-items: center; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--glass-border);">
+                                <label style="font-size: 12.5px; font-weight: 600; color: var(--text-primary);">Aba da Planilha Selecionada:</label>
+                                <select id="importSheetSelect" style="padding: 6px 12px; background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); font-size: 12.5px; min-width: 200px;">
+                                    <!-- Injected -->
+                                </select>
+                                <span style="font-size: 11.5px; color: var(--text-secondary);">Selecione qual aba deseja normalizar e importar.</span>
+                            </div>
+
+                            <!-- Hash SHA-256 integrity display -->
+                            <div style="margin-top: 10px; font-size: 11px; color: var(--text-secondary); word-break: break-all;">
+                                <strong>Hash de Integridade (SHA-256):</strong> <span id="importFileHash" style="font-family: monospace; color: var(--text-primary);">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 3: MAPEAMENTO DE COLUNAS -->
+                    <div id="importMappingSection" style="display: none; background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                            <h3 style="font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+                                <span style="background: var(--accent-primary); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold;">3</span>
+                                Mapeamento para o Modelo Canônico
+                            </h3>
+                            <div style="display: flex; gap: 8px;">
+                                <button type="button" id="btnAutoMap" class="btn-secondary" style="padding: 6px 12px; font-size: 12px;">
+                                    ⚡ Sugerir Mapeamento Automático
+                                </button>
+                                <button type="button" id="btnRefreshPreview" class="btn-primary" style="padding: 6px 14px; font-size: 12px;">
+                                    🔄 Atualizar Amostra
+                                </button>
+                            </div>
+                        </div>
+
+                        <p style="font-size: 12.5px; color: var(--text-secondary); margin-top: 0; margin-bottom: 16px;">
+                            Relacione as colunas identificadas na sua planilha com os campos oficiais do modelo canônico da Clarus Evolua.
+                        </p>
+
+                        <!-- Mapping Grid -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px;" id="importMappingGrid">
+                            <!-- Injected dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- STEP 4: AUDITORIA PRÉVIA & AMOSTRA -->
+                    <div id="importPreviewSection" style="display: none; background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+                            <h3 style="font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+                                <span style="background: var(--accent-primary); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold;">4</span>
+                                Amostra de Validação & Auditoria Prévia
+                            </h3>
+                            <div id="importPreviewStatusSummary" style="font-size: 12px; color: var(--text-secondary);">
+                                <!-- Summary text -->
+                            </div>
+                        </div>
+
+                        <!-- KPI Summary Cards -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px;">
+                            <div style="background: var(--bg-primary); border: 1px solid var(--glass-border); padding: 12px; border-radius: 8px;">
+                                <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Total de Linhas</div>
+                                <div style="font-size: 18px; font-weight: 700; color: var(--text-primary);" id="previewKpiTotal">0</div>
+                            </div>
+                            <div style="background: var(--bg-primary); border: 1px solid var(--glass-border); padding: 12px; border-radius: 8px;">
+                                <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Linhas Válidas</div>
+                                <div style="font-size: 18px; font-weight: 700; color: var(--success);" id="previewKpiValidas">0</div>
+                            </div>
+                            <div style="background: var(--bg-primary); border: 1px solid var(--glass-border); padding: 12px; border-radius: 8px;">
+                                <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Inconsistentes / Inválidas</div>
+                                <div style="font-size: 18px; font-weight: 700; color: var(--danger);" id="previewKpiInvalidas">0</div>
+                            </div>
+                            <div style="background: var(--bg-primary); border: 1px solid var(--glass-border); padding: 12px; border-radius: 8px;">
+                                <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Total Créditos (+)</div>
+                                <div style="font-size: 18px; font-weight: 700; color: var(--success);" id="previewKpiCreditos">R$ 0,00</div>
+                            </div>
+                            <div style="background: var(--bg-primary); border: 1px solid var(--glass-border); padding: 12px; border-radius: 8px;">
+                                <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Total Débitos (-)</div>
+                                <div style="font-size: 18px; font-weight: 700; color: var(--danger);" id="previewKpiDebitos">R$ 0,00</div>
+                            </div>
+                            <div style="background: var(--bg-primary); border: 1px solid var(--glass-border); padding: 12px; border-radius: 8px;">
+                                <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Saldo Líquido</div>
+                                <div style="font-size: 18px; font-weight: 700; color: var(--text-primary);" id="previewKpiSaldo">R$ 0,00</div>
+                            </div>
+                        </div>
+
+                        <!-- Sample Table -->
+                        <div class="table-container" style="max-height: 380px; overflow-y: auto;">
+                            <table class="report-table" style="width: 100%; font-size: 12px;">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 50px;">Linha</th>
+                                        <th style="width: 100px;">Status</th>
+                                        <th style="width: 110px;">Data (Canônica)</th>
+                                        <th style="min-width: 220px;">Descrição / Histórico</th>
+                                        <th style="width: 130px; text-align: right;">Valor Normalizado</th>
+                                        <th style="width: 150px;">Categoria</th>
+                                        <th style="width: 110px;">Documento</th>
+                                        <th style="width: 80px; text-align: center;">Tipo</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="importPreviewTbody">
+                                    <!-- Injected -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Confirm Actions -->
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--glass-border);">
+                            <div style="font-size: 12px; color: var(--text-secondary);">
+                                ℹ️ Ao confirmar, o lote será arquivado em ambiente seguro de auditoria com status <strong style="color: var(--accent-primary);">STAGING_SALVO</strong>.
+                            </div>
+                            <div style="display: flex; gap: 10px;">
+                                <button type="button" id="btnCancelImport" class="btn-secondary" style="padding: 10px 18px; font-size: 13px;">
+                                    Cancelar
+                                </button>
+                                <button type="button" id="btnConfirmBatch" class="btn-primary" style="padding: 10px 22px; font-size: 13px; font-weight: 600;">
+                                    💾 Confirmar e Salvar Lote em Staging
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 5: HISTÓRICO DE LOTES IMPORTADOS -->
+                    <div style="background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 12px; padding: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+                            <h3 style="font-size: 15px; font-weight: 600; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: 8px;">
+                                <span>📚</span> Histórico de Lotes Importados (Staging da Empresa)
+                            </h3>
+                            <button type="button" onclick="renderStagingBatchesHistory()" class="btn-secondary" style="padding: 4px 10px; font-size: 11.5px;">
+                                🔄 Atualizar Lista
+                            </button>
+                        </div>
+                        <div class="table-container">
+                            <table class="report-table" style="width: 100%; font-size: 12px;">
+                                <thead>
+                                    <tr>
+                                        <th>Código do Lote</th>
+                                        <th>Data/Hora Importação</th>
+                                        <th>Arquivo Original</th>
+                                        <th>Período</th>
+                                        <th>Registros</th>
+                                        <th>Saldo Líquido</th>
+                                        <th>Status</th>
+                                        <th>Usuário</th>
+                                        <th style="text-align: center; width: 120px;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="importBatchesTbody">
+                                    <tr>
+                                        <td colspan="9" class="text-center" style="padding: 24px; color: var(--text-secondary);">
+                                            Nenhum lote importado ainda para esta empresa.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </main>
     </div>
 
     <!-- Params Modal -->

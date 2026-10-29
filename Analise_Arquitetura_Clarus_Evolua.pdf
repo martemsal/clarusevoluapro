@@ -1,0 +1,243 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R] /Count 3 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 6 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
+endobj
+6 0 obj
+<< /Length 8092 >>
+stream
+q 0.38 0.4 0.94 rg 45 792.89 505.28 3 re f Q
+q 0.06 0.09 0.16 rg BT /F2 20 Tf 45 774.89 Td (Clarus Evolua\(R\) - Painel Executivo) Tj ET Q
+q 0.39 0.45 0.55 rg BT /F1 10.5 Tf 45 758.89 Td (Mapeamento Arquitetural & Auditoria Integral do Sistema) Tj ET Q
+q 0.96 0.97 1.0 rg 45 683.23 505.28 61.660000000000004 re f Q
+q 0.39 0.4 0.94 rg 45 683.23 4 61.660000000000004 re f Q
+q 0.25 0.25 0.75 rg BT /F2 9.5 Tf 57 734.89 Td (Escopo e Diretrizes da Auditoria) Tj ET Q
+q 0.2 0.25 0.32 rg BT /F1 8.5 Tf 57 721.89 Td (Documento tecnico com levantamento de tecnologias, estruturas de dados no Supabase, regras de calculo contabeis \(DRE,) Tj ET Q
+q 0.2 0.25 0.32 rg BT /F1 8.5 Tf 57 710.67 Td (Balanco, Fluxo de Caixa, Indicadores\), isolamento multi-tenant, ausencia de testes e o plano incremental para implementacao) Tj ET Q
+q 0.2 0.25 0.32 rg BT /F1 8.5 Tf 57 699.4499999999999 Td (do novo modulo de Importacao e Auditoria Financeira sem quebra do sistema existente.) Tj ET Q
+q 0.88 0.9 0.94 RG 1 w 45 663.23 m 550.28 663.23 l S Q
+q 0.12 0.11 0.3 rg BT /F2 12.5 Tf 45 667.23 Td (1. Tecnologias do Frontend e Backend) Tj ET Q
+q 0.2 0.25 0.35 rg BT /F2 10 Tf 45 647.23 Td (Frontend \(Client-Side SPA\)) Tj ET Q
+q 0.39 0.4 0.94 rg 50 635.73 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 633.23 Td (Arquitetura: Single Page Application \(SPA\) pura em Vanilla JavaScript \(ES6+\), HTML5 e CSS3 nativo, garantindo) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 621.08 Td (execucao veloz sem peso de frameworks adicionais.) Tj ET Q
+q 0.39 0.4 0.94 rg 50 609.4300000000001 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 606.9300000000001 Td (Design & UX: style.css estruturado com variaveis CSS semanticas, compatibilidade total com modo Claro e Escuro,) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 594.7800000000001 Td (glassmorphism e responsividade.) Tj ET Q
+q 0.39 0.4 0.94 rg 50 583.1300000000001 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 580.6300000000001 Td (Bibliotecas CDN: Chart.js v4 \(graficos de radar e dashboard\), html2pdf.js \(exportacao PDF no browser\),) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 568.4800000000001 Td (@supabase/supabase-js v2 \(comunicacao com banco\) e Web Speech API nativa \(voz da Lia\).) Tj ET Q
+q 0.2 0.25 0.35 rg BT /F2 10 Tf 45 550.3300000000002 Td (Backend \(Serverless BaaS\)) Tj ET Q
+q 0.39 0.4 0.94 rg 50 538.8300000000002 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 536.3300000000002 Td (Infraestrutura: Arquitetura 100% serverless baseada no Supabase \(PostgreSQL, PostgREST e funcoes RPC com) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 524.1800000000002 Td (Security Definer\). Nao ha servidor Node/Python rodando intermediario na web.) Tj ET Q
+q 0.39 0.4 0.94 rg 50 512.5300000000002 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 510.0300000000002 Td (Scripts Python \(execution/\): Scripts auxiliares de consulta e extracao de dados \(fetch_data.py,) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 497.8800000000002 Td (summarize_company_data.py\) seguindo o modelo 3-layer architecture.) Tj ET Q
+q 0.88 0.9 0.94 RG 1 w 45 471.73000000000025 m 550.28 471.73000000000025 l S Q
+q 0.12 0.11 0.3 rg BT /F2 12.5 Tf 45 475.73000000000025 Td (2. Banco de Dados e Modelos de Dados) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.5 Tf 45 459.73000000000025 Td (O banco de dados relacional e o PostgreSQL gerenciado no Supabase. Os dados centrais sao distribuidos nas) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.5 Tf 45 446.62000000000023 Td (seguintes entidades principais com Row Level Security \(RLS\) habilitado:) Tj ET Q
+q 0.92 0.94 0.97 rg 45 415.5100000000002 505.28 17 re f Q
+q 0.78 0.82 0.88 RG 0.5 w 45 415.5100000000002 m 550.28 415.5100000000002 l S Q
+q 0.08 0.12 0.2 rg BT /F2 8.5 Tf 50 419.5100000000002 Td (Tabela) Tj ET Q
+q 0.08 0.12 0.2 rg BT /F2 8.5 Tf 160 419.5100000000002 Td (Chaves / Campos) Tj ET Q
+q 0.08 0.12 0.2 rg BT /F2 8.5 Tf 320 419.5100000000002 Td (Funcao / Conteudo) Tj ET Q
+q 0.88 0.9 0.94 RG 0.5 w 45 400.5100000000002 m 550.28 400.5100000000002 l S Q
+q 0.18 0.22 0.28 rg BT /F2 8.0 Tf 50 404.5100000000002 Td (efo_companies) Tj ET Q
+q 0.18 0.22 0.28 rg BT /F2 8.0 Tf 160 404.5100000000002 Td (id \(PK\), name, config, parametros) Tj ET Q
+q 0.18 0.22 0.28 rg BT /F1 8.0 Tf 320 404.5100000000002 Td (Empresas, planos contratados e paramet) Tj ET Q
+q 0.98 0.98 0.99 rg 45 385.5100000000002 505.28 15 re f Q
+q 0.88 0.9 0.94 RG 0.5 w 45 385.5100000000002 m 550.28 385.5100000000002 l S Q
+q 0.18 0.22 0.28 rg BT /F2 8.0 Tf 50 389.5100000000002 Td (efo_users) Tj ET Q
+q 0.18 0.22 0.28 rg BT /F2 8.0 Tf 160 389.5100000000002 Td (id \(PK\), email \(UK\), password, rol) Tj ET Q
+q 0.18 0.22 0.28 rg BT /F1 8.0 Tf 320 389.5100000000002 Td (Usuarios, nivel de acesso \(admin/clie) Tj ET Q
+q 0.88 0.9 0.94 RG 0.5 w 45 370.5100000000002 m 550.28 370.5100000000002 l S Q
+q 0.18 0.22 0.28 rg BT /F2 8.0 Tf 50 374.5100000000002 Td (efo_ofx_raw) Tj ET Q
+q 0.18 0.22 0.28 rg BT /F2 8.0 Tf 160 374.5100000000002 Td (id \(PK\), company_id \(FK\), date, am) Tj ET Q
+q 0.18 0.22 0.28 rg BT /F1 8.0 Tf 320 374.5100000000002 Td (Transacoes bancarias categorizadas e p) Tj ET Q
+q 0.98 0.98 0.99 rg 45 355.5100000000002 505.28 15 re f Q
+q 0.88 0.9 0.94 RG 0.5 w 45 355.5100000000002 m 550.28 355.5100000000002 l S Q
+q 0.18 0.22 0.28 rg BT /F2 8.0 Tf 50 359.5100000000002 Td (efo_client_files) Tj ET Q
+q 0.18 0.22 0.28 rg BT /F2 8.0 Tf 160 359.5100000000002 Td (id \(PK\), company_id \(FK\), file_nam) Tj ET Q
+q 0.18 0.22 0.28 rg BT /F1 8.0 Tf 320 359.5100000000002 Td (Documentos enviados no EFO Drive \(Bas) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.5 Tf 45 346.5100000000002 Td (Estrategia Hibrida: O Supabase e a fonte primaria oficial, enquanto o localStorage e sessionStorage do navegador) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.5 Tf 45 333.4000000000002 Td (operam como cache para desempenho e funcionamento offline.) Tj ET Q
+q 0.88 0.9 0.94 RG 1 w 45 305.2900000000002 m 550.28 305.2900000000002 l S Q
+q 0.12 0.11 0.3 rg BT /F2 12.5 Tf 45 309.2900000000002 Td (3. Como sao Calculados e Armazenados DRE, Balanco e Indicadores) Tj ET Q
+q 0.2 0.25 0.35 rg BT /F2 10 Tf 45 289.2900000000002 Td (Armazenamento dos Demonstrativos) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.5 Tf 45 275.2900000000002 Td (Os relatorios contabeis NAO sao gravados como tabelas pre-calculadas no banco. Eles sao calculados dinamicamente) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.5 Tf 45 262.1800000000002 Td (em tempo de execucao em memoria na funcao renderDRE\(\) e calculateDREData\(\).) Tj ET Q
+q 0.2 0.25 0.35 rg BT /F2 10 Tf 45 242.07000000000016 Td (DRE Gerencial \(calculateDREData\)) Tj ET Q
+q 0.39 0.4 0.94 rg 50 230.57000000000016 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 228.07000000000016 Td (Mecanismo: Varre o array OFX_Raw_Import filtrando transacoes com status 'Categorizado' cuja conta) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 215.92000000000016 Td (\(assigned_account\) inicie com 'dre.'.) Tj ET Q
+q 0.39 0.4 0.94 rg 50 204.27000000000015 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 201.77000000000015 Td (Formacao: Agrupa valores por mes \(0-11\). Calcula Receita Bruta, Deducoes/Impostos, Custos \(CMV\), Lucro Bruto,) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 189.62000000000015 Td (Despesas Operacionais, EBITDA Gerencial e Resultado Liquido.) Tj ET Q
+q 0.2 0.25 0.35 rg BT /F2 10 Tf 45 171.47000000000014 Td (Balanco Gerencial \(calculateBalancoData\)) Tj ET Q
+q 0.39 0.4 0.94 rg 50 159.97000000000014 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 157.47000000000014 Td (Mecanismo: Agrupa transacoes de contas 'balanco.' em Ativo Circulante, Ativo Nao Circulante, Passivo Circulante,) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 145.32000000000014 Td (Passivo Nao Circulante e Patrimonio Liquido.) Tj ET Q
+q 0.2 0.25 0.35 rg BT /F2 10 Tf 45 127.17000000000013 Td (Fluxo de Caixa) Tj ET Q
+q 0.85 0.85 0.88 RG 0.5 w 45 32 m 550.28 32 l S Q
+q 0.45 0.45 0.48 rg BT /F1 8 Tf 45 20 Td (Documento de Analise Estrutural - Sistema Clarus Evolua) Tj ET Q
+q 0.45 0.45 0.48 rg BT /F1 8 Tf 510.28 20 Td (Pagina 1) Tj ET Q
+
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 8 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
+endobj
+8 0 obj
+<< /Length 9610 >>
+stream
+q 0.4 0.4 0.4 rg BT /F1 8 Tf 45 813.89 Td (Clarus Evolua | Relatorio Tecnico de Arquitetura) Tj ET Q
+q 0.85 0.85 0.88 RG 0.5 w 45 809.89 m 550.28 809.89 l S Q
+q 0.99 0.98 0.92 rg 45 743.23 505.28 61.660000000000004 re f Q
+q 0.96 0.62 0.04 rg 45 743.23 4 61.660000000000004 re f Q
+q 0.7 0.4 0.02 rg BT /F2 9.5 Tf 57 794.89 Td (Constatacao Importante sobre o Fluxo de Caixa) Tj ET Q
+q 0.2 0.25 0.32 rg BT /F1 8.5 Tf 57 781.89 Td (O sistema atual NAO possui uma tela ou relatorio dedicado de Demonstracao dos Fluxos de Caixa \(DFC\) direta/indireta. O) Tj ET Q
+q 0.2 0.25 0.32 rg BT /F1 8.5 Tf 57 770.67 Td (Fluxo de Caixa e avaliado de forma derivada e consultiva no Parecer Estrategico e Radar, comparando caixa imediato versus) Tj ET Q
+q 0.2 0.25 0.32 rg BT /F1 8.5 Tf 57 759.4499999999999 Td (dividas de curto prazo e capital de giro.) Tj ET Q
+q 0.2 0.25 0.35 rg BT /F2 10 Tf 45 731.23 Td (Indicadores EFO & Health Score) Tj ET Q
+q 0.39 0.4 0.94 rg 50 719.73 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 717.23 Td (Indicadores Principais: Liquidez Geral, Liquidez Corrente, Capital de Terceiros, Margem EBITDA, Margem Liquida,) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 705.08 Td (Margem de Contribuicao, ROI e ROE.) Tj ET Q
+q 0.39 0.4 0.94 rg 50 693.4300000000001 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 690.9300000000001 Td (Health Score \(0-100\): Algoritmo multicriterio ponderado combinando lucratividade, solvencia, pressao de curto prazo e) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 678.7800000000001 Td (pontualidade da conciliacao bancaria.) Tj ET Q
+q 0.88 0.9 0.94 RG 1 w 45 652.6300000000001 m 550.28 652.6300000000001 l S Q
+q 0.12 0.11 0.3 rg BT /F2 12.5 Tf 45 656.6300000000001 Td (4. Como os Dados Financeiros sao Atualmente Inseridos) Tj ET Q
+q 0.39 0.4 0.94 rg 50 643.1300000000001 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 640.6300000000001 Td (1. Importacao OFX: Via parseOFXContent: leitura por regex de tags bancarias \(<STMTTRN>, <TRNAMT>,) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 628.4800000000001 Td (<DTPOSTED>\), sanitizacao de hashes PIX e criacao com status 'Pendente'.) Tj ET Q
+q 0.39 0.4 0.94 rg 50 616.8300000000002 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 614.3300000000002 Td (2. Categorizacao Automatica: Regras por palavras-chave na descricao identificam contas padrao \(ex: tarifas,) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 602.1800000000002 Td (fornecedores, impostos\).) Tj ET Q
+q 0.39 0.4 0.94 rg 50 590.5300000000002 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 588.0300000000002 Td (3. Conciliacao Manual: Tela de conciliacao bancaria para classificacao individual ou em lote das transacoes pendentes.) Tj ET Q
+q 0.39 0.4 0.94 rg 50 576.3800000000002 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 573.8800000000002 Td (4. Lancamentos Manuais: Formulario modal para inserir despesas/receitas que nao constam no extrato \(prefixo) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 561.7300000000002 Td (manual_\).) Tj ET Q
+q 0.39 0.4 0.94 rg 50 550.0800000000003 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 547.5800000000003 Td (5. EFO Drive: Upload direto pelo cliente de comprovantes e arquivos brutos em pastas organizadas por mes/ano.) Tj ET Q
+q 0.88 0.9 0.94 RG 1 w 45 521.4300000000003 m 550.28 521.4300000000003 l S Q
+q 0.12 0.11 0.3 rg BT /F2 12.5 Tf 45 525.4300000000003 Td (5. APIs e Integracoes Existentes) Tj ET Q
+q 0.39 0.4 0.94 rg 50 511.9300000000003 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 509.4300000000003 Td (Supabase REST API & RPC: Endpoints PostgREST e stored procedure efo_login_user para login criptografado.) Tj ET Q
+q 0.39 0.4 0.94 rg 50 497.7800000000003 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 495.2800000000003 Td (Web Speech API: Transcricao de fala \(SpeechRecognition\) e leitura de voz \(SpeechSynthesis\) para a Lia.) Tj ET Q
+q 0.39 0.4 0.94 rg 50 483.63000000000034 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 481.13000000000034 Td (Bibliotecas CDN: Chart.js para graficos interativos e html2pdf.js para geracao de relatorios pelo navegador.) Tj ET Q
+q 0.88 0.9 0.94 RG 1 w 45 454.98000000000036 m 550.28 454.98000000000036 l S Q
+q 0.12 0.11 0.3 rg BT /F2 12.5 Tf 45 458.98000000000036 Td (6. Autenticacao e Isolamento dos Dados por Cliente) Tj ET Q
+q 0.39 0.4 0.94 rg 50 445.48000000000036 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 442.98000000000036 Td (Credenciais: Armazenadas em sessionStorage com senha em hash SHA-256 com salt \(email:senha\).) Tj ET Q
+q 0.39 0.4 0.94 rg 50 431.3300000000004 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 428.8300000000004 Td (Papeis \(RBAC\): admin \(gerencia todas as empresas, extratos e arquivos\) e client \(restrito estritamente a sua) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 416.6800000000004 Td (company_id\).) Tj ET Q
+q 0.39 0.4 0.94 rg 50 405.0300000000004 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 402.5300000000004 Td (Isolamento no Banco \(RLS\): Tabelas protegidas por Row Level Security inspecionando os headers x-efo-email e) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 390.38000000000045 Td (x-efo-password.) Tj ET Q
+q 0.39 0.4 0.94 rg 50 378.7300000000005 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 376.2300000000005 Td (Isolamento na Assistente Lia: Validacao estrita de sessao; bloqueia qualquer numero caso haja ambiguidade cadastral.) Tj ET Q
+q 0.88 0.9 0.94 RG 1 w 45 350.0800000000005 m 550.28 350.0800000000005 l S Q
+q 0.12 0.11 0.3 rg BT /F2 12.5 Tf 45 354.0800000000005 Td (7. Testes Existentes) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.5 Tf 45 338.0800000000005 Td (O projeto NAO possui suites de testes automatizados \(unitarios, integracao ou E2E\). Nao ha Jest, Cypress, Pytest ou) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.5 Tf 45 324.9700000000005 Td (package.json configurado. A validacao e estritamente manual via browser e validacao de sintaxe com node -c app.js.) Tj ET Q
+q 0.88 0.9 0.94 RG 1 w 45 296.86000000000047 m 550.28 296.86000000000047 l S Q
+q 0.12 0.11 0.3 rg BT /F2 12.5 Tf 45 300.86000000000047 Td (8. Arquivos Necessarios para o Modulo de Importacao & Auditoria) Tj ET Q
+q 0.92 0.94 0.97 rg 45 269.86000000000047 505.28 17 re f Q
+q 0.78 0.82 0.88 RG 0.5 w 45 269.86000000000047 m 550.28 269.86000000000047 l S Q
+q 0.08 0.12 0.2 rg BT /F2 8.5 Tf 50 273.86000000000047 Td (Arquivo) Tj ET Q
+q 0.08 0.12 0.2 rg BT /F2 8.5 Tf 180 273.86000000000047 Td (Modificacoes Necessarias) Tj ET Q
+q 0.88 0.9 0.94 RG 0.5 w 45 254.86000000000047 m 550.28 254.86000000000047 l S Q
+q 0.18 0.22 0.28 rg BT /F2 8.0 Tf 50 258.86000000000047 Td (index.html) Tj ET Q
+q 0.18 0.22 0.28 rg BT /F1 8.0 Tf 180 258.86000000000047 Td (Criacao do botao navAuditoriaBtn e con) Tj ET Q
+q 0.98 0.98 0.99 rg 45 239.86000000000047 505.28 15 re f Q
+q 0.88 0.9 0.94 RG 0.5 w 45 239.86000000000047 m 550.28 239.86000000000047 l S Q
+q 0.18 0.22 0.28 rg BT /F2 8.0 Tf 50 243.86000000000047 Td (app.js) Tj ET Q
+q 0.18 0.22 0.28 rg BT /F1 8.0 Tf 180 243.86000000000047 Td (Rotas em initTabs\(\) e updateAllViews) Tj ET Q
+q 0.88 0.9 0.94 RG 0.5 w 45 224.86000000000047 m 550.28 224.86000000000047 l S Q
+q 0.18 0.22 0.28 rg BT /F2 8.0 Tf 50 228.86000000000047 Td (style.css) Tj ET Q
+q 0.18 0.22 0.28 rg BT /F1 8.0 Tf 180 228.86000000000047 Td (Estilizacao dos cartoes de inconformid) Tj ET Q
+q 0.98 0.98 0.99 rg 45 209.86000000000047 505.28 15 re f Q
+q 0.88 0.9 0.94 RG 0.5 w 45 209.86000000000047 m 550.28 209.86000000000047 l S Q
+q 0.18 0.22 0.28 rg BT /F2 8.0 Tf 50 213.86000000000047 Td (supabase_migration.sql) Tj ET Q
+q 0.18 0.22 0.28 rg BT /F1 8.0 Tf 180 213.86000000000047 Td (\(Opcional\) Criacao de efo_audit_logs) Tj ET Q
+q 0.88 0.9 0.94 RG 1 w 45 188.86000000000047 m 550.28 188.86000000000047 l S Q
+q 0.12 0.11 0.3 rg BT /F2 12.5 Tf 45 192.86000000000047 Td (9. Riscos de Incompatibilidade & Recomendacoes) Tj ET Q
+q 0.39 0.4 0.94 rg 50 179.36000000000047 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 176.86000000000047 Td (Processamento Client-Side: Calcular DRE e auditorias de mais de 10.000 transacoes no browser pode causar gargalos.) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 164.71000000000046 Td (O novo motor de auditoria deve ser otimizado e assincrono.) Tj ET Q
+q 0.39 0.4 0.94 rg 50 153.06000000000046 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 150.56000000000046 Td (Extratos OFX Nao Padronizados: Diferencas de tags XML entre bancos exigem parser robusto para nao falhar) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 138.41000000000045 Td (silenciosamente.) Tj ET Q
+q 0.39 0.4 0.94 rg 50 126.76000000000045 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 124.26000000000045 Td (Limite de Cache: Nao gravar historicos pesados de auditoria no localStorage para nao atingir o teto de 5MB do) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 112.11000000000044 Td (navegador.) Tj ET Q
+q 0.88 0.9 0.94 RG 1 w 45 85.96000000000043 m 550.28 85.96000000000043 l S Q
+q 0.12 0.11 0.3 rg BT /F2 12.5 Tf 45 89.96000000000043 Td (10. Plano de Implementacao Incremental) Tj ET Q
+q 0.39 0.4 0.94 rg 50 76.46000000000043 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 73.96000000000043 Td (Fase 1 - Interface: Criacao da aba tab-auditoria com metricas visuais e tabela de inconsistencias sem mexer em calculos) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 61.810000000000436 Td (contabeis.) Tj ET Q
+q 0.85 0.85 0.88 RG 0.5 w 45 32 m 550.28 32 l S Q
+q 0.45 0.45 0.48 rg BT /F1 8 Tf 45 20 Td (Documento de Analise Estrutural - Sistema Clarus Evolua) Tj ET Q
+q 0.45 0.45 0.48 rg BT /F1 8 Tf 510.28 20 Td (Pagina 2) Tj ET Q
+
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Contents 10 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>
+endobj
+10 0 obj
+<< /Length 1287 >>
+stream
+q 0.4 0.4 0.4 rg BT /F1 8 Tf 45 813.89 Td (Clarus Evolua | Relatorio Tecnico de Arquitetura) Tj ET Q
+q 0.85 0.85 0.88 RG 0.5 w 45 809.89 m 550.28 809.89 l S Q
+q 0.39 0.4 0.94 rg 50 799.39 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 796.89 Td (Fase 2 - Motor Analitico: Algoritmos de leitura nao intrusiva para detectar transacoes duplicadas, sem classificacao e) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 784.74 Td (saldos anomalos.) Tj ET Q
+q 0.39 0.4 0.94 rg 50 773.09 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 770.59 Td (Fase 3 - Importador Multifuncional: Suporte para importacao de multiplos extratos simultaneos com pre-auditoria antes) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 758.44 Td (do salvamento.) Tj ET Q
+q 0.39 0.4 0.94 rg 50 746.7900000000001 3.5 3.5 re f Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 744.2900000000001 Td (Fase 4 - Integracao Lia & Exportacao: Habilitacao da Lia para responder sobre divergencias e geracao do Laudo de) Tj ET Q
+q 0.15 0.18 0.24 rg BT /F1 9.0 Tf 57 732.1400000000001 Td (Auditoria em PDF.) Tj ET Q
+q 0.85 0.85 0.88 RG 0.5 w 45 32 m 550.28 32 l S Q
+q 0.45 0.45 0.48 rg BT /F1 8 Tf 45 20 Td (Documento de Analise Estrutural - Sistema Clarus Evolua) Tj ET Q
+q 0.45 0.45 0.48 rg BT /F1 8 Tf 510.28 20 Td (Pagina 3) Tj ET Q
+
+endstream
+endobj
+xref
+0 11
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000133 00000 n 
+0000000230 00000 n 
+0000000332 00000 n 
+0000000474 00000 n 
+0000008618 00000 n 
+0000008760 00000 n 
+0000018422 00000 n 
+0000018565 00000 n 
+trailer
+<< /Size 11 /Root 1 0 R >>
+startxref
+19905
+%%EOF

@@ -630,6 +630,10 @@ function initTabs() {
             if (target === 'tab-upgrade') title = "Upgrade de Plano Necessário";
             if (target === 'tab-dashboard') title = "Indicadores EFO";
             if (target === 'tab-dre') title = "Demonstrativo de Resultado (DRE)";
+            if (target === 'tab-importador') {
+                title = "Importação de Arquivos";
+                renderImportadorView();
+            }
             if (target === 'tab-projetos') {
                 title = "Projetos de Melhoria";
                 renderProjetos();
@@ -1058,6 +1062,9 @@ function updateAllViews() {
     renderManualConciliationTable();
     if (document.getElementById('tab-parecer-mensal') && document.getElementById('tab-parecer-mensal').classList.contains('active')) {
         renderParecerMensal();
+    }
+    if (document.getElementById('tab-importador') && document.getElementById('tab-importador').classList.contains('active')) {
+        if (typeof renderImportadorView === 'function') renderImportadorView();
     }
     if (document.getElementById('tab-projetos') && document.getElementById('tab-projetos').classList.contains('active')) {
         renderProjetos();
@@ -3671,6 +3678,7 @@ function applyRoleUI() {
     const navManualConciliationBtn = document.getElementById('navManualConciliationBtn');
     const navDashboardBtn = document.getElementById('navDashboardBtn');
     const navAdminFilesBtn = document.getElementById('navAdminFilesBtn');
+    const navImportadorBtn = document.getElementById('navImportadorBtn');
     const navClientFilesBtn = document.getElementById('navClientFilesBtn');
     
     const importSection = document.getElementById('importSection');
@@ -3694,6 +3702,7 @@ function applyRoleUI() {
         userProfileRole.textContent = 'Administrador';
         adminCompanySelectorSection.style.display = 'block';
         navClientsBtn.style.display = 'block';
+        if (navImportadorBtn) navImportadorBtn.style.display = 'block';
         if (navAdminFilesBtn) navAdminFilesBtn.style.display = 'block';
         if (navClientFilesBtn) navClientFilesBtn.style.display = 'none';
         navConciliationBtn.style.display = 'flex';
@@ -3727,6 +3736,7 @@ function applyRoleUI() {
 
         adminCompanySelectorSection.style.display = 'none';
         navClientsBtn.style.display = 'none';
+        if (navImportadorBtn) navImportadorBtn.style.display = 'none';
         if (navAdminFilesBtn) navAdminFilesBtn.style.display = 'none';
         if (navClientFilesBtn) navClientFilesBtn.style.display = 'block';
         navConciliationBtn.style.display = 'none';
@@ -5695,3 +5705,600 @@ window.updateProjectCardObservations = function(cardId, text) {
     }
 };
 
+
+
+// ============================================================================
+//  CLARUS EVOLUA® — MÓDULO DE IMPORTAÇÃO CANÔNICA (CONTROLLER & UI)
+// ============================================================================
+
+let _currentImportWorkbook = null;
+let _currentImportFile = null;
+let _currentImportData = {
+    headers: [],
+    rawDataRows: [],
+    fileInfo: null,
+    sheetNames: [],
+    activeSheet: null,
+    mapping: {},
+    normalized: null
+};
+
+window.renderImportadorView = function() {
+    const empresaSelect = document.getElementById('importEmpresaSelect');
+    const yearSelect = document.getElementById('importYearSelect');
+    const monthSelect = document.getElementById('importMonthSelect');
+
+    if (empresaSelect) {
+        let optionsHtml = '';
+        const currentActiveComp = EFO_Session && EFO_Session.role === 'client' 
+            ? EFO_Session.companyId 
+            : (EFO_Active_Company_Id || Object.keys(EFO_Companies)[0] || '');
+
+        Object.keys(EFO_Companies).forEach(id => {
+            const comp = EFO_Companies[id];
+            const isSelected = id === currentActiveComp;
+            optionsHtml += `<option value="${id}" ${isSelected ? 'selected' : ''}>${comp.name} (${comp.cnpj || id})</option>`;
+        });
+        empresaSelect.innerHTML = optionsHtml;
+
+        empresaSelect.onchange = function() {
+            renderStagingBatchesHistory();
+        };
+    }
+
+    if (yearSelect) {
+        yearSelect.value = String(EFO_Active_DRE_Year || 2026);
+    }
+    if (monthSelect) {
+        monthSelect.value = String(EFO_Active_Parecer_Month !== null ? EFO_Active_Parecer_Month : new Date().getMonth());
+    }
+
+    setupImportadorEvents();
+    renderStagingBatchesHistory();
+};
+
+function setupImportadorEvents() {
+    const dropzone = document.getElementById('importFileDropzone');
+    const fileInput = document.getElementById('importFileInput');
+    const btnAutoMap = document.getElementById('btnAutoMap');
+    const btnRefreshPreview = document.getElementById('btnRefreshPreview');
+    const btnConfirmBatch = document.getElementById('btnConfirmBatch');
+    const btnCancelImport = document.getElementById('btnCancelImport');
+    const sheetSelect = document.getElementById('importSheetSelect');
+
+    if (dropzone && !dropzone._eventsBound) {
+        dropzone._eventsBound = true;
+
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.style.borderColor = 'var(--accent-primary)';
+            dropzone.style.background = 'rgba(99, 102, 241, 0.1)';
+        });
+
+        dropzone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.style.borderColor = 'rgba(99, 102, 241, 0.4)';
+            dropzone.style.background = 'rgba(99, 102, 241, 0.03)';
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.style.borderColor = 'rgba(99, 102, 241, 0.4)';
+            dropzone.style.background = 'rgba(99, 102, 241, 0.03)';
+
+            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                handleImportFileSelected(e.dataTransfer.files[0]);
+            }
+        });
+
+        if (fileInput) {
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    handleImportFileSelected(e.target.files[0]);
+                }
+            });
+        }
+    }
+
+    if (sheetSelect && !sheetSelect._eventsBound) {
+        sheetSelect._eventsBound = true;
+        sheetSelect.addEventListener('change', (e) => {
+            const sheetName = e.target.value;
+            if (_currentImportWorkbook && sheetName) {
+                switchImportSheet(sheetName);
+            }
+        });
+    }
+
+    if (btnAutoMap && !btnAutoMap._eventsBound) {
+        btnAutoMap._eventsBound = true;
+        btnAutoMap.addEventListener('click', () => {
+            if (_currentImportData.headers.length === 0) return;
+            const suggested = EFO_ImportEngine.suggestColumnMapping(_currentImportData.headers);
+            _currentImportData.mapping = suggested;
+            renderMappingDropdowns();
+            updatePreviewTableAndKpis();
+            showToast('Mapeamento automático aplicado!', 'info');
+        });
+    }
+
+    if (btnRefreshPreview && !btnRefreshPreview._eventsBound) {
+        btnRefreshPreview._eventsBound = true;
+        btnRefreshPreview.addEventListener('click', () => {
+            readCurrentMappingFromUI();
+            updatePreviewTableAndKpis();
+            showToast('Amostra de dados atualizada!', 'info');
+        });
+    }
+
+    if (btnConfirmBatch && !btnConfirmBatch._eventsBound) {
+        btnConfirmBatch._eventsBound = true;
+        btnConfirmBatch.addEventListener('click', () => {
+            confirmAndSaveStagingBatch();
+        });
+    }
+
+    if (btnCancelImport && !btnCancelImport._eventsBound) {
+        btnCancelImport._eventsBound = true;
+        btnCancelImport.addEventListener('click', () => {
+            resetImportForm();
+        });
+    }
+}
+
+function handleImportFileSelected(file) {
+    if (!file) return;
+
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['xlsx', 'xls', 'csv'].includes(ext)) {
+        alert('Formato de arquivo não suportado. Por favor, envie uma planilha Excel (.xlsx, .xls) ou arquivo CSV (.csv).');
+        return;
+    }
+
+    _currentImportFile = file;
+
+    const inspectionBox = document.getElementById('importInspectionBox');
+    const fileNameEl = document.getElementById('importFileName');
+    const fileSizeEl = document.getElementById('importFileSize');
+    const fileIconEl = document.getElementById('importFileIcon');
+    const metaBadgesEl = document.getElementById('importMetaBadges');
+    const hashEl = document.getElementById('importFileHash');
+    const sheetRow = document.getElementById('importSheetSelectRow');
+
+    if (inspectionBox) inspectionBox.style.display = 'block';
+    if (fileNameEl) fileNameEl.textContent = file.name;
+    if (fileSizeEl) fileSizeEl.textContent = (file.size / 1024).toFixed(1) + ' KB (' + file.size.toLocaleString('pt-BR') + ' bytes)';
+    if (fileIconEl) fileIconEl.textContent = ext === 'csv' ? '📄' : '📊';
+
+    const reader = new FileReader();
+
+    if (ext === 'csv') {
+        reader.onload = function(e) {
+            try {
+                const uint8 = new Uint8Array(e.target.result);
+                const hash = EFO_ImportEngine.computeSha256(uint8);
+                if (hashEl) hashEl.textContent = hash;
+
+                const encoding = EFO_ImportEngine.detectEncoding(uint8);
+                const text = EFO_ImportEngine.decodeBuffer(uint8, encoding);
+                const delimiter = EFO_ImportEngine.detectDelimiter(text);
+                const rawMatrix = EFO_ImportEngine.parseCsvString(text, delimiter);
+
+                if (metaBadgesEl) {
+                    metaBadgesEl.innerHTML = `
+                        <span class="badge" style="background: rgba(99,102,241,0.15); color: var(--accent-primary);">Formato: CSV</span>
+                        <span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">Delimitador: "${delimiter === '\t' ? 'TAB' : delimiter}"</span>
+                        <span class="badge" style="background: rgba(245,158,11,0.15); color: #f59e0b;">Codificação: ${encoding}</span>
+                        <span class="badge" style="background: rgba(59,130,246,0.15); color: #3b82f6;">${rawMatrix.length} Linhas Brutas</span>
+                    `;
+                }
+
+                if (sheetRow) sheetRow.style.display = 'none';
+
+                _currentImportData.fileInfo = {
+                    name: file.name,
+                    size: file.size,
+                    type: 'CSV',
+                    sha256: hash,
+                    encoding: encoding,
+                    delimiter: delimiter
+                };
+
+                processImportMatrix(rawMatrix);
+            } catch (err) {
+                console.error("Erro ao processar CSV:", err);
+                alert("Falha ao analisar o arquivo CSV: " + err.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    } else {
+        // XLSX or XLS
+        reader.onload = function(e) {
+            try {
+                const uint8 = new Uint8Array(e.target.result);
+                const hash = EFO_ImportEngine.computeSha256(uint8);
+                if (hashEl) hashEl.textContent = hash;
+
+                if (typeof XLSX === 'undefined') {
+                    throw new Error("Biblioteca SheetJS (XLSX) não carregada no navegador.");
+                }
+
+                const workbook = XLSX.read(uint8, { type: 'array', cellDates: true });
+                _currentImportWorkbook = workbook;
+                const sheetNames = workbook.SheetNames || [];
+
+                if (sheetNames.length === 0) {
+                    throw new Error("Nenhuma aba encontrada na planilha Excel.");
+                }
+
+                if (metaBadgesEl) {
+                    metaBadgesEl.innerHTML = `
+                        <span class="badge" style="background: rgba(99,102,241,0.15); color: var(--accent-primary);">Formato: Excel XLSX</span>
+                        <span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">${sheetNames.length} Aba(s) Identificada(s)</span>
+                    `;
+                }
+
+                const sheetSelect = document.getElementById('importSheetSelect');
+                if (sheetSelect) {
+                    sheetSelect.innerHTML = sheetNames.map(s => `<option value="${s}">${s}</option>`).join('');
+                }
+                if (sheetRow) sheetRow.style.display = sheetNames.length > 1 ? 'flex' : 'none';
+
+                _currentImportData.fileInfo = {
+                    name: file.name,
+                    size: file.size,
+                    type: 'EXCEL_XLSX',
+                    sha256: hash,
+                    sheetNames: sheetNames,
+                    activeSheet: sheetNames[0]
+                };
+
+                switchImportSheet(sheetNames[0]);
+            } catch (err) {
+                console.error("Erro ao processar Excel:", err);
+                alert("Falha ao analisar a planilha Excel: " + err.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+}
+
+function switchImportSheet(sheetName) {
+    if (!_currentImportWorkbook) return;
+    const sheet = _currentImportWorkbook.Sheets[sheetName];
+    if (!sheet) return;
+
+    if (_currentImportData.fileInfo) {
+        _currentImportData.fileInfo.activeSheet = sheetName;
+    }
+
+    const rawMatrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', blankrows: false });
+    processImportMatrix(rawMatrix);
+}
+
+function processImportMatrix(rawMatrix) {
+    try {
+        const inspection = EFO_ImportEngine.detectHeaderRow(rawMatrix);
+        _currentImportData.headers = inspection.headers;
+        _currentImportData.rawDataRows = inspection.dataRows;
+
+        // Auto-suggest mapping
+        _currentImportData.mapping = EFO_ImportEngine.suggestColumnMapping(inspection.headers);
+
+        // Show sections
+        const mappingSec = document.getElementById('importMappingSection');
+        const previewSec = document.getElementById('importPreviewSection');
+        if (mappingSec) mappingSec.style.display = 'block';
+        if (previewSec) previewSec.style.display = 'block';
+
+        renderMappingDropdowns();
+        updatePreviewTableAndKpis();
+    } catch (err) {
+        alert("Aviso na estrutura do arquivo: " + err.message);
+    }
+}
+
+function renderMappingDropdowns() {
+    const grid = document.getElementById('importMappingGrid');
+    if (!grid) return;
+
+    const headers = _currentImportData.headers || [];
+    const currentMapping = _currentImportData.mapping || {};
+
+    const canonicalFields = [
+        { key: 'date', label: 'Data do Lançamento', required: true, desc: 'Data da transação (ex: 15/03/2026)' },
+        { key: 'amount', label: 'Valor Financeiro', required: true, desc: 'Valor em reais (positivo ou negativo)' },
+        { key: 'description', label: 'Descrição / Histórico', required: true, desc: 'Histórico, favorecido ou detalhe PIX' },
+        { key: 'category', label: 'Categoria / Conta Contábil', required: false, desc: 'Plano de contas ou classificação' },
+        { key: 'document_number', label: 'Número de Documento / NF', required: false, desc: 'Nº do boleto, NF, cheque ou PIX id' },
+        { key: 'type', label: 'Tipo (Débito / Crédito)', required: false, desc: 'Indicação explícita D/C se houver' }
+    ];
+
+    grid.innerHTML = canonicalFields.map(field => {
+        const mappedCol = currentMapping[field.key] || '';
+        const options = ['<option value="">-- Não Mapear --</option>'].concat(
+            headers.map(h => `<option value="${h}" ${h === mappedCol ? 'selected' : ''}>Coluna: "${h}"</option>`)
+        ).join('');
+
+        return `
+            <div style="background: var(--bg-primary); border: 1px solid var(--glass-border); padding: 12px; border-radius: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <label style="font-size: 12.5px; font-weight: 600; color: var(--text-primary); margin: 0;">
+                        ${field.label} ${field.required ? '<span style="color: var(--danger);">*</span>' : ''}
+                    </label>
+                </div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 8px;">${field.desc}</div>
+                <select class="canonical-mapping-select" data-field="${field.key}" style="width: 100%; padding: 6px 10px; background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); font-size: 12px;">
+                    ${options}
+                </select>
+            </div>
+        `;
+    }).join('');
+
+    // Attach change handlers to live update
+    const selects = grid.querySelectorAll('.canonical-mapping-select');
+    selects.forEach(sel => {
+        sel.addEventListener('change', () => {
+            readCurrentMappingFromUI();
+            updatePreviewTableAndKpis();
+        });
+    });
+}
+
+function readCurrentMappingFromUI() {
+    const grid = document.getElementById('importMappingGrid');
+    if (!grid) return;
+    const selects = grid.querySelectorAll('.canonical-mapping-select');
+    const newMapping = {};
+    selects.forEach(sel => {
+        const field = sel.getAttribute('data-field');
+        newMapping[field] = sel.value || null;
+    });
+    _currentImportData.mapping = newMapping;
+}
+
+function updatePreviewTableAndKpis() {
+    const headers = _currentImportData.headers;
+    const rawRows = _currentImportData.rawDataRows;
+    const mapping = _currentImportData.mapping;
+
+    if (!headers || !rawRows || rawRows.length === 0) return;
+
+    const normalized = EFO_ImportEngine.normalizeRecords(headers, rawRows, mapping);
+    _currentImportData.normalized = normalized;
+
+    // Update KPIs
+    const kpiTotal = document.getElementById('previewKpiTotal');
+    const kpiValidas = document.getElementById('previewKpiValidas');
+    const kpiInvalidas = document.getElementById('previewKpiInvalidas');
+    const kpiCreditos = document.getElementById('previewKpiCreditos');
+    const kpiDebitos = document.getElementById('previewKpiDebitos');
+    const kpiSaldo = document.getElementById('previewKpiSaldo');
+
+    if (kpiTotal) kpiTotal.textContent = normalized.totalRows;
+    if (kpiValidas) kpiValidas.textContent = normalized.validRows;
+    if (kpiInvalidas) kpiInvalidas.textContent = normalized.invalidRows;
+    if (kpiCreditos) kpiCreditos.textContent = formatCurrency(normalized.totalCredits);
+    if (kpiDebitos) kpiDebitos.textContent = formatCurrency(normalized.totalDebits);
+    if (kpiSaldo) {
+        kpiSaldo.textContent = formatCurrency(normalized.netBalance);
+        kpiSaldo.style.color = normalized.netBalance >= 0 ? 'var(--success)' : 'var(--danger)';
+    }
+
+    const summaryEl = document.getElementById('importPreviewStatusSummary');
+    if (summaryEl) {
+        summaryEl.innerHTML = `Exibindo amostra de <strong>${Math.min(normalized.records.length, 25)}</strong> de <strong>${normalized.totalRows}</strong> linhas analisadas.`;
+    }
+
+    // Render Preview Table
+    const tbody = document.getElementById('importPreviewTbody');
+    if (!tbody) return;
+
+    if (normalized.records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="text-center" style="padding: 20px; color: var(--text-secondary);">Nenhuma linha identificada para amostra.</td></tr>`;
+        return;
+    }
+
+    // Show up to 25 sample rows
+    const sampleRows = normalized.records.slice(0, 25);
+    tbody.innerHTML = sampleRows.map(rec => {
+        const isOk = rec.status === 'VALIDO';
+        const statusBadge = isOk 
+            ? `<span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981; font-size: 10.5px;">✓ Válido</span>`
+            : `<span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444; font-size: 10.5px;" title="${rec.errors.join('; ')}">⚠️ ${rec.errors[0] || 'Inconsistente'}</span>`;
+
+        let formattedDate = '-';
+        if (rec.date) {
+            const parts = rec.date.split('-');
+            if (parts.length === 3) formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        let formattedAmount = '-';
+        let amountColor = 'var(--text-primary)';
+        if (rec.amount !== null && rec.amount !== undefined) {
+            formattedAmount = formatCurrency(rec.amount);
+            amountColor = rec.amount >= 0 ? 'var(--success)' : 'var(--danger)';
+        }
+
+        return `
+            <tr style="border-bottom: 1px solid var(--glass-border); ${!isOk ? 'background: rgba(239,68,68,0.03);' : ''}">
+                <td style="color: var(--text-secondary);">${rec.row_number}</td>
+                <td>${statusBadge}</td>
+                <td style="font-family: monospace;">${formattedDate}</td>
+                <td style="max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${rec.description || ''}">
+                    ${rec.description || '<span style="color: var(--text-secondary); italic">Sem descrição</span>'}
+                </td>
+                <td style="text-align: right; font-weight: 600; color: ${amountColor};">${formattedAmount}</td>
+                <td>${rec.category || '<span style="color: var(--text-secondary);">—</span>'}</td>
+                <td style="font-family: monospace; font-size: 11px;">${rec.document_number || '—'}</td>
+                <td style="text-align: center;">
+                    <span class="badge" style="font-size: 10px; background: rgba(255,255,255,0.05); color: var(--text-secondary);">
+                        ${rec.type || 'N/A'}
+                    </span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function confirmAndSaveStagingBatch() {
+    const compSelect = document.getElementById('importEmpresaSelect');
+    const yearSelect = document.getElementById('importYearSelect');
+    const monthSelect = document.getElementById('importMonthSelect');
+    const tipoSelect = document.getElementById('importTipoLoteSelect');
+
+    const companyId = compSelect ? compSelect.value : (EFO_Active_Company_Id || 'comp_demo');
+    const year = parseInt(yearSelect ? yearSelect.value : 2026);
+    const month = parseInt(monthSelect ? monthSelect.value : 0);
+    const batchType = tipoSelect ? tipoSelect.value : 'MOVIMENTACAO_BANCARIA';
+
+    if (!_currentImportData.fileInfo || !_currentImportData.normalized) {
+        alert("Nenhum arquivo processado para importação.");
+        return;
+    }
+
+    const mapping = _currentImportData.mapping || {};
+    if (!mapping.date || !mapping.amount || !mapping.description) {
+        alert("Atenção: Os campos obrigatórios (Data, Valor e Descrição) devem estar mapeados antes de confirmar o lote.");
+        return;
+    }
+
+    // Check anti-duplication
+    const dupCheck = EFO_ImportEngine.checkDuplicateBatch(companyId, _currentImportData.fileInfo.sha256);
+    if (dupCheck.isDuplicate) {
+        const conf = confirm(
+            `Atenção: Este mesmo arquivo já foi importado anteriormente no Lote #${dupCheck.existingBatch.batchId} ` +
+            `em ${new Date(dupCheck.existingBatch.importedAt).toLocaleString('pt-BR')} com ${dupCheck.existingBatch.recordsCount} registros.\n\n` +
+            `Deseja reimportar mesmo assim gerando um novo identificador de lote em staging?`
+        );
+        if (!conf) return;
+    }
+
+    const batchMeta = {
+        batchId: 'LOT-' + Date.now().toString(36).toUpperCase(),
+        companyId: companyId,
+        year: year,
+        month: month,
+        batchType: batchType,
+        fileName: _currentImportData.fileInfo.name,
+        fileSize: _currentImportData.fileInfo.size,
+        fileType: _currentImportData.fileInfo.type,
+        sheetName: _currentImportData.fileInfo.activeSheet || null,
+        sha256: _currentImportData.fileInfo.sha256,
+        user: EFO_Session ? EFO_Session.name : 'Administrador',
+        status: 'STAGING_SALVO',
+        mapping: mapping
+    };
+
+    const rawPreview = (_currentImportData.rawDataRows || []).slice(0, 50);
+
+    const saved = EFO_ImportEngine.saveStagingBatch(batchMeta, _currentImportData.normalized, rawPreview);
+
+    showToast(`✅ Lote #${saved.batchId} salvo com sucesso no Staging de Auditoria!`, 'success');
+
+    // Reset current form & refresh history
+    resetImportForm();
+    renderStagingBatchesHistory();
+}
+
+function resetImportForm() {
+    _currentImportWorkbook = null;
+    _currentImportFile = null;
+    _currentImportData = {
+        headers: [],
+        rawDataRows: [],
+        fileInfo: null,
+        sheetNames: [],
+        activeSheet: null,
+        mapping: {},
+        normalized: null
+    };
+
+    const fileInput = document.getElementById('importFileInput');
+    if (fileInput) fileInput.value = '';
+
+    const inspectionBox = document.getElementById('importInspectionBox');
+    const mappingSec = document.getElementById('importMappingSection');
+    const previewSec = document.getElementById('importPreviewSection');
+
+    if (inspectionBox) inspectionBox.style.display = 'none';
+    if (mappingSec) mappingSec.style.display = 'none';
+    if (previewSec) previewSec.style.display = 'none';
+}
+
+window.renderStagingBatchesHistory = function() {
+    const compSelect = document.getElementById('importEmpresaSelect');
+    const companyId = compSelect ? compSelect.value : (EFO_Active_Company_Id || 'comp_demo');
+    const tbody = document.getElementById('importBatchesTbody');
+    if (!tbody) return;
+
+    const batches = EFO_ImportEngine.listCompanyBatches(companyId);
+
+    if (!batches || batches.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center" style="padding: 24px; color: var(--text-secondary);">
+                    Nenhum lote importado ainda para esta empresa.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    const monthsShort = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+    tbody.innerHTML = batches.map(b => {
+        const dt = new Date(b.importedAt);
+        const formattedDate = dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const periodStr = `${monthsShort[b.month] || 'Mês ' + b.month}/${b.year}`;
+        const balanceColor = b.netBalance >= 0 ? 'var(--success)' : 'var(--danger)';
+
+        return `
+            <tr style="border-bottom: 1px solid var(--glass-border);">
+                <td style="font-family: monospace; font-weight: 600; color: var(--accent-primary);">${b.batchId}</td>
+                <td style="font-size: 11.5px; color: var(--text-secondary);">${formattedDate}</td>
+                <td>
+                    <div style="font-weight: 600; color: var(--text-primary); font-size: 12.5px;">${b.fileName}</div>
+                    <div style="font-size: 10.5px; color: var(--text-secondary);">
+                        ${b.fileType}${b.sheetName ? ' • Aba: ' + b.sheetName : ''}
+                    </div>
+                </td>
+                <td style="font-weight: 600;">${periodStr}</td>
+                <td>
+                    <span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981; font-size: 11px;">
+                        ${b.validRows} válidas
+                    </span>
+                    ${b.invalidRows > 0 ? `
+                        <span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444; font-size: 11px; margin-left: 4px;">
+                            ${b.invalidRows} err
+                        </span>
+                    ` : ''}
+                </td>
+                <td style="font-weight: 600; color: ${balanceColor};">${formatCurrency(b.netBalance)}</td>
+                <td>
+                    <span class="badge" style="background: rgba(99,102,241,0.15); color: var(--accent-primary); font-size: 11px; font-weight: 600;">
+                        ${b.status}
+                    </span>
+                </td>
+                <td style="font-size: 11.5px; color: var(--text-secondary);">${b.user}</td>
+                <td style="text-align: center;">
+                    <button type="button" onclick="deleteBatchFromStaging('${b.batchId}')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: var(--danger); border-color: rgba(239,68,68,0.3);" title="Excluir lote do staging">
+                        🗑️ Excluir
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+};
+
+window.deleteBatchFromStaging = function(batchId) {
+    if (!confirm(`Deseja realmente remover o lote #${batchId} do ambiente de staging? Esta ação não pode ser desfeita.`)) {
+        return;
+    }
+    EFO_ImportEngine.deleteStagingBatch(batchId);
+    showToast(`Lote #${batchId} removido do staging.`, 'info');
+    renderStagingBatchesHistory();
+};
