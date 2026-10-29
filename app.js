@@ -33,11 +33,49 @@ let EFO_Users = JSON.parse(localStorage.getItem('EFO_Users')) || [];
 let EFO_Active_Company_Id = localStorage.getItem('EFO_Active_Company_Id') || '';
 let EFO_Session = JSON.parse(sessionStorage.getItem('EFO_Session')) || null;
 
-// Guarantee demo user exists at startup (self-healing even with stale localStorage)
-(function _ensureDemoUser() {
-    const DEMO_EMAIL = 'teste@clarus.com.br';
-    const DEMO_HASH  = 'ae22816fbe794fbf09055c386592fa69d745d9b62dcedb5f4a7e9d4df55f3148';
-    if (!EFO_Users.some(u => u.email.toLowerCase() === DEMO_EMAIL)) {
+// Guarantee essential system users exist at startup (self-healing against stale localStorage)
+(function _ensureDefaultUsers() {
+    const ADMIN_EMAIL = 'admin@clarus.com.br';
+    const ADMIN_HASH  = 'e4ad7e0fe6b5bf949f7c67f2381ca4bf8d152f6a3e471fa65779cc4a7f83831e';
+    const DEMO_EMAIL  = 'teste@clarus.com.br';
+    const DEMO_HASH   = 'ae22816fbe794fbf09055c386592fa69d745d9b62dcedb5f4a7e9d4df55f3148';
+    const CLIENT_EMAIL= 'cliente@clarus.com.br';
+    const CLIENT_HASH = '33e182a6b1c4796f6ff57edfd41af4f69e9e017122da7ef7180465f243ed6c1d';
+
+    let changed = false;
+
+    // 1. Ensure admin exists
+    let adminUser = EFO_Users.find(u => u.email.toLowerCase().trim() === ADMIN_EMAIL);
+    if (!adminUser) {
+        EFO_Users.unshift({
+            email: ADMIN_EMAIL,
+            password: ADMIN_HASH,
+            role: 'admin',
+            name: 'Administrador'
+        });
+        changed = true;
+    } else {
+        if (adminUser.role !== 'admin' || adminUser.password !== ADMIN_HASH) {
+            adminUser.role = 'admin';
+            adminUser.password = ADMIN_HASH;
+            changed = true;
+        }
+    }
+
+    // 2. Ensure client user exists
+    if (!EFO_Users.some(u => u.email.toLowerCase().trim() === CLIENT_EMAIL)) {
+        EFO_Users.push({
+            email: CLIENT_EMAIL,
+            password: CLIENT_HASH,
+            role: 'client',
+            name: 'Saldanha (Cliente)',
+            companyId: EFO_Active_Company_Id || 'comp_demo'
+        });
+        changed = true;
+    }
+
+    // 3. Ensure demo user exists
+    if (!EFO_Users.some(u => u.email.toLowerCase().trim() === DEMO_EMAIL)) {
         EFO_Users.push({
             email: DEMO_EMAIL,
             password: DEMO_HASH,
@@ -45,6 +83,10 @@ let EFO_Session = JSON.parse(sessionStorage.getItem('EFO_Session')) || null;
             name: 'Saldanha (Vendas)',
             companyId: 'comp_demo'
         });
+        changed = true;
+    }
+
+    if (changed) {
         localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
     }
 })();
@@ -202,11 +244,13 @@ function migrateAndInitializeData() {
         localStorage.setItem('EFO_Active_Company_Id', EFO_Active_Company_Id);
     }
 
-    if (EFO_Users.length === 0) {
-        EFO_Users = [
-            { email: 'admin@clarus.com.br', password: 'e4ad7e0fe6b5bf949f7c67f2381ca4bf8d152f6a3e471fa65779cc4a7f83831e', role: 'admin', name: 'Administrador' },
-            { email: 'cliente@clarus.com.br', password: '33e182a6b1c4796f6ff57edfd41af4f69e9e017122da7ef7180465f243ed6c1d', role: 'client', name: 'Saldanha (Cliente)', companyId: EFO_Active_Company_Id }
-        ];
+    if (!EFO_Users.some(u => u.email.toLowerCase().trim() === 'admin@clarus.com.br')) {
+        EFO_Users.unshift({
+            email: 'admin@clarus.com.br',
+            password: 'e4ad7e0fe6b5bf949f7c67f2381ca4bf8d152f6a3e471fa65779cc4a7f83831e',
+            role: 'admin',
+            name: 'Administrador'
+        });
         localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
     }
 
@@ -3981,11 +4025,29 @@ async function handleLogin(e) {
 
         // 2. Fallback: check in-memory / localStorage users
         if (!user) {
+            try {
+                const storedUsers = JSON.parse(localStorage.getItem('EFO_Users')) || [];
+                if (storedUsers.length > 0) EFO_Users = storedUsers;
+            } catch(e) {}
+
             user = EFO_Users.find(u => {
                 if (u.email.toLowerCase().trim() !== email.toLowerCase().trim()) return false;
-                // Support both secure hash and legacy plain text for offline mode
                 return u.password === passHash || u.password === pass;
             }) || null;
+
+            // Emergency self-healing for default administrator credentials
+            if (!user && email.toLowerCase().trim() === 'admin@clarus.com.br' && pass === 'admin') {
+                user = {
+                    email: 'admin@clarus.com.br',
+                    password: 'e4ad7e0fe6b5bf949f7c67f2381ca4bf8d152f6a3e471fa65779cc4a7f83831e',
+                    role: 'admin',
+                    name: 'Administrador'
+                };
+                if (!EFO_Users.some(u => u.email.toLowerCase().trim() === 'admin@clarus.com.br')) {
+                    EFO_Users.unshift(user);
+                    localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
+                }
+            }
 
             // Auto-upgrade plain text cached credentials
             if (user && user.password === pass) {
