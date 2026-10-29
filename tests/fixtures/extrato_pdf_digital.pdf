@@ -1,0 +1,56 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 937 >>
+stream
+BT
+/F1 16 Tf
+50 780 Td
+(BANCO CLARUS S.A. - EXTRATO DE CONTA CORRENTE) Tj
+/F1 10 Tf
+0 -25 Td
+(Agencia: 0102  Conta: 98765-4  Periodo: 01/03/2026 a 31/03/2026) Tj
+0 -20 Td
+(SALDO ANTERIOR EM 28/02/2026: R$ 4.500,00) Tj
+0 -30 Td
+(DATA       HISTORICO                                  DOCUMENTO       VALOR (R$)       SALDO (R$)) Tj
+0 -18 Td
+(03/03/2026 RECEBIMENTO CLIENTE ALVORADA               DOC 11202       +3.200,00        7.700,00) Tj
+0 -16 Td
+(09/03/2026 PAGTO FORNECEDOR EMBALAGENS SA            DOC 44901       -1.450,50        6.249,50) Tj
+0 -16 Td
+(14/03/2026 TARIFA MANUTENCAO MENSAL DE CONTA         TAR 00021         -65,00        6.184,50) Tj
+0 -16 Td
+(22/03/2026 PIX RECEBIDO VENDA BALCAO                 PIX 88310       +2.100,00        8.284,50) Tj
+0 -16 Td
+(29/03/2026 LIQUIDACAO BOLETO EQUIPAMENTOS TI         BOL 77123       -2.850,00        5.434,50) Tj
+0 -30 Td
+(SALDO FINAL ATUAL EM 31/03/2026: R$ 5.434,50) Tj
+ET
+
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000001229 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1299
+%%EOF

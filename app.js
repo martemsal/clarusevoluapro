@@ -5819,6 +5819,173 @@ window.renderImportadorView = function() {
     renderStagingBatchesHistory();
 };
 
+
+// -----------------------------------------------------------------------------
+// FUNÇÕES DE AUDITORIA & CONCILIAÇÃO BANCÁRIA DETERMINÍSTICA
+// -----------------------------------------------------------------------------
+function renderReconciliationAuditUI(recon, statementMeta) {
+    const reconCard = document.getElementById('reconAuditCard');
+    const mappingSec = document.getElementById('importMappingSection');
+    const previewSec = document.getElementById('importPreviewSection');
+    const reconTitle = document.getElementById('reconCardTitle');
+    const reconSubtitle = document.getElementById('reconCardSubtitle');
+    const reconBadgeContainer = document.getElementById('reconBadgeContainer');
+    const reconInitialBal = document.getElementById('reconInitialBal');
+    const reconCredits = document.getElementById('reconCredits');
+    const reconDebits = document.getElementById('reconDebits');
+    const reconCalculatedFinal = document.getElementById('reconCalculatedFinal');
+    const reconReportedFinal = document.getElementById('reconReportedFinal');
+    const reconGapBox = document.getElementById('reconGapBox');
+    const reconGapValue = document.getElementById('reconGapValue');
+    const reconAlertsArea = document.getElementById('reconAlertsArea');
+
+    if (mappingSec) mappingSec.style.display = 'none'; // OFX/Bancos já vêm padronizados
+    if (previewSec) previewSec.style.display = 'block';
+    if (reconCard) reconCard.style.display = 'block';
+
+    const eq = recon.equation;
+    const isBalanced = eq.isBalanceReconciled;
+    const isAuditado = recon.batchStatus === 'STAGING_AUDITADO';
+
+    if (reconTitle) {
+        reconTitle.textContent = `Auditoria Bancária: ${statementMeta.bankName || 'Extrato Bancário'} (${statementMeta.format || 'OFX'})`;
+    }
+    if (reconSubtitle) {
+        reconSubtitle.textContent = `Conta: ${statementMeta.account || 'Identificada'} | Período: ${recon.periodAudit.startDate || 'N/A'} a ${recon.periodAudit.endDate || 'N/A'}`;
+    }
+
+    if (reconBadgeContainer) {
+        reconBadgeContainer.innerHTML = isAuditado
+            ? '<span class="badge" style="background: rgba(16,185,129,0.2); color: #10b981; font-weight: 700; font-size: 12px; padding: 6px 12px; border: 1px solid #10b981;">🛡️ STAGING_AUDITADO (100% Batido)</span>'
+            : '<span class="badge" style="background: rgba(239,68,68,0.2); color: #ef4444; font-weight: 700; font-size: 12px; padding: 6px 12px; border: 1px solid #ef4444;">⚠️ PENDENTE_REVISAO (Divergências Detectadas)</span>';
+    }
+
+    if (reconInitialBal) reconInitialBal.textContent = formatCurrency(eq.initialBalance);
+    if (reconCredits) reconCredits.textContent = formatCurrency(eq.totalCredits);
+    if (reconDebits) reconDebits.textContent = formatCurrency(-eq.totalDebits);
+    if (reconCalculatedFinal) reconCalculatedFinal.textContent = formatCurrency(eq.calculatedFinalBalance);
+    if (reconReportedFinal) reconReportedFinal.textContent = formatCurrency(eq.reportedFinalBalance);
+
+    if (reconGapValue) {
+        reconGapValue.textContent = formatCurrency(eq.balanceDifference);
+        reconGapValue.style.color = isBalanced ? 'var(--success)' : 'var(--danger)';
+    }
+    if (reconGapBox) {
+        reconGapBox.style.borderColor = isBalanced ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.4)';
+        reconGapBox.style.background = isBalanced ? 'rgba(16,185,129,0.05)' : 'rgba(239,68,68,0.08)';
+    }
+
+    // Renderiza alertas detalhados
+    let alertsHtml = '';
+
+    // Alerta 1: Equação de Saldo
+    if (!isBalanced) {
+        alertsHtml += `
+            <div style="background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.4); border-radius: 8px; padding: 10px 14px; font-size: 12.5px; color: #ef4444;">
+                <strong>⚠️ Quebra da Equação Fundamental:</strong> O saldo calculado a partir dos lançamentos (${formatCurrency(eq.calculatedFinalBalance)}) difere do saldo final informado no extrato (${formatCurrency(eq.reportedFinalBalance)}) em <strong>${formatCurrency(eq.balanceDifference)}</strong>. Lote retido para conferência.
+            </div>
+        `;
+    }
+
+    // Alerta 2: Sobreposição de Períodos (Overlap)
+    if (recon.periodAudit.hasOverlap) {
+        const overlapped = recon.periodAudit.overlappingBatches.map(b => `#${b.batchId} (${b.period})`).join(', ');
+        alertsHtml += `
+            <div style="background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.4); border-radius: 8px; padding: 10px 14px; font-size: 12.5px; color: #f59e0b;">
+                <strong>📅 Alerta de Sobreposição Temporal:</strong> O período deste extrato coincide com lotes já importados anteriormente (${overlapped}). Verifique se não se trata de duplicidade de arquivo.
+            </div>
+        `;
+    }
+
+    // Alerta 3: Transferências Entre Contas Próprias
+    if (recon.internalTransferPairs.length > 0) {
+        alertsHtml += `
+            <div style="background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.4); border-radius: 8px; padding: 10px 14px; font-size: 12.5px; color: #3b82f6;">
+                <strong>🔄 Transferências Entre Contas Próprias Identificadas:</strong> ${recon.internalTransferPairs.length} movimentação(ões) reconhecida(s) entre contas da própria empresa. O sistema preserva essas movimentações marcadas para evitar dupla tributação.
+            </div>
+        `;
+    }
+
+    // Alerta 4: OCR Alerta (se aplicável)
+    if (statementMeta.is_ocr) {
+        alertsHtml += `
+            <div style="background: rgba(139,92,246,0.12); border: 1px solid rgba(139,92,246,0.4); border-radius: 8px; padding: 10px 14px; font-size: 12.5px; color: #8b5cf6;">
+                <strong>🔍 Documento Escaneado (Camada OCR):</strong> Extrato extraído opticamente. Lançamentos com taxa de confiança &lt; 95% foram marcados com revisão manual obrigatória.
+            </div>
+        `;
+    }
+
+    if (reconAlertsArea) {
+        reconAlertsArea.innerHTML = alertsHtml;
+    }
+
+    // Atualiza KPIs do cabeçalho de amostra
+    const totalLinesEl = document.getElementById('previewKpiTotal');
+    const validLinesEl = document.getElementById('previewKpiValidas');
+    const invalidLinesEl = document.getElementById('previewKpiInvalidas');
+    const creditsEl = document.getElementById('previewKpiCreditos');
+    const debitsEl = document.getElementById('previewKpiDebitos');
+    const netBalEl = document.getElementById('previewKpiSaldo');
+
+    if (totalLinesEl) totalLinesEl.textContent = recon.records.length;
+    if (validLinesEl) validLinesEl.textContent = recon.summaryKpis.conciliatedCount;
+    if (invalidLinesEl) invalidLinesEl.textContent = recon.summaryKpis.pendingReviewCount + recon.summaryKpis.duplicatesCount;
+    if (creditsEl) creditsEl.textContent = formatCurrency(eq.totalCredits);
+    if (debitsEl) debitsEl.textContent = formatCurrency(-eq.totalDebits);
+    if (netBalEl) netBalEl.textContent = formatCurrency(eq.netMovement);
+
+    // Renderiza a Tabela de Revisão com Proveniência Rigorosa
+    renderReconciliationTableRows(recon.records, statementMeta.fileName);
+}
+
+function renderReconciliationTableRows(records, fileName) {
+    const tbody = document.getElementById('importPreviewTbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = records.map(rec => {
+        let statusBadge = '';
+        if (rec.status === 'CONCILIADO') {
+            statusBadge = '<span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981; font-weight: 600;">✓ Conciliado</span>';
+        } else if (rec.status === 'DUPLICIDADE_SUSPEITA') {
+            statusBadge = '<span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444; font-weight: 600;">🚨 Duplicidade</span>';
+        } else if (rec.status === 'TRANSFERENCIA_IDENTIFICADA') {
+            statusBadge = '<span class="badge" style="background: rgba(59,130,246,0.15); color: #3b82f6; font-weight: 600;">🔄 Transf. Própria</span>';
+        } else {
+            statusBadge = '<span class="badge" style="background: rgba(245,158,11,0.15); color: #f59e0b; font-weight: 600;">⚠️ Revisão</span>';
+        }
+
+        const provenience = rec.page_number
+            ? `Página ${rec.page_number} / L.${rec.line_number}`
+            : `Linha ${rec.line_number}`;
+
+        const amountColor = rec.amount >= 0 ? 'var(--success)' : 'var(--danger)';
+        const notes = (rec.divergence_reasons && rec.divergence_reasons.length > 0)
+            ? rec.divergence_reasons.join('; ')
+            : (rec.status === 'TRANSFERENCIA_IDENTIFICADA' ? 'Movimentação entre contas da mesma titularidade' : 'Batido com a equação e saldo bancário');
+
+        return `
+            <tr style="border-bottom: 1px solid var(--glass-border); ${rec.status !== 'CONCILIADO' ? 'background: rgba(245,158,11,0.04);' : ''}">
+                <td style="font-family: monospace; font-size: 11px; color: var(--text-secondary);">${provenience}</td>
+                <td>${statusBadge}</td>
+                <td style="font-family: monospace;">${rec.date || '—'}</td>
+                <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${rec.description || ''}">
+                    ${rec.description || '<span style="color: var(--text-secondary); italic">Sem histórico</span>'}
+                </td>
+                <td style="text-align: right; font-weight: 600; color: ${amountColor};">${formatCurrency(rec.amount)}</td>
+                <td style="font-family: monospace; font-size: 11px;">${rec.fitid || rec.document_number || '—'}</td>
+                <td style="font-size: 11.5px; color: ${rec.status === 'CONCILIADO' ? 'var(--text-secondary)' : '#f59e0b'};">
+                    ${notes}
+                </td>
+                <td style="text-align: center;">
+                    <span class="badge" style="font-size: 10px; background: rgba(255,255,255,0.05); color: var(--text-secondary);">
+                        ${rec.type || (rec.amount >= 0 ? 'CRÉDITO' : 'DÉBITO')}
+                    </span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
 function setupImportadorEvents() {
     const dropzone = document.getElementById('importFileDropzone');
     const fileInput = document.getElementById('importFileInput');
@@ -5915,8 +6082,8 @@ function handleImportFileSelected(file) {
     if (!file) return;
 
     const ext = file.name.split('.').pop().toLowerCase();
-    if (!['xlsx', 'xls', 'csv'].includes(ext)) {
-        alert('Formato de arquivo não suportado. Por favor, envie uma planilha Excel (.xlsx, .xls) ou arquivo CSV (.csv).');
+    if (!['xlsx', 'xls', 'csv', 'ofx', 'pdf'].includes(ext)) {
+        alert('Formato de arquivo não suportado. Envie extrato bancário OFX (.ofx), PDF (.pdf), CSV (.csv) ou Excel (.xlsx, .xls).');
         return;
     }
 
@@ -5933,11 +6100,16 @@ function handleImportFileSelected(file) {
     if (inspectionBox) inspectionBox.style.display = 'block';
     if (fileNameEl) fileNameEl.textContent = file.name;
     if (fileSizeEl) fileSizeEl.textContent = (file.size / 1024).toFixed(1) + ' KB (' + file.size.toLocaleString('pt-BR') + ' bytes)';
-    if (fileIconEl) fileIconEl.textContent = ext === 'csv' ? '📄' : '📊';
+    if (fileIconEl) fileIconEl.textContent = ext === 'csv' ? '📄' : (ext === 'ofx' ? '🏦' : (ext === 'pdf' ? '📑' : '📊'));
 
     const reader = new FileReader();
 
-    if (ext === 'csv') {
+    const compSelect = document.getElementById('importEmpresaSelect');
+    const companyId = compSelect ? compSelect.value : (EFO_Active_Company_Id || 'comp_demo');
+    const existingBatches = (typeof EFO_ImportEngine !== 'undefined') ? EFO_ImportEngine.getStagingBatches(companyId) : [];
+
+    if (ext === 'ofx') {
+        // --- PROCESSAMENTO DE EXTRATO OFX BANCÁRIO ---
         reader.onload = function(e) {
             try {
                 const uint8 = new Uint8Array(e.target.result);
@@ -5946,16 +6118,22 @@ function handleImportFileSelected(file) {
 
                 const encoding = EFO_ImportEngine.detectEncoding(uint8);
                 const text = EFO_ImportEngine.decodeBuffer(uint8, encoding);
-                const delimiter = EFO_ImportEngine.detectDelimiter(text);
-                const parsedCsv = EFO_ImportEngine.parseCsvString(text, delimiter);
-                const rawMatrix = parsedCsv.rows || [];
+
+                if (typeof EFO_ReconciliationEngine === 'undefined') {
+                    throw new Error("Motor de Conciliação Bancária não carregado.");
+                }
+
+                const parsedOfx = EFO_ReconciliationEngine.parseOFX(text, { fileName: file.name });
+                const reconResult = EFO_ReconciliationEngine.reconcileStatement(parsedOfx, {
+                    existingBatches: existingBatches
+                });
 
                 if (metaBadgesEl) {
                     metaBadgesEl.innerHTML = `
-                        <span class="badge" style="background: rgba(99,102,241,0.15); color: var(--accent-primary);">Formato: CSV</span>
-                        <span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">Delimitador: "${delimiter === '\t' ? 'TAB' : delimiter}"</span>
-                        <span class="badge" style="background: rgba(245,158,11,0.15); color: #f59e0b;">Codificação: ${encoding}</span>
-                        <span class="badge" style="background: rgba(59,130,246,0.15); color: #3b82f6;">${rawMatrix.length} Linhas Brutas</span>
+                        <span class="badge" style="background: rgba(99,102,241,0.15); color: var(--accent-primary);">Formato: OFX Bancário</span>
+                        <span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">Banco: ${parsedOfx.bankMetadata.bankId || '341'}</span>
+                        <span class="badge" style="background: rgba(245,158,11,0.15); color: #f59e0b;">Conta: ${parsedOfx.bankMetadata.accountId || 'CC'}</span>
+                        <span class="badge" style="background: rgba(59,130,246,0.15); color: #3b82f6;">${parsedOfx.transactions.length} Lançamentos</span>
                     `;
                 }
 
@@ -5964,13 +6142,232 @@ function handleImportFileSelected(file) {
                 _currentImportData.fileInfo = {
                     name: file.name,
                     size: file.size,
-                    type: 'CSV',
-                    sha256: hash,
-                    encoding: encoding,
-                    delimiter: delimiter
+                    type: 'OFX',
+                    sha256: hash
                 };
 
-                processImportMatrix(rawMatrix);
+                _currentImportData.reconciliation = reconResult;
+                _currentImportData.normalized = {
+                    validRecords: reconResult.records,
+                    invalidRecords: [],
+                    totalRows: reconResult.records.length,
+                    validCount: reconResult.records.length,
+                    invalidCount: 0,
+                    summaryKpis: reconResult.summaryKpis
+                };
+
+                _currentImportData.mapping = {
+                    date: 'date',
+                    amount: 'amount',
+                    description: 'description',
+                    category: 'category',
+                    document_number: 'document_number'
+                };
+
+                renderReconciliationAuditUI(reconResult, {
+                    bankName: parsedOfx.bankMetadata.bankId ? `Banco (${parsedOfx.bankMetadata.bankId})` : 'Extrato OFX',
+                    account: parsedOfx.bankMetadata.accountId,
+                    format: 'OFX',
+                    fileName: file.name
+                });
+            } catch (err) {
+                console.error("Erro ao processar OFX:", err);
+                alert("Falha ao analisar extrato OFX: " + err.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    } else if (ext === 'pdf') {
+        // --- PROCESSAMENTO DE PDF DIGITAL E OCR ESCANEADO ---
+        reader.onload = function(e) {
+            try {
+                const uint8 = new Uint8Array(e.target.result);
+                const hash = EFO_ImportEngine.computeSha256(uint8);
+                if (hashEl) hashEl.textContent = hash;
+
+                if (typeof EFO_PdfExtractor === 'undefined') {
+                    throw new Error("Módulo extrator de PDF não carregado.");
+                }
+
+                const yearSelect = document.getElementById('importYearSelect');
+                const refYear = parseInt(yearSelect ? yearSelect.value : 2026);
+
+                const parsedPdf = EFO_PdfExtractor.parseDigitalPdfStatement(uint8, { year: refYear });
+
+                let statementMeta = {
+                    format: 'PDF_DIGITAL',
+                    bankName: (parsedPdf.statementInfo && parsedPdf.statementInfo.bank) || 'Banco em PDF',
+                    account: (parsedPdf.statementInfo && parsedPdf.statementInfo.accountNumber) || 'Identificada',
+                    fileName: file.name,
+                    is_ocr: false
+                };
+
+                let transactions = parsedPdf.transactions || [];
+                let balances = {
+                    initialBalanceReported: (parsedPdf.statementInfo && parsedPdf.statementInfo.initialBalance) || null,
+                    finalBalanceReported: (parsedPdf.statementInfo && parsedPdf.statementInfo.finalBalance) || null
+                };
+                let period = {
+                    startDate: (parsedPdf.statementInfo && parsedPdf.statementInfo.periodStart) || null,
+                    endDate: (parsedPdf.statementInfo && parsedPdf.statementInfo.periodEnd) || null
+                };
+
+                if (parsedPdf.isScannedPdf || transactions.length === 0) {
+                    statementMeta.format = 'PDF_ESCANEADO_OCR';
+                    statementMeta.is_ocr = true;
+                    const ocrModule = EFO_PdfExtractor.processScannedPdfOcr(uint8, { pageNumber: 1, year: refYear });
+                    transactions = ocrModule.records || [];
+                }
+
+                const reconResult = EFO_ReconciliationEngine.reconcileStatement({
+                    period: period,
+                    balances: balances,
+                    transactions: transactions
+                }, {
+                    existingBatches: existingBatches
+                });
+
+                if (metaBadgesEl) {
+                    metaBadgesEl.innerHTML = `
+                        <span class="badge" style="background: rgba(99,102,241,0.15); color: var(--accent-primary);">Formato: ${statementMeta.format}</span>
+                        <span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">${transactions.length} Lançamentos</span>
+                        <span class="badge" style="background: rgba(245,158,11,0.15); color: #f59e0b;">${statementMeta.is_ocr ? 'OCR Óptico' : 'Texto Estruturado'}</span>
+                    `;
+                }
+
+                if (sheetRow) sheetRow.style.display = 'none';
+
+                _currentImportData.fileInfo = {
+                    name: file.name,
+                    size: file.size,
+                    type: statementMeta.format,
+                    sha256: hash
+                };
+
+                _currentImportData.reconciliation = reconResult;
+                _currentImportData.normalized = {
+                    validRecords: reconResult.records,
+                    invalidRecords: [],
+                    totalRows: reconResult.records.length,
+                    validCount: reconResult.records.length,
+                    invalidCount: 0,
+                    summaryKpis: reconResult.summaryKpis
+                };
+
+                _currentImportData.mapping = {
+                    date: 'date',
+                    amount: 'amount',
+                    description: 'description',
+                    category: 'category',
+                    document_number: 'document_number'
+                };
+
+                renderReconciliationAuditUI(reconResult, statementMeta);
+            } catch (err) {
+                console.error("Erro ao processar PDF:", err);
+                alert("Falha ao analisar extrato em PDF: " + err.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    } else if (ext === 'csv') {
+        // --- PROCESSAMENTO DE CSV (BANCOS HOMOLOGADOS OU GENÉRICO) ---
+        reader.onload = function(e) {
+            try {
+                const uint8 = new Uint8Array(e.target.result);
+                const hash = EFO_ImportEngine.computeSha256(uint8);
+                if (hashEl) hashEl.textContent = hash;
+
+                const encoding = EFO_ImportEngine.detectEncoding(uint8);
+                const text = EFO_ImportEngine.decodeBuffer(uint8, encoding);
+
+                // Testa se é um CSV de banco homologado (Itaú, Bradesco, Santander, etc.)
+                let bankCsvParsed = null;
+                try {
+                    if (typeof EFO_ReconciliationEngine !== 'undefined') {
+                        bankCsvParsed = EFO_ReconciliationEngine.detectAndParseBankCsv(text, { fileName: file.name });
+                    }
+                } catch (e) {
+                    bankCsvParsed = null;
+                }
+
+                if (bankCsvParsed && bankCsvParsed.detectedBank !== 'GENERIC') {
+                    // É um banco homologado! Executa conciliação direta
+                    const reconResult = EFO_ReconciliationEngine.reconcileStatement(bankCsvParsed, {
+                        existingBatches: existingBatches
+                    });
+
+                    if (metaBadgesEl) {
+                        metaBadgesEl.innerHTML = `
+                            <span class="badge" style="background: rgba(99,102,241,0.15); color: var(--accent-primary);">Banco: ${bankCsvParsed.detectedBank}</span>
+                            <span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">CSV Homologado</span>
+                            <span class="badge" style="background: rgba(59,130,246,0.15); color: #3b82f6;">${bankCsvParsed.transactions.length} Lançamentos</span>
+                        `;
+                    }
+
+                    if (sheetRow) sheetRow.style.display = 'none';
+
+                    _currentImportData.fileInfo = {
+                        name: file.name,
+                        size: file.size,
+                        type: 'CSV_' + bankCsvParsed.detectedBank,
+                        sha256: hash
+                    };
+
+                    _currentImportData.reconciliation = reconResult;
+                    _currentImportData.normalized = {
+                        validRecords: reconResult.records,
+                        invalidRecords: [],
+                        totalRows: reconResult.records.length,
+                        validCount: reconResult.records.length,
+                        invalidCount: 0,
+                        summaryKpis: reconResult.summaryKpis
+                    };
+
+                    _currentImportData.mapping = {
+                        date: 'date',
+                        amount: 'amount',
+                        description: 'description',
+                        category: 'category',
+                        document_number: 'document_number'
+                    };
+
+                    renderReconciliationAuditUI(reconResult, {
+                        bankName: bankCsvParsed.detectedBank,
+                        account: 'Homologada',
+                        format: 'CSV_' + bankCsvParsed.detectedBank,
+                        fileName: file.name
+                    });
+                } else {
+                    // CSV Genérico
+                    const delimiter = EFO_ImportEngine.detectDelimiter(text);
+                    const parsedCsv = EFO_ImportEngine.parseCsvString(text, delimiter);
+                    const rawMatrix = parsedCsv.rows || [];
+
+                    if (metaBadgesEl) {
+                        metaBadgesEl.innerHTML = `
+                            <span class="badge" style="background: rgba(99,102,241,0.15); color: var(--accent-primary);">Formato: CSV Genérico</span>
+                            <span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981;">Delimitador: "${delimiter === '\t' ? 'TAB' : delimiter}"</span>
+                            <span class="badge" style="background: rgba(245,158,11,0.15); color: #f59e0b;">Codificação: ${encoding}</span>
+                            <span class="badge" style="background: rgba(59,130,246,0.15); color: #3b82f6;">${rawMatrix.length} Linhas Brutas</span>
+                        `;
+                    }
+
+                    if (sheetRow) sheetRow.style.display = 'none';
+
+                    _currentImportData.fileInfo = {
+                        name: file.name,
+                        size: file.size,
+                        type: 'CSV',
+                        sha256: hash,
+                        encoding: encoding,
+                        delimiter: delimiter
+                    };
+
+                    // Oculta painel de conciliação bancária quando for planilha genérica
+                    const reconCard = document.getElementById('reconAuditCard');
+                    if (reconCard) reconCard.style.display = 'none';
+
+                    processImportMatrix(rawMatrix);
+                }
             } catch (err) {
                 console.error("Erro ao processar CSV:", err);
                 alert("Falha ao analisar o arquivo CSV: " + err.message);
@@ -5978,7 +6375,7 @@ function handleImportFileSelected(file) {
         };
         reader.readAsArrayBuffer(file);
     } else {
-        // XLSX or XLS
+        // --- PROCESSAMENTO DE PLANILHA EXCEL (XLSX / XLS) ---
         reader.onload = function(e) {
             try {
                 const uint8 = new Uint8Array(e.target.result);
@@ -6018,6 +6415,9 @@ function handleImportFileSelected(file) {
                     sheetNames: sheetNames,
                     activeSheet: sheetNames[0]
                 };
+
+                const reconCard = document.getElementById('reconAuditCard');
+                if (reconCard) reconCard.style.display = 'none';
 
                 switchImportSheet(sheetNames[0]);
             } catch (err) {
@@ -6240,6 +6640,10 @@ function confirmAndSaveStagingBatch() {
         if (!conf) return;
     }
 
+    const finalBatchStatus = _currentImportData.reconciliation
+        ? _currentImportData.reconciliation.batchStatus
+        : 'STAGING_SALVO';
+
     const batchMeta = {
         batchId: 'LOT-' + Date.now().toString(36).toUpperCase(),
         companyId: companyId,
@@ -6252,15 +6656,25 @@ function confirmAndSaveStagingBatch() {
         sheetName: _currentImportData.fileInfo.activeSheet || null,
         sha256: _currentImportData.fileInfo.sha256,
         user: EFO_Session ? EFO_Session.name : 'Administrador',
-        status: 'STAGING_SALVO',
-        mapping: mapping
+        status: finalBatchStatus,
+        mapping: mapping,
+        reconciliationReport: _currentImportData.reconciliation ? {
+            equation: _currentImportData.reconciliation.equation,
+            periodAudit: _currentImportData.reconciliation.periodAudit,
+            summaryKpis: _currentImportData.reconciliation.summaryKpis,
+            internalTransferCount: _currentImportData.reconciliation.internalTransferPairs.length
+        } : null
     };
 
     const rawPreview = (_currentImportData.rawDataRows || []).slice(0, 50);
 
     const saved = EFO_ImportEngine.saveStagingBatch(batchMeta, _currentImportData.normalized, rawPreview);
 
-    showToast(`✅ Lote #${saved.batchId} salvo com sucesso no Staging de Auditoria!`, 'success');
+    if (finalBatchStatus === 'PENDENTE_REVISAO') {
+        showToast(`⚠️ Lote #${saved.batchId} retido em PENDENTE DE REVISÃO (divergências auditadas). Nenhum dado descartado.`, 'warning');
+    } else {
+        showToast(`✅ Lote #${saved.batchId} salvo e auditado com sucesso no Staging!`, 'success');
+    }
 
     // Reset current form & refresh history
     resetImportForm();
@@ -6286,10 +6700,12 @@ function resetImportForm() {
     const inspectionBox = document.getElementById('importInspectionBox');
     const mappingSec = document.getElementById('importMappingSection');
     const previewSec = document.getElementById('importPreviewSection');
+    const reconCard = document.getElementById('reconAuditCard');
 
     if (inspectionBox) inspectionBox.style.display = 'none';
     if (mappingSec) mappingSec.style.display = 'none';
     if (previewSec) previewSec.style.display = 'none';
+    if (reconCard) reconCard.style.display = 'none';
 }
 
 window.renderStagingBatchesHistory = function() {
