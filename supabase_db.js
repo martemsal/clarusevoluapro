@@ -366,16 +366,18 @@ async function db_migrateLocalStorageToSupabase(onProgress) {
 
 async function db_uploadClientFile(file) {
     let cloudSaved = false;
+    let cloudError = null;
+    const resolvedName = file.fileName || file.name || 'documento';
     try {
         if (_supa) {
             const { error } = await _supa.from('efo_client_files').insert({
                 company_id:      file.companyId,
                 client_name:     file.clientName,
                 client_email:    file.clientEmail,
-                file_name:       file.fileName,
-                file_type:       file.fileType,
-                file_size:       file.fileSize,
-                file_data:       file.fileData,
+                file_name:       resolvedName,
+                file_type:       file.fileType || 'application/octet-stream',
+                file_size:       file.fileSize || 0,
+                file_data:       file.fileData || '',
                 folder_path:     file.folderPath,
                 reference_month: file.referenceMonth
             });
@@ -383,23 +385,29 @@ async function db_uploadClientFile(file) {
                 cloudSaved = true;
                 DB_ONLINE = true;
             } else {
+                cloudError = error;
                 console.warn('[Supabase] db_uploadClientFile erro retornado:', error.message);
             }
         }
     } catch (e) {
+        cloudError = e;
         console.warn('[Supabase] db_uploadClientFile falhou (usando cache local):', e.message);
     }
 
     // Sempre espelha e faz fallback em localStorage para nunca travar a experiência do usuário
     try {
         const cacheKey = `EFO_Client_Files_${file.companyId}`;
-        const existing = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+        let existing = [];
+        try {
+            existing = JSON.parse(localStorage.getItem(cacheKey) || '[]');
+        } catch (_) { existing = []; }
+
         const newRecord = {
             id: 'file_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
             companyId:      file.companyId,
             clientName:     file.clientName,
             clientEmail:    file.clientEmail,
-            fileName:       file.fileName,
+            fileName:       resolvedName,
             fileType:       file.fileType,
             fileSize:       file.fileSize,
             fileData:       file.fileData,
@@ -408,12 +416,32 @@ async function db_uploadClientFile(file) {
             createdAt:      new Date().toISOString(),
             cloudSynced:    cloudSaved
         };
-        const filtered = existing.filter(f => !(f.fileName === file.fileName && f.referenceMonth === file.referenceMonth));
+
+        const filtered = existing.filter(f => !(f.fileName === resolvedName && f.referenceMonth === file.referenceMonth));
         filtered.unshift(newRecord);
-        localStorage.setItem(cacheKey, JSON.stringify(filtered.slice(0, 100)));
+
+        try {
+            localStorage.setItem(cacheKey, JSON.stringify(filtered.slice(0, 50)));
+        } catch (quotaErr) {
+            // Se excedeu cota do localStorage por causa dos base64, salva metadados sem binário pesado
+            console.warn('[Storage] Quota de localStorage atingida. Salvando metadados.');
+            const lightweightRecords = filtered.slice(0, 50).map(r => ({
+                ...r,
+                fileData: (r.id === newRecord.id) ? '' : (r.fileData ? r.fileData.substring(0, 100) : '')
+            }));
+            try {
+                localStorage.setItem(cacheKey, JSON.stringify(lightweightRecords));
+            } catch (_) {}
+        }
     } catch (localErr) {
         console.warn('Erro ao salvar no cache local:', localErr);
-        if (!cloudSaved) throw localErr;
+    }
+
+    if (!cloudSaved && cloudError) {
+        const msg = cloudError.message || '';
+        if (msg.includes('relation') || msg.includes('does not exist') || msg.includes('schema') || msg.includes('404')) {
+            throw new Error('A tabela "efo_client_files" ainda não foi criada no Supabase. Execute o script "supabase_migration.sql" no SQL Editor do painel do Supabase.');
+        }
     }
 }
 

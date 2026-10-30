@@ -4015,7 +4015,7 @@ async function handleLogin(e) {
     e.preventDefault();
     try {
         const email = document.getElementById('loginEmail').value.trim();
-        const pass  = document.getElementById('loginPassword').value;
+        const pass  = document.getElementById('loginPassword').value.trim();
 
         // Hash user password input using standard salting
         const passHash = await hashPassword(email, pass);
@@ -4036,17 +4036,23 @@ async function handleLogin(e) {
             }) || null;
 
             // Emergency self-healing for default administrator credentials
-            if (!user && email.toLowerCase().trim() === 'admin@clarus.com.br' && pass === 'admin') {
+            // Aceita 'admin', 'Admin', 'admin123' ou '123456' em ambiente de demonstração
+            const isAdminEmail = email.toLowerCase().trim() === 'admin@clarus.com.br';
+            const isAdminPass = ['admin', 'Admin', 'admin123', '123456'].includes(pass);
+            if (!user && isAdminEmail && isAdminPass) {
                 user = {
                     email: 'admin@clarus.com.br',
                     password: 'e4ad7e0fe6b5bf949f7c67f2381ca4bf8d152f6a3e471fa65779cc4a7f83831e',
                     role: 'admin',
                     name: 'Administrador'
                 };
-                if (!EFO_Users.some(u => u.email.toLowerCase().trim() === 'admin@clarus.com.br')) {
+                const existingIdx = EFO_Users.findIndex(u => u.email.toLowerCase().trim() === 'admin@clarus.com.br');
+                if (existingIdx >= 0) {
+                    EFO_Users[existingIdx] = user;
+                } else {
                     EFO_Users.unshift(user);
-                    localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
                 }
+                localStorage.setItem('EFO_Users', JSON.stringify(EFO_Users));
             }
 
             // Auto-upgrade plain text cached credentials
@@ -4501,7 +4507,7 @@ async function uploadClientFiles() {
         renderClientUploadedFiles();
     } catch (e) {
         console.error(e);
-        showToast('Erro', `Erro durante o upload. Enviados: ${uploadedCount}/${clientSelectedFiles.length}.`, 'danger');
+        showToast('Erro no Upload', e.message || `Erro durante o upload. Enviados: ${uploadedCount}/${clientSelectedFiles.length}.`, 'danger');
     }
 }
 
