@@ -678,6 +678,10 @@ function initTabs() {
                 title = "Importação de Arquivos";
                 renderImportadorView();
             }
+            if (target === 'tab-revisao-auditoria') {
+                title = "Central de Revisão e Auditoria Financeira";
+                if (typeof renderReviewAuditView === 'function') renderReviewAuditView();
+            }
             if (target === 'tab-projetos') {
                 title = "Projetos de Melhoria";
                 renderProjetos();
@@ -1493,6 +1497,28 @@ function renderDRE() {
         };
     }
 
+    
+    // Verificação de Alertas de Publicação Parcial
+    const dreAlertBox = document.getElementById('drePublicationAlert');
+    if (dreAlertBox && typeof EFO_DashboardPublisher !== 'undefined' && typeof EFO_ImportEngine !== 'undefined') {
+        const compId = (EFO_Session && EFO_Session.role !== 'admin') ? EFO_Session.companyId : (EFO_Active_Company_Id || 'comp_demo');
+        const batches = EFO_ImportEngine.listCompanyBatches(compId) || [];
+        const pubStatus = EFO_DashboardPublisher.getPeriodPublicationStatus(compId, EFO_Active_DRE_Year, EFO_Active_Parecer_Month || 0, batches);
+        if (pubStatus.hasPartial) {
+            dreAlertBox.style.display = 'block';
+            dreAlertBox.innerHTML = `
+                <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #f59e0b; display: flex; align-items: center; gap: 10px; line-height: 1.4;">
+                    <span style="font-size: 20px;">⚠️</span>
+                    <div>
+                        <strong>Aviso de Publicação Parcial:</strong> ${pubStatus.alertMessage}
+                    </div>
+                </div>
+            `;
+        } else {
+            dreAlertBox.style.display = 'none';
+        }
+    }
+
     const theadRow = document.getElementById('dreTheadRow');
     const tbody = document.getElementById('dreTbody');
     if (!theadRow || !tbody) return;
@@ -1899,6 +1925,28 @@ function renderBalanco() {
             EFO_Active_DRE_Year = parseInt(e.target.value);
             updateAllViews();
         };
+    }
+
+    
+    // Verificação de Alertas de Publicação Parcial
+    const balancoAlertBox = document.getElementById('balancoPublicationAlert');
+    if (balancoAlertBox && typeof EFO_DashboardPublisher !== 'undefined' && typeof EFO_ImportEngine !== 'undefined') {
+        const compId = (EFO_Session && EFO_Session.role !== 'admin') ? EFO_Session.companyId : (EFO_Active_Company_Id || 'comp_demo');
+        const batches = EFO_ImportEngine.listCompanyBatches(compId) || [];
+        const pubStatus = EFO_DashboardPublisher.getPeriodPublicationStatus(compId, EFO_Active_DRE_Year, EFO_Active_Parecer_Month || 0, batches);
+        if (pubStatus.hasPartial) {
+            balancoAlertBox.style.display = 'block';
+            balancoAlertBox.innerHTML = `
+                <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #f59e0b; display: flex; align-items: center; gap: 10px; line-height: 1.4;">
+                    <span style="font-size: 20px;">⚠️</span>
+                    <div>
+                        <strong>Aviso de Publicação Parcial:</strong> ${pubStatus.alertMessage}
+                    </div>
+                </div>
+            `;
+        } else {
+            balancoAlertBox.style.display = 'none';
+        }
     }
 
     const ativoTheadRow = document.getElementById('ativoTheadRow');
@@ -3747,6 +3795,8 @@ function applyRoleUI() {
         adminCompanySelectorSection.style.display = 'block';
         navClientsBtn.style.display = 'block';
         if (navImportadorBtn) navImportadorBtn.style.display = 'block';
+        const navRevisaoAuditoriaBtn = document.getElementById('navRevisaoAuditoriaBtn');
+        if (navRevisaoAuditoriaBtn) navRevisaoAuditoriaBtn.style.display = 'flex';
         if (navAdminFilesBtn) navAdminFilesBtn.style.display = 'block';
         if (navClientFilesBtn) navClientFilesBtn.style.display = 'none';
         navConciliationBtn.style.display = 'flex';
@@ -3781,6 +3831,8 @@ function applyRoleUI() {
         adminCompanySelectorSection.style.display = 'none';
         navClientsBtn.style.display = 'none';
         if (navImportadorBtn) navImportadorBtn.style.display = 'none';
+        const navRevisaoAuditoriaClient = document.getElementById('navRevisaoAuditoriaBtn');
+        if (navRevisaoAuditoriaClient) navRevisaoAuditoriaClient.style.display = 'none';
         if (navAdminFilesBtn) navAdminFilesBtn.style.display = 'none';
         if (navClientFilesBtn) navClientFilesBtn.style.display = 'block';
         navConciliationBtn.style.display = 'none';
@@ -6714,6 +6766,53 @@ function resetImportForm() {
     if (reconCard) reconCard.style.display = 'none';
 }
 
+
+// -----------------------------------------------------------------------------
+// INTEGRAÇÃO & PUBLICAÇÃO CONTROLADA NO DASHBOARD (UI CONTROLLERS)
+// -----------------------------------------------------------------------------
+window._activePublishBatchId = null;
+
+function getPublisherAppContext(companyId) {
+    return {
+        companyId: companyId,
+        user: EFO_Session ? { name: EFO_Session.name, email: EFO_Session.email, role: EFO_Session.role } : { name: 'Consultor Clarus', email: 'consultor@clarus.com.br', role: 'admin' },
+        getCompanyBatches: (cid) => EFO_ImportEngine.listCompanyBatches(cid),
+        saveCompanyBatches: (cid, batches) => {
+            localStorage.setItem(`EFO_Import_Batches_${cid}`, JSON.stringify(batches));
+        },
+        getBatchRecords: (bid) => {
+            const raw = localStorage.getItem(`EFO_Import_Records_${bid}`);
+            return raw ? JSON.parse(raw) : null;
+        },
+        saveBatchRecords: (bid, records) => {
+            try {
+                localStorage.setItem(`EFO_Import_Records_${bid}`, JSON.stringify(records));
+            } catch (e) {
+                console.warn('Storage quota limit when saving batch records:', e);
+            }
+        },
+        getActiveOfx: (cid) => OFX_Raw_Import,
+        setActiveOfx: (cid, newOfx) => {
+            OFX_Raw_Import = newOfx;
+            localStorage.setItem('OFX_Raw_Import_V2', JSON.stringify(OFX_Raw_Import));
+            if (EFO_Companies[cid]) EFO_Companies[cid].ofx = OFX_Raw_Import;
+        },
+        getActiveLancamentos: (cid) => EFO_Lancamentos,
+        setActiveLancamentos: (cid, newLanc) => {
+            EFO_Lancamentos = newLanc;
+            localStorage.setItem('EFO_Lancamentos_V3', JSON.stringify(EFO_Lancamentos));
+            if (EFO_Companies[cid]) EFO_Companies[cid].lancamentos = EFO_Lancamentos;
+        },
+        getPublicationHistory: (cid) => {
+            const raw = localStorage.getItem(`EFO_Publication_Log_${cid}`);
+            return raw ? JSON.parse(raw) : [];
+        },
+        savePublicationHistory: (cid, hist) => {
+            localStorage.setItem(`EFO_Publication_Log_${cid}`, JSON.stringify(hist.slice(0, 100)));
+        }
+    };
+}
+
 window.renderStagingBatchesHistory = function() {
     const compSelect = document.getElementById('importEmpresaSelect');
     const companyId = compSelect ? compSelect.value : (EFO_Active_Company_Id || 'comp_demo');
@@ -6741,6 +6840,20 @@ window.renderStagingBatchesHistory = function() {
         const periodStr = `${monthsShort[b.month] || 'Mês ' + b.month}/${b.year}`;
         const balanceColor = b.netBalance >= 0 ? 'var(--success)' : 'var(--danger)';
 
+        // Status badge styling
+        let statusBadge = '';
+        if (b.status === 'PUBLICADO') {
+            statusBadge = `<span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981; font-weight: 600; font-size: 11px;">✓ Publicado</span>`;
+        } else if (b.status === 'PUBLICACAO_PARCIAL') {
+            statusBadge = `<span class="badge" style="background: rgba(245,158,11,0.15); color: #f59e0b; font-weight: 600; font-size: 11px;" title="Publicação parcial: ${b.publishedCount || 0} publicados, ${b.pendingCount || 0} pendentes">⚠️ Parcial (${b.publishedCount} pub)</span>`;
+        } else if (b.status === 'PENDENTE_REVISAO') {
+            statusBadge = `<span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444; font-weight: 600; font-size: 11px;" title="Retido: divergência ou furo de saldo detectado">⛔ Pendente Revisão</span>`;
+        } else {
+            statusBadge = `<span class="badge" style="background: rgba(99,102,241,0.15); color: var(--accent-primary); font-weight: 600; font-size: 11px;">📁 Staging Salvo</span>`;
+        }
+
+        const isPublished = (b.status === 'PUBLICADO' || b.status === 'PUBLICACAO_PARCIAL');
+
         return `
             <tr style="border-bottom: 1px solid var(--glass-border);">
                 <td style="font-family: monospace; font-weight: 600; color: var(--accent-primary);">${b.batchId}</td>
@@ -6754,7 +6867,7 @@ window.renderStagingBatchesHistory = function() {
                 <td style="font-weight: 600;">${periodStr}</td>
                 <td>
                     <span class="badge" style="background: rgba(16,185,129,0.15); color: #10b981; font-size: 11px;">
-                        ${b.validRows} válidas
+                        ${b.validRows || b.recordsCount || 0} válidas
                     </span>
                     ${b.invalidRows > 0 ? `
                         <span class="badge" style="background: rgba(239,68,68,0.15); color: #ef4444; font-size: 11px; margin-left: 4px;">
@@ -6762,28 +6875,258 @@ window.renderStagingBatchesHistory = function() {
                         </span>
                     ` : ''}
                 </td>
-                <td style="font-weight: 600; color: ${balanceColor};">${formatCurrency(b.netBalance)}</td>
-                <td>
-                    <span class="badge" style="background: rgba(99,102,241,0.15); color: var(--accent-primary); font-size: 11px; font-weight: 600;">
-                        ${b.status}
-                    </span>
-                </td>
-                <td style="font-size: 11.5px; color: var(--text-secondary);">${b.user}</td>
-                <td style="text-align: center;">
-                    <button type="button" onclick="deleteBatchFromStaging('${b.batchId}')" class="btn-secondary" style="padding: 4px 8px; font-size: 11px; color: var(--danger); border-color: rgba(239,68,68,0.3);" title="Excluir lote do staging">
-                        🗑️ Excluir
-                    </button>
+                <td style="font-weight: 600; color: ${balanceColor};">${formatCurrency(b.netBalance || 0)}</td>
+                <td>${statusBadge}</td>
+                <td style="font-size: 11.5px; color: var(--text-secondary);">${b.user || 'Administrador'}</td>
+                <td style="text-align: center; white-space: nowrap;">
+                    <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                        ${isPublished ? `
+                            <button type="button" onclick="navigateToAuditBatch('${b.batchId}')" class="btn-secondary" style="padding: 3px 6px; font-size: 10.5px; color: var(--accent-primary); border-color: rgba(99,102,241,0.4);" title="Abrir na Central de Revisão & Auditoria">
+                                ⚖️ Revisar
+                            </button>
+                            <button type="button" onclick="openBatchAuditModal('${b.batchId}')" class="btn-secondary" style="padding: 3px 6px; font-size: 10.5px;" title="Ver auditoria e rastreabilidade">
+                                🔍 Rastrear
+                            </button>
+                            <button type="button" onclick="confirmUnpublishBatch('${b.batchId}')" class="btn-secondary" style="padding: 3px 6px; font-size: 10.5px; color: #f59e0b; border-color: rgba(245,158,11,0.3);" title="Despublicar e estornar valores do dashboard">
+                                ↩️ Despublicar
+                            </button>
+                        ` : `
+                            <button type="button" onclick="classifyBatchWithAI('${b.batchId}')" class="btn-secondary" style="padding: 3px 6px; font-size: 10.5px;" title="Classificar lançamentos com inteligência da Lia">
+                                🤖 Classificar
+                            </button>
+                            <button type="button" onclick="openPublishBatchModal('${b.batchId}')" class="btn-primary" style="padding: 3px 8px; font-size: 10.5px; font-weight: 600;" title="Aprovar e publicar lançamentos no dashboard">
+                                🚀 Publicar
+                            </button>
+                            <button type="button" onclick="openBatchAuditModal('${b.batchId}')" class="btn-secondary" style="padding: 3px 6px; font-size: 10.5px;" title="Auditar lote">
+                                🔍 Ver
+                            </button>
+                            <button type="button" onclick="deleteBatchFromStaging('${b.batchId}')" class="btn-secondary" style="padding: 3px 6px; font-size: 10.5px; color: var(--danger); border-color: rgba(239,68,68,0.3);" title="Excluir lote">
+                                🗑️
+                            </button>
+                        `}
+                    </div>
                 </td>
             </tr>
         `;
     }).join('');
 };
 
-window.deleteBatchFromStaging = function(batchId) {
-    if (!confirm(`Deseja realmente remover o lote #${batchId} do ambiente de staging? Esta ação não pode ser desfeita.`)) {
+window.classifyBatchWithAI = function(batchId) {
+    const compSelect = document.getElementById('importEmpresaSelect');
+    const companyId = compSelect ? compSelect.value : (EFO_Active_Company_Id || 'comp_demo');
+    const recordsPayload = JSON.parse(localStorage.getItem(`EFO_Import_Records_${batchId}`) || 'null');
+    
+    if (!recordsPayload || !recordsPayload.normalized || recordsPayload.normalized.length === 0) {
+        showToast('Erro', 'Registros do lote não encontrados no Staging.', 'danger');
         return;
     }
-    EFO_ImportEngine.deleteStagingBatch(batchId);
-    showToast(`Lote #${batchId} removido do staging.`, 'info');
+
+    const context = {
+        company: Config_Empresa || { tipo_atividade: 'Serviço' },
+        approvedHistory: JSON.parse(localStorage.getItem(`EFO_Learned_Memory_${companyId}`) || '[]')
+    };
+
+    let classifiedCount = 0;
+    recordsPayload.normalized.forEach(rec => {
+        const suggestion = EFO_AI_Classifier.classifyTransaction({
+            transaction_id: rec.transaction_id || `TX_${rec.lineNumber}`,
+            description: rec.description,
+            amount: rec.amount,
+            date: rec.date
+        }, context);
+
+        rec.ai_suggestion = suggestion;
+        rec.assigned_account = suggestion.suggested_category;
+        rec.status = 'APROVADO'; // Sugestão pré-aprovada para revisão do consultor
+        classifiedCount++;
+    });
+
+    try {
+        localStorage.setItem(`EFO_Import_Records_${batchId}`, JSON.stringify(recordsPayload));
+    } catch (e) {
+        console.warn('Cota de storage atingida ao salvar classificações:', e);
+    }
+
+    showToast('Classificação Concluída', `🤖 Lia classificou ${classifiedCount} lançamentos com sucesso com base no Plano de Contas.`, 'success');
     renderStagingBatchesHistory();
+};
+
+window.openPublishBatchModal = function(batchId, isReprocess) {
+    window._activePublishBatchId = batchId;
+    window._isPublishReprocess = !!isReprocess;
+
+    const compSelect = document.getElementById('importEmpresaSelect');
+    const companyId = compSelect ? compSelect.value : (EFO_Active_Company_Id || 'comp_demo');
+    const batches = EFO_ImportEngine.listCompanyBatches(companyId) || [];
+    const batch = batches.find(b => b.batchId === batchId);
+    const recordsPayload = JSON.parse(localStorage.getItem(`EFO_Import_Records_${batchId}`) || 'null');
+    const records = recordsPayload ? (recordsPayload.normalized || []) : [];
+
+    if (!batch) {
+        showToast('Erro', 'Lote não encontrado.', 'danger');
+        return;
+    }
+
+    document.getElementById('pubModalSubtitle').textContent = `Lote #${batch.batchId} • ${batch.fileName}`;
+    
+    // Validação de pré-requisitos
+    const val = EFO_DashboardPublisher.validateBatchForPublication(batch, records, {});
+    
+    document.getElementById('pubTotalRows').textContent = val.summary.total;
+    document.getElementById('pubApprovedRows').textContent = val.summary.approved;
+    document.getElementById('pubPendingRows').textContent = val.summary.pending;
+
+    const criticalWarn = document.getElementById('pubCriticalWarning');
+    const partialSec = document.getElementById('pubPartialSection');
+    const btnExecute = document.getElementById('btnExecutePublish');
+
+    // Se possui erro crítico (saldo bancário não bateu)
+    if (batch.status === 'PENDENTE_REVISAO' || (batch.reconciliationReport && batch.reconciliationReport.equation && !batch.reconciliationReport.equation.isBalanceReconciled)) {
+        criticalWarn.style.display = 'block';
+        criticalWarn.innerHTML = `⛔ <strong>Publicação Bloqueada:</strong> Este lote apresenta divergências de conciliação bancária ou furo de saldo não conciliado. Corrija o extrato antes de publicar no dashboard.`;
+        partialSec.style.display = 'none';
+        btnExecute.disabled = true;
+        btnExecute.style.opacity = '0.5';
+        btnExecute.style.cursor = 'not-allowed';
+    } else {
+        criticalWarn.style.display = 'none';
+        btnExecute.disabled = false;
+        btnExecute.style.opacity = '1';
+        btnExecute.style.cursor = 'pointer';
+
+        if (val.summary.pending > 0) {
+            partialSec.style.display = 'block';
+            document.getElementById('cbAllowPartial').checked = false;
+            document.getElementById('txtPartialAuthNote').value = '';
+        } else {
+            partialSec.style.display = 'none';
+        }
+    }
+
+    document.getElementById('publishBatchModal').style.display = 'flex';
+};
+
+window.closePublishModal = function() {
+    window._activePublishBatchId = null;
+    document.getElementById('publishBatchModal').style.display = 'none';
+};
+
+window.executeBatchPublish = function() {
+    const batchId = window._activePublishBatchId;
+    if (!batchId) return;
+
+    const compSelect = document.getElementById('importEmpresaSelect');
+    const companyId = compSelect ? compSelect.value : (EFO_Active_Company_Id || 'comp_demo');
+    const allowPartial = document.getElementById('cbAllowPartial').checked;
+    const partialNote = document.getElementById('txtPartialAuthNote').value.trim();
+
+    const options = {
+        allowPartial: allowPartial,
+        partialAuthorization: partialNote,
+        reprocess: window._isPublishReprocess || false
+    };
+
+    try {
+        const context = getPublisherAppContext(companyId);
+        const res = EFO_DashboardPublisher.publishBatch(batchId, options, context);
+        
+        saveState();
+        updateAllViews();
+        closePublishModal();
+        renderStagingBatchesHistory();
+
+        const msgType = res.isPartial ? 'warning' : 'success';
+        const msgTitle = res.isPartial ? 'Publicação Parcial Concluída' : 'Lote Publicado no Dashboard';
+        const msgText = res.isPartial
+            ? `⚠️ ${res.publishedCount} lançamentos publicados. ${res.pendingCount} lançamentos pendentes permaneceram no Staging.`
+            : `🚀 Todos os ${res.publishedCount} lançamentos foram publicados com sucesso na DRE e no Balanço.`;
+
+        showToast(msgTitle, msgText, msgType);
+    } catch (err) {
+        console.error('Erro na publicação de lote:', err);
+        showToast('Erro na Publicação', err.message, 'danger');
+    }
+};
+
+window.confirmUnpublishBatch = function(batchId) {
+    if (!confirm(`Deseja realmente despublicar o lote #${batchId}?\n\nOs valores associados a este lote serão estornados da DRE e do Balanço Gerencial com proteção contábil. O lote retornará para o Staging sem ser apagado.`)) {
+        return;
+    }
+
+    const compSelect = document.getElementById('importEmpresaSelect');
+    const companyId = compSelect ? compSelect.value : (EFO_Active_Company_Id || 'comp_demo');
+
+    try {
+        const context = getPublisherAppContext(companyId);
+        const res = EFO_DashboardPublisher.unpublishBatch(batchId, { reason: 'Despublicação manual solicitada pelo consultor' }, context);
+        
+        saveState();
+        updateAllViews();
+        renderStagingBatchesHistory();
+
+        showToast('Lote Despublicado', `↩️ ${res.revertedCount} lançamentos foram estornados do painel e o lote retornou ao Staging.`, 'info');
+    } catch (err) {
+        console.error('Erro ao despublicar lote:', err);
+        showToast('Erro ao Despublicar', err.message, 'danger');
+    }
+};
+
+window.openBatchAuditModal = function(batchId) {
+    const compSelect = document.getElementById('importEmpresaSelect');
+    const companyId = compSelect ? compSelect.value : (EFO_Active_Company_Id || 'comp_demo');
+    const batches = EFO_ImportEngine.listCompanyBatches(companyId) || [];
+    const batch = batches.find(b => b.batchId === batchId);
+    const recordsPayload = JSON.parse(localStorage.getItem(`EFO_Import_Records_${batchId}`) || 'null');
+    const records = recordsPayload ? (recordsPayload.normalized || []) : [];
+
+    if (!batch) return;
+
+    document.getElementById('auditModalSubtitle').textContent = `Lote #${batch.batchId} • Período: ${(batch.month || 0) + 1}/${batch.year}`;
+    document.getElementById('auditFileName').textContent = batch.fileName;
+    document.getElementById('auditFileHash').textContent = batch.sha256 || batch.fileSha256 || 'N/A';
+    document.getElementById('auditStatusVersion').innerHTML = `
+        <span class="badge" style="background: rgba(99,102,241,0.15); color: var(--accent-primary);">${batch.status}</span>
+        <span style="font-size: 11px; color: var(--text-secondary); margin-left: 6px;">v${batch.publicationVersion || 1}</span>
+    `;
+
+    const tbody = document.getElementById('auditModalTbody');
+    if (records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted" style="padding: 20px;">Nenhum detalhe de lançamento registrado neste lote.</td></tr>`;
+    } else {
+        tbody.innerHTML = records.map((r, i) => {
+            const line = r.lineNumber !== undefined ? r.lineNumber : (i + 1);
+            const valColor = r.amount >= 0 ? 'var(--success)' : 'var(--danger)';
+            const dest = (r.assigned_account && r.assigned_account.startsWith('balanco.')) ? 'Balanço' : 'DRE';
+
+            return `
+                <tr style="border-bottom: 1px solid var(--glass-border);">
+                    <td style="font-family: monospace; color: var(--text-secondary);">#${line}</td>
+                    <td style="font-size: 11px;">${r.date || '-'}</td>
+                    <td style="font-weight: 500;">${r.description || '-'}</td>
+                    <td style="text-align: right; font-weight: 600; color: ${valColor};">${formatCurrency(r.amount || 0)}</td>
+                    <td style="font-size: 11px; color: var(--accent-primary);">${r.assigned_account || '<span style="color:#ef4444;">Pendente</span>'}</td>
+                    <td style="font-size: 11px; color: var(--text-secondary);">${dest}</td>
+                    <td style="text-align: center;">
+                        <span class="badge" style="font-size: 10px;">${r.status || 'Pendente'}</span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    document.getElementById('auditBatchModal').style.display = 'flex';
+};
+
+
+// Navegação direta do Importador para a Central de Revisão & Auditoria
+window.navigateToAuditBatch = function(batchId) {
+    const btn = document.getElementById('navRevisaoAuditoriaBtn');
+    if (btn) btn.click();
+    setTimeout(() => {
+        const batchSelect = document.getElementById('auditBatchSelect');
+        if (batchSelect) {
+            batchSelect.value = batchId;
+            batchSelect.dispatchEvent(new Event('change'));
+        }
+    }, 150);
 };

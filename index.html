@@ -20,6 +20,11 @@
     <script src="reconciliation_engine.js"></script>
     <!-- AI-Assisted Managerial Classifier & Continuous Learning Engine -->
     <script src="ai_classifier.js"></script>
+    <!-- Dashboard Integration, Controlled Publication & Audit Engine -->
+    <script src="dashboard_publisher.js"></script>
+    <!-- Central de Revisao e Auditoria Financeira -->
+    <script src="review_audit_engine.js"></script>
+    <script src="review_audit_controller.js"></script>
     <!-- Supabase JS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="supabase_db.js"></script>
@@ -154,6 +159,7 @@
             <!-- TAB: DRE GERENCIAL -->
             <div id="tab-dre" class="tab-content active">
                 <div class="glass-panel p-24">
+                    <div id="drePublicationAlert" style="display:none; margin-bottom: 16px;"></div>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
                         <h2 style="font-size: 18px; margin: 0; color: var(--text-primary);">Demonstrativo de Resultado do Exercício (DRE)</h2>
                         <div style="display: flex; align-items: center; gap: 8px;">
@@ -195,6 +201,7 @@
             <!-- TAB: BALANÇO GERENCIAL -->
             <div id="tab-balanco" class="tab-content">
                 <div class="glass-panel p-24">
+                    <div id="balancoPublicationAlert" style="display:none; margin-bottom: 16px;"></div>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
                         <h2 style="font-size: 18px; margin: 0; color: var(--text-primary);">Balanço Patrimonial Gerencial</h2>
                         <div style="display: flex; align-items: center; gap: 8px;">
@@ -923,6 +930,231 @@
                     </div>
                 </div>
             </div>
+    
+            <!-- TAB: CENTRAL DE REVISÃO E AUDITORIA FINANCEIRA -->
+            <div id="tab-revisao-auditoria" class="tab-content">
+                <div class="glass-panel p-24" style="margin-bottom: 24px;">
+                    <!-- Header do Módulo -->
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+                                <span style="font-size: 26px;">⚖️</span>
+                                <h2 style="font-size: 22px; font-weight: 700; color: var(--text-primary); margin: 0;">Central de Revisão e Auditoria Financeira</h2>
+                            </div>
+                            <p style="color: var(--text-secondary); font-size: 13.5px; margin: 0; max-width: 850px; line-height: 1.5;">
+                                Interface unificada para conferência de evidências, tratamento prioritário de exceções, reclassificação contábil com IA, aprovação controlada e rastreabilidade documental integral.
+                            </p>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button type="button" class="btn-secondary" onclick="renderReviewAuditView()" style="padding: 8px 14px; font-size: 12.5px;">
+                                🔄 Atualizar
+                            </button>
+                            <button type="button" class="btn-primary" onclick="auditApproveEligibleBatchAction()" style="padding: 8px 16px; font-size: 12.5px; font-weight: 600; background: #10b981; border-color: #10b981;">
+                                ⚡ Aprovar Elegíveis
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- BARRA SUPERIOR DE CONTEXTO: EMPRESA, PERÍODO E LOTE -->
+                    <div style="background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 12px; padding: 18px; margin-bottom: 20px;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px;">
+                            <div>
+                                <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px;">Empresa Auditada:</label>
+                                <select id="auditEmpresaSelect" style="width: 100%; padding: 7px 10px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-primary); font-size: 12.5px;">
+                                    <!-- Dinâmico -->
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px;">Ano:</label>
+                                <select id="auditYearSelect" onchange="applyAuditFiltersAndRender()" style="width: 100%; padding: 7px 10px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-primary); font-size: 12.5px;">
+                                    <option value="2026" selected>2026</option>
+                                    <option value="2025">2025</option>
+                                    <option value="2024">2024</option>
+                                    <option value="2023">2023</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px;">Mês / Competência:</label>
+                                <select id="auditMonthSelect" onchange="applyAuditFiltersAndRender()" style="width: 100%; padding: 7px 10px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-primary); font-size: 12.5px;">
+                                    <option value="all">Todos os Meses</option>
+                                    <option value="0">Janeiro</option>
+                                    <option value="1">Fevereiro</option>
+                                    <option value="2">Março</option>
+                                    <option value="3">Abril</option>
+                                    <option value="4">Maio</option>
+                                    <option value="5">Junho</option>
+                                    <option value="6">Julho</option>
+                                    <option value="7">Agosto</option>
+                                    <option value="8">Setembro</option>
+                                    <option value="9">Outubro</option>
+                                    <option value="10">Novembro</option>
+                                    <option value="11">Dezembro</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px;">Lote de Importação:</label>
+                                <select id="auditBatchSelect" style="width: 100%; padding: 7px 10px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-primary); font-size: 12.5px;">
+                                    <option value="all">📚 Todos os Lotes</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- INDICADORES DE AUDITORIA & PAINEL DE EXCEÇÕES (KPIS) -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 18px;">
+                        <div style="background: var(--bg-secondary); border: 1px solid var(--glass-border); padding: 14px; border-radius: 10px;">
+                            <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Total Importado</div>
+                            <div style="font-size: 22px; font-weight: 700; color: var(--text-primary);" id="kpiAuditTotal">0</div>
+                            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Lançamentos no Staging</div>
+                        </div>
+                        <div style="background: var(--bg-secondary); border: 1px solid var(--glass-border); padding: 14px; border-radius: 10px;">
+                            <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Validados / Aprovados</div>
+                            <div style="font-size: 22px; font-weight: 700; color: var(--success);" id="kpiAuditValidados">0</div>
+                            <div style="font-size: 11px; color: var(--success); margin-top: 2px;">Prontos p/ Publicação</div>
+                        </div>
+                        <div style="background: var(--bg-secondary); border: 1px solid var(--glass-border); padding: 14px; border-radius: 10px;">
+                            <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Pendências Ativas</div>
+                            <div style="font-size: 22px; font-weight: 700; color: #f59e0b;" id="kpiAuditPendencias">0</div>
+                            <div style="font-size: 11px; color: #f59e0b; margin-top: 2px;">Requerem Ação</div>
+                        </div>
+                        <div style="background: var(--bg-secondary); border: 1px solid var(--glass-border); padding: 14px; border-radius: 10px;">
+                            <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase;">Bloqueados / Rejeitados</div>
+                            <div style="font-size: 22px; font-weight: 700; color: var(--danger);" id="kpiAuditBloqueados">0</div>
+                            <div style="font-size: 11px; color: var(--danger); margin-top: 2px;">Retidos por Integridade</div>
+                        </div>
+                    </div>
+
+                    <!-- CHIPS DE FILTRO RÁPIDO POR TIPO DE PENDÊNCIA -->
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; align-items: center;">
+                        <span style="font-size: 12px; font-weight: 600; color: var(--text-secondary);">Filtrar por Exceção:</span>
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('auditExceptionFilter').value='all'; applyAuditFiltersAndRender();" style="padding: 4px 10px; font-size: 11.5px; border-radius: 20px;">
+                            Todas as Linhas
+                        </button>
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('auditExceptionFilter').value='PENDENTE_CLASSIFICACAO'; applyAuditFiltersAndRender();" style="padding: 4px 10px; font-size: 11.5px; border-radius: 20px; border-color: #f59e0b; color: #f59e0b;">
+                            🏷️ Sem Conta (<span id="countPendenteClassificacao">0</span>)
+                        </button>
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('auditExceptionFilter').value='DIVERGENCIA_CONCILIACAO'; applyAuditFiltersAndRender();" style="padding: 4px 10px; font-size: 11.5px; border-radius: 20px; border-color: #f59e0b; color: #f59e0b;">
+                            ⚖️ Furo de Saldo (<span id="countDivergenciaConciliacao">0</span>)
+                        </button>
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('auditExceptionFilter').value='DUPLICIDADE_SUSPEITA'; applyAuditFiltersAndRender();" style="padding: 4px 10px; font-size: 11.5px; border-radius: 20px; border-color: #f59e0b; color: #f59e0b;">
+                            ⚠️ Duplicidade (<span id="countDuplicidadeSuspeita">0</span>)
+                        </button>
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('auditExceptionFilter').value='DOCUMENTACAO_PENDENTE'; applyAuditFiltersAndRender();" style="padding: 4px 10px; font-size: 11.5px; border-radius: 20px; border-color: #3b82f6; color: #3b82f6;">
+                            📄 Doc Pendente (<span id="countDocumentacaoPendente">0</span>)
+                        </button>
+                        <button type="button" class="btn-secondary" onclick="document.getElementById('auditExceptionFilter').value='REJEITADO'; applyAuditFiltersAndRender();" style="padding: 4px 10px; font-size: 11.5px; border-radius: 20px; border-color: #ef4444; color: #ef4444;">
+                            ✕ Rejeitados (<span id="countRejeitado">0</span>)
+                        </button>
+                    </div>
+
+                    <!-- BARRA DE FILTROS AVANÇADOS -->
+                    <div style="background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 12px;">
+                            <div>
+                                <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Tipo de Exceção:</label>
+                                <select id="auditExceptionFilter" onchange="applyAuditFiltersAndRender()" style="width: 100%; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); font-size: 12px;">
+                                    <option value="all">Todas as Exceções</option>
+                                    <option value="PENDENTE_CLASSIFICACAO">Pendente de Classificação</option>
+                                    <option value="DIVERGENCIA_CONCILIACAO">Divergência de Conciliação</option>
+                                    <option value="DUPLICIDADE_SUSPEITA">Duplicidade Suspeita</option>
+                                    <option value="DOCUMENTACAO_PENDENTE">Documentação Pendente</option>
+                                    <option value="REJEITADO">Rejeitados</option>
+                                    <option value="BLOQUEADO">Bloqueados</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Status de Aprovação:</label>
+                                <select id="auditStatusFilter" onchange="applyAuditFiltersAndRender()" style="width: 100%; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); font-size: 12px;">
+                                    <option value="all">Todos os Status</option>
+                                    <option value="NORMALIZADO">Normalizado</option>
+                                    <option value="EM_VALIDACAO">Em Validação</option>
+                                    <option value="EM_CONFERENCIA">Em Conferência</option>
+                                    <option value="APROVADO">Aprovado</option>
+                                    <option value="PUBLICADO">Publicado</option>
+                                    <option value="REJEITADO">Rejeitado</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Conta Gerencial:</label>
+                                <select id="auditCategoryFilter" onchange="applyAuditFiltersAndRender()" style="width: 100%; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); font-size: 12px;">
+                                    <option value="all">Todas as Contas</option>
+                                    <!-- Injetado -->
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Buscar Texto / Documento:</label>
+                                <input type="text" id="auditSearchInput" oninput="applyAuditFiltersAndRender()" placeholder="Descrição, NF, ID, valor..." style="width: 100%; padding: 6px 10px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); font-size: 12px;">
+                            </div>
+                        </div>
+
+                        <!-- Segunda Linha de Filtros: Valores e Datas -->
+                        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                                <div style="display: flex; align-items: center; gap: 4px;">
+                                    <span style="font-size: 11px; color: var(--text-secondary);">Valor:</span>
+                                    <input type="number" id="auditAmountMin" oninput="applyAuditFiltersAndRender()" placeholder="Mín R$" style="width: 90px; padding: 4px 8px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); font-size: 11.5px;">
+                                    <span style="font-size: 11px; color: var(--text-secondary);">até</span>
+                                    <input type="number" id="auditAmountMax" oninput="applyAuditFiltersAndRender()" placeholder="Máx R$" style="width: 90px; padding: 4px 8px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); font-size: 11.5px;">
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 4px; margin-left: 10px;">
+                                    <span style="font-size: 11px; color: var(--text-secondary);">Data:</span>
+                                    <input type="date" id="auditDateFrom" onchange="applyAuditFiltersAndRender()" style="padding: 4px 8px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); font-size: 11.5px;">
+                                    <span style="font-size: 11px; color: var(--text-secondary);">até</span>
+                                    <input type="date" id="auditDateTo" onchange="applyAuditFiltersAndRender()" style="padding: 4px 8px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); font-size: 11.5px;">
+                                </div>
+                            </div>
+                            <button type="button" class="btn-secondary" onclick="document.getElementById('auditSearchInput').value=''; document.getElementById('auditAmountMin').value=''; document.getElementById('auditAmountMax').value=''; document.getElementById('auditDateFrom').value=''; document.getElementById('auditDateTo').value=''; document.getElementById('auditExceptionFilter').value='all'; document.getElementById('auditStatusFilter').value='all'; document.getElementById('auditCategoryFilter').value='all'; applyAuditFiltersAndRender();" style="padding: 4px 10px; font-size: 11px;">
+                                🧹 Limpar Filtros
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TOOLBAR DE AÇÕES EM MASSA (BATCH ACTIONS) -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding: 10px 14px; background: var(--bg-secondary); border-radius: 8px; border: 1px solid var(--glass-border); flex-wrap: wrap; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <label style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-primary); cursor: pointer; margin: 0;">
+                                <input type="checkbox" id="cbSelectAllAuditRecords" onchange="toggleSelectAllAuditRecords(this.checked)" style="cursor: pointer;">
+                                <strong>Selecionar Todos</strong>
+                            </label>
+                            <span id="auditSelectedCount" style="font-size: 12px; color: var(--accent-primary); font-weight: 600;">0 selecionados</span>
+                        </div>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span style="font-size: 11.5px; color: var(--text-secondary);" id="auditTableSummary">Carregando lançamentos...</span>
+                            <button type="button" class="btn-primary" onclick="auditApproveEligibleBatchAction()" style="padding: 6px 14px; font-size: 12px; font-weight: 600; background: #10b981; border-color: #10b981;">
+                                ⚡ Aprovar Elegíveis
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TABELA PRINCIPAL DE AUDITORIA -->
+                    <div class="table-container" style="max-height: 520px; overflow-y: auto;">
+                        <table class="report-table" id="auditRecordsTable" style="width: 100%; font-size: 12px;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px; text-align: center;">#</th>
+                                    <th style="width: 85px;">Origem</th>
+                                    <th style="width: 95px;">Data Mov.</th>
+                                    <th style="width: 95px;">Competência</th>
+                                    <th style="min-width: 200px;">Descrição / Histórico</th>
+                                    <th style="width: 80px; text-align: center;">Sentido</th>
+                                    <th style="width: 120px; text-align: right;">Valor Normalizado</th>
+                                    <th style="width: 190px;">Conta Gerencial</th>
+                                    <th style="width: 130px; text-align: center;">Status Auditoria</th>
+                                    <th style="width: 130px; text-align: center;">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="auditRecordsTbody">
+                                <tr>
+                                    <td colspan="10" class="text-center" style="padding: 24px; color: var(--text-secondary);">
+                                        Nenhum registro carregado.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
     </main>
     </div>
 
@@ -1272,5 +1504,327 @@
     </button>
 
     <script src="app.js?v=20261029-01"></script>
+
+    <!-- Modal: Aprovação & Publicação de Lote no Dashboard -->
+    <div id="publishBatchModal" class="modal">
+        <div class="modal-content glass-panel" style="width: 580px; max-width: 95%; padding: 28px;">
+            <span class="close-modal" onclick="closePublishModal()">&times;</span>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+                <span style="font-size: 26px;">🚀</span>
+                <div>
+                    <h2 style="font-size: 18px; margin: 0; color: var(--text-primary);">Aprovação & Publicação no Dashboard</h2>
+                    <div style="font-size: 12px; color: var(--text-secondary);" id="pubModalSubtitle">Lote #...</div>
+                </div>
+            </div>
+
+            <!-- Resumo dos Lançamentos -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px;">
+                <div style="background: var(--bg-primary); border: 1px solid var(--glass-border); padding: 10px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 10.5px; color: var(--text-secondary); text-transform: uppercase;">Total Registros</div>
+                    <div style="font-size: 18px; font-weight: 700; color: var(--text-primary);" id="pubTotalRows">0</div>
+                </div>
+                <div style="background: var(--bg-primary); border: 1px solid var(--glass-border); padding: 10px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 10.5px; color: var(--text-secondary); text-transform: uppercase;">Aprovados</div>
+                    <div style="font-size: 18px; font-weight: 700; color: var(--success);" id="pubApprovedRows">0</div>
+                </div>
+                <div style="background: var(--bg-primary); border: 1px solid var(--glass-border); padding: 10px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 10.5px; color: var(--text-secondary); text-transform: uppercase;">Pendentes</div>
+                    <div style="font-size: 18px; font-weight: 700; color: var(--danger);" id="pubPendingRows">0</div>
+                </div>
+            </div>
+
+            <!-- Avisos e Bloqueios -->
+            <div id="pubCriticalWarning" style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 16px; font-size: 12.5px; color: #ef4444; line-height: 1.4;">
+            </div>
+
+            <div id="pubPartialSection" style="display: none; background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+                <div style="font-size: 13px; font-weight: 600; color: #f59e0b; margin-bottom: 8px;">
+                    ⚠️ Lote com Lançamentos Pendentes
+                </div>
+                <p style="font-size: 12px; color: var(--text-secondary); margin: 0 0 10px 0; line-height: 1.4;">
+                    Para publicar apenas os lançamentos já auditados e aprovados, confirme a autorização de publicação parcial. Os lançamentos pendentes permanecerão no Staging para conciliação futura.
+                </p>
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-primary); cursor: pointer; margin-bottom: 10px;">
+                    <input type="checkbox" id="cbAllowPartial">
+                    <strong>Autorizo a publicação parcial dos registros aprovados</strong>
+                </label>
+                <div class="form-group mb-0">
+                    <label style="font-size: 11.5px; color: var(--text-secondary);">Justificativa da Autorização (Obrigatório para Parcial):</label>
+                    <input type="text" id="txtPartialAuthNote" placeholder="Ex: Autorizado pelo consultor para apuração preliminar enquanto aguarda documentação" style="background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 6px; padding: 8px; color: var(--text-primary); width: 100%; font-size: 12px;">
+                </div>
+            </div>
+
+            <div style="background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.15); border-radius: 8px; padding: 12px; font-size: 11.5px; color: var(--text-secondary); margin-bottom: 18px; line-height: 1.4;">
+                🛡️ <strong>Garantia de Não-Duplicação:</strong> Cada lançamento possui chave de idempotência canônica. Reimportações ou re-publicações futuras não duplicarão valores na DRE nem no Balanço.
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn-secondary" onclick="closePublishModal()" style="padding: 8px 16px; font-size: 12.5px;">Cancelar</button>
+                <button type="button" class="btn-primary" id="btnExecutePublish" onclick="executeBatchPublish()" style="padding: 8px 20px; font-size: 12.5px; font-weight: 600;">
+                    🚀 Confirmar e Publicar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Trilha de Auditoria & Rastreabilidade de Lote -->
+    <div id="auditBatchModal" class="modal">
+        <div class="modal-content glass-panel" style="width: 850px; max-width: 95%; padding: 28px;">
+            <span class="close-modal" onclick="document.getElementById('auditBatchModal').style.display='none'">&times;</span>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 16px;">
+                <span style="font-size: 26px;">🔍</span>
+                <div>
+                    <h2 style="font-size: 18px; margin: 0; color: var(--text-primary);">Rastreabilidade & Trilha de Auditoria Canônica</h2>
+                    <div style="font-size: 12px; color: var(--text-secondary);" id="auditModalSubtitle">-</div>
+                </div>
+            </div>
+
+            <!-- Metadados do Arquivo e Integridade -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 16px;">
+                <div style="background: var(--bg-primary); border: 1px solid var(--glass-border); padding: 10px; border-radius: 8px;">
+                    <div style="font-size: 10.5px; color: var(--text-secondary); text-transform: uppercase;">Arquivo de Origem</div>
+                    <div style="font-size: 13px; font-weight: 600; color: var(--text-primary); word-break: break-all;" id="auditFileName">-</div>
+                </div>
+                <div style="background: var(--bg-primary); border: 1px solid var(--glass-border); padding: 10px; border-radius: 8px;">
+                    <div style="font-size: 10.5px; color: var(--text-secondary); text-transform: uppercase;">Hash SHA-256 (Inviolável)</div>
+                    <div style="font-size: 11px; font-family: monospace; color: var(--accent-primary); word-break: break-all;" id="auditFileHash">-</div>
+                </div>
+                <div style="background: var(--bg-primary); border: 1px solid var(--glass-border); padding: 10px; border-radius: 8px;">
+                    <div style="font-size: 10.5px; color: var(--text-secondary); text-transform: uppercase;">Status & Versão</div>
+                    <div style="font-size: 13px; font-weight: 600;" id="auditStatusVersion">-</div>
+                </div>
+            </div>
+
+            <h4 style="font-size: 13px; font-weight: 600; margin: 16px 0 8px 0; color: var(--text-primary);">Lançamentos Associados ao Lote</h4>
+            <div class="table-container" style="max-height: 320px; overflow-y: auto;">
+                <table class="report-table" style="width: 100%; font-size: 11.5px;">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">Linha</th>
+                            <th style="width: 85px;">Data</th>
+                            <th>Descrição / Favorecido</th>
+                            <th style="width: 100px; text-align: right;">Valor</th>
+                            <th>Conta Gerencial</th>
+                            <th>Destino</th>
+                            <th style="width: 90px; text-align: center;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditModalTbody">
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
+                <button type="button" class="btn-secondary" onclick="document.getElementById('auditBatchModal').style.display='none'" style="padding: 8px 18px; font-size: 12.5px;">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Modal: Ficha Individual do Lançamento (Auditoria Completa A, B, C, D) -->
+    <div id="recordFichaModal" class="modal">
+        <div class="modal-content glass-panel" style="width: 900px; max-width: 95%; max-height: 90vh; overflow-y: auto; padding: 26px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--glass-border); padding-bottom: 14px; margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 26px;">🔍</span>
+                    <div>
+                        <h2 style="font-size: 18px; margin: 0; color: var(--text-primary);" id="fichaRecordIdTitle">Ficha do Lançamento</h2>
+                        <span id="fichaRecordStatusBadge" class="badge" style="margin-top: 4px; display: inline-block;">STATUS</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button type="button" class="btn-primary" onclick="fichaApproveRecord()" style="padding: 6px 14px; font-size: 12px; background: #10b981; border-color: #10b981;">
+                        ✓ Aprovar
+                    </button>
+                    <button type="button" class="btn-secondary text-danger" onclick="fichaRejectRecord()" style="padding: 6px 12px; font-size: 12px; border-color: var(--danger);">
+                        ✕ Rejeitar
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="fichaRequestDocument()" style="padding: 6px 12px; font-size: 12px;">
+                        📄 Pedir Doc
+                    </button>
+                    <span class="close-modal" onclick="closeRecordFichaModal()">&times;</span>
+                </div>
+            </div>
+
+            <!-- SEÇÃO A: DADOS DO LANÇAMENTO -->
+            <div style="background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 10px; padding: 18px; margin-bottom: 18px;">
+                <h3 style="font-size: 14px; font-weight: 700; color: var(--accent-primary); margin: 0 0 12px 0; text-transform: uppercase;">
+                    A) Dados do Lançamento
+                </h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                    <div>
+                        <label style="font-size: 11px; color: var(--text-secondary); display: block;">ID Canônico:</label>
+                        <input type="text" id="fichaA_id" readonly style="width: 100%; padding: 6px 8px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-secondary); font-size: 11.5px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: var(--text-secondary); display: block;">Empresa:</label>
+                        <input type="text" id="fichaA_company" readonly style="width: 100%; padding: 6px 8px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-secondary); font-size: 11.5px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: var(--text-secondary); display: block;">Data Movimento:</label>
+                        <input type="date" id="fichaA_date" readonly style="width: 100%; padding: 6px 8px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-secondary); font-size: 11.5px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: var(--accent-primary); font-weight: 600; display: block;">Data de Competência (Ajustável):</label>
+                        <input type="date" id="fichaA_competence" style="width: 100%; padding: 6px 8px; background: var(--bg-primary); border: 1px solid var(--accent-primary); border-radius: 6px; color: var(--text-primary); font-size: 11.5px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: var(--text-secondary); display: block;">Valor Normalizado:</label>
+                        <input type="text" id="fichaA_amount" readonly style="width: 100%; padding: 6px 8px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); font-weight: 700; font-size: 12px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: var(--text-secondary); display: block;">Direção:</label>
+                        <input type="text" id="fichaA_direction" readonly style="width: 100%; padding: 6px 8px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-secondary); font-size: 11.5px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: var(--text-secondary); display: block;">Conta Financeira / Banco:</label>
+                        <input type="text" id="fichaA_bank" readonly style="width: 100%; padding: 6px 8px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-secondary); font-size: 11.5px;">
+                    </div>
+                    <div>
+                        <label style="font-size: 11px; color: var(--text-secondary); display: block;">Status Atual:</label>
+                        <input type="text" id="fichaA_status" readonly style="width: 100%; padding: 6px 8px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-secondary); font-size: 11.5px;">
+                    </div>
+                </div>
+                <div style="margin-top: 10px;">
+                    <label style="font-size: 11px; color: var(--accent-primary); font-weight: 600; display: block;">Descrição do Lançamento (Editável com Justificativa):</label>
+                    <input type="text" id="fichaA_desc" style="width: 100%; padding: 6px 8px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); font-size: 12px;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+                    <button type="button" class="btn-secondary" onclick="fichaSaveDataCorrections()" style="padding: 5px 12px; font-size: 11.5px;">
+                        💾 Salvar Correções de Dados
+                    </button>
+                </div>
+            </div>
+
+            <!-- SEÇÃO B: EVIDÊNCIA ORIGINAL & COMPARAÇÃO DOCUMENTAL -->
+            <div style="background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 10px; padding: 18px; margin-bottom: 18px;">
+                <h3 style="font-size: 14px; font-weight: 700; color: var(--accent-primary); margin: 0 0 12px 0; text-transform: uppercase;">
+                    B) Evidência Original & Comparativo Documental
+                </h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-bottom: 14px;">
+                    <div style="background: var(--bg-primary); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--glass-border);">
+                        <div style="font-size: 10.5px; color: var(--text-secondary);">Arquivo Original:</div>
+                        <div style="font-size: 12px; font-weight: 600; color: var(--text-primary); word-break: break-all;" id="fichaB_fileName">-</div>
+                    </div>
+                    <div style="background: var(--bg-primary); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--glass-border);">
+                        <div style="font-size: 10.5px; color: var(--text-secondary);">Tipo & Formato:</div>
+                        <div style="font-size: 12px; font-weight: 600; color: var(--text-primary);" id="fichaB_fileType">-</div>
+                    </div>
+                    <div style="background: var(--bg-primary); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--glass-border);">
+                        <div style="font-size: 10.5px; color: var(--text-secondary);">Referência no Documento:</div>
+                        <div style="font-size: 12px; font-weight: 600; color: var(--accent-primary);" id="fichaB_reference">-</div>
+                    </div>
+                    <div style="background: var(--bg-primary); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--glass-border);">
+                        <div style="font-size: 10.5px; color: var(--text-secondary);">Hash SHA-256 (Inviolável):</div>
+                        <div style="font-size: 10px; font-family: monospace; color: var(--text-secondary); word-break: break-all;" id="fichaB_sha256">-</div>
+                    </div>
+                </div>
+
+                <!-- Comparativo Lado a Lado: Original Bruto vs Normalizado Canônico -->
+                <div style="background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+                    <div style="font-size: 11.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px;">
+                        ⚖️ Comparativo: Registro Original (Bruto) vs Modelo Canônico (Normalizado)
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px;">
+                            <div style="font-size: 10.5px; font-weight: 700; color: #f59e0b; text-transform: uppercase; margin-bottom: 6px;">📄 Extração Bruta Original</div>
+                            <div style="font-size: 11.5px; color: var(--text-secondary); margin-bottom: 4px;">Data: <span id="fichaB_origDate" style="color: var(--text-primary);">-</span></div>
+                            <div style="font-size: 11.5px; color: var(--text-secondary); margin-bottom: 4px;">Valor: <span id="fichaB_origAmount" style="color: var(--text-primary); font-family: monospace;">-</span></div>
+                            <div style="font-size: 11.5px; color: var(--text-secondary);">Descrição: <span id="fichaB_origDesc" style="color: var(--text-primary);">-</span></div>
+                        </div>
+                        <div style="background: rgba(99, 102, 241, 0.08); padding: 10px; border-radius: 6px; border: 1px solid rgba(99, 102, 241, 0.2);">
+                            <div style="font-size: 10.5px; font-weight: 700; color: var(--accent-primary); text-transform: uppercase; margin-bottom: 6px;">✨ Normalizado Canônico</div>
+                            <div style="font-size: 11.5px; color: var(--text-secondary); margin-bottom: 4px;">Data: <span id="fichaB_canonDate" style="color: var(--text-primary);">-</span></div>
+                            <div style="font-size: 11.5px; color: var(--text-secondary); margin-bottom: 4px;">Valor: <span id="fichaB_canonAmount" style="color: var(--text-primary); font-family: monospace; font-weight: 600;">-</span></div>
+                            <div style="font-size: 11.5px; color: var(--text-secondary);">Descrição: <span id="fichaB_canonDesc" style="color: var(--text-primary);">-</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visualizador de Dados Brutos JSON -->
+                <details style="font-size: 11.5px; color: var(--text-secondary);">
+                    <summary style="cursor: pointer; font-weight: 600; color: var(--accent-primary);">Ver Dados Brutos Extraídos (Objeto JSON Original)</summary>
+                    <pre id="fichaB_rawDataJson" style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; overflow-x: auto; font-family: monospace; font-size: 11px; margin-top: 8px; color: #a5b4fc; max-height: 160px;"></pre>
+                </details>
+            </div>
+
+            <!-- SEÇÃO C: CLASSIFICAÇÃO GERENCIAL & SUGESTÃO DA IA -->
+            <div style="background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 10px; padding: 18px; margin-bottom: 18px;">
+                <h3 style="font-size: 14px; font-weight: 700; color: var(--accent-primary); margin: 0 0 12px 0; text-transform: uppercase;">
+                    C) Classificação Gerencial & Inteligência Artificial
+                </h3>
+                <div style="background: rgba(99, 102, 241, 0.05); border: 1px solid rgba(99, 102, 241, 0.2); border-radius: 8px; padding: 12px; margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <strong style="font-size: 12px; color: var(--text-primary);">✨ Sugestão da IA (Lia):</strong>
+                        <span class="badge" style="background: rgba(99, 102, 241, 0.2); color: var(--accent-primary); font-size: 10.5px;" id="fichaC_aiConfidence">Confiança</span>
+                    </div>
+                    <div style="font-size: 13px; font-weight: 600; color: var(--accent-primary); margin-bottom: 4px;" id="fichaC_aiSuggestedAccount">-</div>
+                    <div style="font-size: 11.5px; color: var(--text-secondary); line-height: 1.4;" id="fichaC_aiJustification">-</div>
+                </div>
+
+                <!-- Formulário de Reclassificação Manual com Justificativa Obrigatória -->
+                <div style="border-top: 1px solid var(--glass-border); padding-top: 12px;">
+                    <label style="display: block; font-size: 11.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 5px;">
+                        Alterar Categoria Gerencial (Plano de Contas Oficial Clarus Evolua):
+                    </label>
+                    <select id="fichaC_accountSelect" style="width: 100%; padding: 8px 10px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); font-size: 12.5px; margin-bottom: 10px;">
+                        <!-- Injetado dinamicamente -->
+                    </select>
+
+                    <label style="display: block; font-size: 11.5px; font-weight: 600; color: #f59e0b; margin-bottom: 5px;">
+                        ⚠️ Justificativa Formal da Alteração (Obrigatória):
+                    </label>
+                    <input type="text" id="fichaC_reclassifyJustification" placeholder="Ex: Alterado após consulta à nota fiscal nº 4501 emitida pelo fornecedor" style="width: 100%; padding: 8px 10px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 6px; color: var(--text-primary); font-size: 12px; margin-bottom: 10px;">
+
+                    <div style="display: flex; justify-content: flex-end;">
+                        <button type="button" class="btn-primary" onclick="fichaSaveReclassification()" style="padding: 7px 16px; font-size: 12px;">
+                            Salvar Nova Classificação
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SEÇÃO D: HISTÓRICO DE AUDITORIA & TIMELINE -->
+            <div style="background: var(--bg-secondary); border: 1px solid var(--glass-border); border-radius: 10px; padding: 18px;">
+                <h3 style="font-size: 14px; font-weight: 700; color: var(--accent-primary); margin: 0 0 12px 0; text-transform: uppercase;">
+                    D) Histórico de Auditoria & Trilha Inviolável
+                </h3>
+                <div id="fichaD_timelineContainer" style="max-height: 220px; overflow-y: auto; padding-right: 8px;">
+                    <!-- Injetado dinamicamente -->
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-top: 18px;">
+                <button type="button" class="btn-secondary" onclick="closeRecordFichaModal()" style="padding: 8px 20px; font-size: 13px;">
+                    Fechar Ficha
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Justificativa Formal Obrigatória -->
+    <div id="auditActionJustificationModal" class="modal">
+        <div class="modal-content glass-panel" style="width: 520px; max-width: 95%; padding: 24px;">
+            <span class="close-modal" onclick="closeAuditJustificationModal()">&times;</span>
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                <span style="font-size: 24px;">📝</span>
+                <div>
+                    <h3 style="font-size: 17px; margin: 0; color: var(--text-primary);" id="auditJustificationTitle">Justificativa Formal Obrigatória</h3>
+                    <div style="font-size: 12px; color: var(--text-secondary);" id="auditJustificationSubtitle"></div>
+                </div>
+            </div>
+
+            <div class="form-group mb-3">
+                <label style="font-size: 12px; color: var(--text-primary); font-weight: 500;">Descreva o motivo da ação para registro na trilha de auditoria:</label>
+                <textarea id="auditJustificationText" rows="4" placeholder="Ex: Lançamento duplicado identificado em conciliação com extrato Caixa..." style="width: 100%; padding: 10px; background: var(--bg-primary); border: 1px solid var(--glass-border); border-radius: 8px; color: var(--text-primary); font-size: 12.5px; line-height: 1.4; resize: vertical;"></textarea>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn-secondary" onclick="closeAuditJustificationModal()" style="padding: 7px 16px; font-size: 12px;">Cancelar</button>
+                <button type="button" class="btn-primary" id="btnConfirmAuditJustification" onclick="submitAuditJustification()" style="padding: 7px 20px; font-size: 12px; font-weight: 600;">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
